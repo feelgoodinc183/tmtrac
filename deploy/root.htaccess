@@ -10,7 +10,7 @@
   # 0. Never serve app internals. The app folder sits inside public_html, so LiteSpeed would
   #    otherwise hand out the database, logs, server code and uploads as plain files.
   #    Pages and /assets/ come from the Node app, not from these paths.
-  RewriteRule ^(data|dist|tmp|node_modules|src|scripts|public)(/.*)?$ - [F,L]
+  RewriteRule ^(data[^/]*|dist|tmp|node_modules[^/]*|src|scripts|public)(/.*)?$ - [F,L]
   RewriteCond %{REQUEST_URI} !^/robots\.txt$
   RewriteRule ^[^/]+\.(json|js|cjs|mjs|map|md|log|zip|db|sqlite|php|txt|lock|py|ts|tsx|bak)$ - [F,L]
 
