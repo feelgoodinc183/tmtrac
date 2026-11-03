@@ -34,7 +34,7 @@ export function generateRaceHighlights(
       type: 'START_GUN',
       icon: 'START',
       boatIds: classBoats.map((b) => b.id),
-      badgeColor: 'bg-lb-green-500/20 text-lt-green-400 border-ll-green-500/40',
+      badgeColor: 'bg-success-ink/20 text-success-ink border-success-ink/40',
     });
   }
 
@@ -60,7 +60,7 @@ export function generateRaceHighlights(
       icon: 'MARK',
       markId,
       boatIds: [boat.id],
-      badgeColor: 'bg-lb-cyan-500/20 text-lt-cyan-300 border-ll-cyan-500/40',
+      badgeColor: 'bg-accent/20 text-accent border-accent/40',
     });
   }
 
@@ -80,7 +80,7 @@ export function generateRaceHighlights(
       type: 'FINISH_DUEL',
       icon: 'FINISH',
       boatIds: [first.id],
-      badgeColor: 'bg-lb-yellow-500/20 text-lt-yellow-300 border-ll-yellow-500/40',
+      badgeColor: 'bg-raised text-ink border-line',
     });
   }
 

@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 @import "./theme/tokens.css";
-@import "./theme/legacy-colors.css";
 
 /* Visible keyboard focus everywhere (mouse clicks on buttons don't show it). Kept outside
    @layer so it wins over the outline-none utilities used across older components. */
