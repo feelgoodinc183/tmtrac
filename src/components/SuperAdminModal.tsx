@@ -59,6 +59,12 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  // Errors from the edit dialogs are shown inside the dialog: the panel banner sits behind its overlay.
+  const [dialogError, setDialogError] = useState<{ message: string; sessionEnded: boolean } | null>(null);
+  const [dialogSaving, setDialogSaving] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [reauthBusy, setReauthBusy] = useState(false);
+  const [dialogInfo, setDialogInfo] = useState<string | null>(null);
 
   // Data states
   const [overview, setOverview] = useState<any>(null);
@@ -115,8 +121,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
   const getActiveToken = () => {
     return (
-      currentUser?.token ||
       authService.getToken() ||
+      currentUser?.token ||
       (typeof window !== 'undefined'
         ? localStorage.getItem('tmtrac_auth_token_v1') || localStorage.getItem('tmtrac_auth_token') || ''
         : '')
@@ -147,6 +153,63 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
     if (error) {
       setErrorMsg(error);
       setTimeout(() => setErrorMsg(null), 4000);
+    }
+  };
+
+  const readJson = async (res: Response) => {
+    try {
+      return await res.json();
+    } catch {
+      return {};
+    }
+  };
+
+  const showDialogFailure = (res: Response, data: any, fallback: string) => {
+    if (res.status === 401 || data?.requireAuth) {
+      setDialogError({
+        message:
+          'Your session has ended, usually because this account signed in on another device. Your changes have not been saved yet, but they are still here.',
+        sessionEnded: true,
+      });
+    } else {
+      setDialogError({ message: data?.error || fallback, sessionEnded: false });
+    }
+  };
+
+  const runDialogSave = async (save: () => Promise<void>) => {
+    setDialogError(null);
+    setDialogInfo(null);
+    setDialogSaving(true);
+    try {
+      await save();
+    } catch (err: any) {
+      setDialogError({
+        message: `Couldn't reach the server (${err?.message || 'network error'}). Your changes are still here; try again.`,
+        sessionEnded: false,
+      });
+    } finally {
+      setDialogSaving(false);
+    }
+  };
+
+  const handleReauth = async () => {
+    const login = (currentUser || authService.getCurrentUser())?.email;
+    if (!login || !reauthPassword) return;
+    setReauthBusy(true);
+    try {
+      const result = await authService.login(login, reauthPassword);
+      if (result.success) {
+        setReauthPassword('');
+        setDialogError(null);
+        setDialogInfo('Signed in again. Press save to keep your changes.');
+      } else {
+        setDialogError({
+          message: result.error || 'That password was not accepted. Try again.',
+          sessionEnded: true,
+        });
+      }
+    } finally {
+      setReauthBusy(false);
     }
   };
 
@@ -285,13 +348,82 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
     return () => clearInterval(interval);
   }, [isOpen, activeTab, autoRefreshSockets]);
 
+  const openDialogKey = editingPackage
+    ? `package:${editingPackage.id || 'new'}`
+    : editingUser
+      ? `user:${editingUser.id}`
+      : resetPwdUserId
+        ? `password:${resetPwdUserId}`
+        : editingClub
+          ? `club:${editingClub.id}`
+          : editingEvent
+            ? `event:${editingEvent.id || editingEvent.code}`
+            : '';
+
+  useEffect(() => {
+    setDialogError(null);
+    setDialogInfo(null);
+    setReauthPassword('');
+  }, [openDialogKey]);
+
   if (!isOpen) return null;
+
+  const renderDialogFeedback = () => {
+    if (dialogInfo) {
+      return (
+        <div role="status" className="rounded-lg border border-emerald-500/40 bg-emerald-950/60 px-3 py-2.5 text-xs text-emerald-100">
+          {dialogInfo}
+        </div>
+      );
+    }
+    if (!dialogError) return null;
+    const accountEmail = (currentUser || authService.getCurrentUser())?.email;
+    return (
+      <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/70 px-3 py-2.5 text-xs text-rose-100 space-y-2">
+        <p className="font-semibold">Not saved</p>
+        <p>{dialogError.message}</p>
+        {dialogError.sessionEnded && accountEmail && (
+          <div className="space-y-1.5 pt-1">
+            <label htmlFor="sa-reauth-password" className="block text-rose-100">
+              Password for {accountEmail}
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="sa-reauth-password"
+                type="password"
+                autoComplete="current-password"
+                autoFocus
+                value={reauthPassword}
+                onChange={(e) => setReauthPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  // Keep Enter from submitting the surrounding edit form.
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleReauth();
+                  }
+                }}
+                className="flex-1 px-3 py-2 bg-slate-950 border border-rose-500/50 rounded-lg text-white"
+              />
+              <button
+                type="button"
+                onClick={handleReauth}
+                disabled={reauthBusy || !reauthPassword}
+                className="px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-semibold"
+              >
+                {reauthBusy ? 'Signing in…' : 'Sign in again'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // --- Handlers: Packages ---
   const handleSavePackage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPackage) return;
-    try {
+    await runDialogSave(async () => {
       const isNew = isNewPackage;
       const targetIdentifier = editingPackage.id || editingPackage.tierKey;
       const url = isNew ? '/api/super-admin/packages' : `/api/super-admin/packages/${encodeURIComponent(targetIdentifier)}`;
@@ -313,7 +445,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
         headers: getHeaders(),
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (res.ok && data.success) {
         notify('Package saved successfully!');
         if (data.package) {
@@ -329,11 +461,9 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
         fetchPackages();
         window.dispatchEvent(new CustomEvent('packages-updated', { detail: data.package }));
       } else {
-        notify(undefined, data.error || 'Failed to save package');
+        showDialogFailure(res, data, 'Failed to save package');
       }
-    } catch (err: any) {
-      notify(undefined, err.message);
-    }
+    });
   };
 
   const handleDeletePackage = async (id: string, name: string) => {
@@ -361,45 +491,41 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    try {
+    await runDialogSave(async () => {
       const res = await fetch(`/api/super-admin/users/${editingUser.id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(editingUser),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (res.ok && data.success) {
         notify('User updated successfully.');
         setEditingUser(null);
         fetchUsers();
       } else {
-        notify(undefined, data.error);
+        showDialogFailure(res, data, 'Save failed. Please try again.');
       }
-    } catch (err: any) {
-      notify(undefined, err.message);
-    }
+    });
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetPwdUserId || !newPasswordVal.trim()) return;
-    try {
+    await runDialogSave(async () => {
       const res = await fetch(`/api/super-admin/users/${resetPwdUserId}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ newPassword: newPasswordVal.trim() }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (res.ok && data.success) {
         notify('Password reset successfully.');
         setResetPwdUserId(null);
         setNewPasswordVal('');
       } else {
-        notify(undefined, data.error);
+        showDialogFailure(res, data, 'Save failed. Please try again.');
       }
-    } catch (err: any) {
-      notify(undefined, err.message);
-    }
+    });
   };
 
   const handleDeleteUser = async (id: string, email: string) => {
@@ -454,23 +580,21 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   const handleSaveClub = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClub) return;
-    try {
+    await runDialogSave(async () => {
       const res = await fetch(`/api/super-admin/clubs/${editingClub.id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(editingClub),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (res.ok && data.success) {
         notify('Club updated.');
         setEditingClub(null);
         fetchClubs();
       } else {
-        notify(undefined, data.error);
+        showDialogFailure(res, data, 'Save failed. Please try again.');
       }
-    } catch (err: any) {
-      notify(undefined, err.message);
-    }
+    });
   };
 
   const handleDeleteClub = async (id: string, name: string) => {
@@ -515,7 +639,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEvent) return;
-    try {
+    await runDialogSave(async () => {
       const targetId = editingEvent.id || editingEvent.code;
       const res = await fetch(`/api/super-admin/events/${encodeURIComponent(targetId)}`, {
         method: 'PUT',
@@ -530,17 +654,15 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           isPublic: editingEvent.isPublic,
         }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (res.ok && data.success) {
         notify(`Event ${editingEvent.code} details successfully updated.`);
         setEditingEvent(null);
         fetchEvents();
       } else {
-        notify(undefined, data.error || 'Failed to update event details.');
+        showDialogFailure(res, data, 'Failed to update event details.');
       }
-    } catch (err: any) {
-      notify(undefined, err.message);
-    }
+    });
   };
 
   // --- Handlers: Database Status & Maintenance ---
@@ -2178,6 +2300,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   />
                 </div>
 
+                {renderDialogFeedback()}
+
                 <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
                   <button
                     type="button"
@@ -2188,9 +2312,10 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md"
+                    disabled={dialogSaving}
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md"
                   >
-                    Save Changes
+                    {dialogSaving ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
               </form>
@@ -2277,6 +2402,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </label>
                 </div>
 
+                {renderDialogFeedback()}
+
                 <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
                   <button
                     type="button"
@@ -2287,9 +2414,10 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold"
+                    disabled={dialogSaving}
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold"
                   >
-                    Save User
+                    {dialogSaving ? 'Saving…' : 'Save User'}
                   </button>
                 </div>
               </form>
@@ -2318,6 +2446,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   />
                 </div>
 
+                {renderDialogFeedback()}
+
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
@@ -2328,9 +2458,10 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold"
+                    disabled={dialogSaving}
+                    className="disabled:opacity-60 disabled:cursor-wait px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold"
                   >
-                    Update Password
+                    {dialogSaving ? 'Saving…' : 'Update Password'}
                   </button>
                 </div>
               </form>
@@ -2390,6 +2521,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </div>
                 </div>
 
+                {renderDialogFeedback()}
+
                 <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
                   <button
                     type="button"
@@ -2400,9 +2533,10 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold"
+                    disabled={dialogSaving}
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold"
                   >
-                    Save Changes
+                    {dialogSaving ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
               </form>
@@ -2513,6 +2647,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </div>
                 </div>
 
+                {renderDialogFeedback()}
+
                 <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
                   <button
                     type="button"
@@ -2523,9 +2659,10 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold cursor-pointer shadow-md"
+                    disabled={dialogSaving}
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold cursor-pointer shadow-md"
                   >
-                    Save Event Details
+                    {dialogSaving ? 'Saving…' : 'Save Event Details'}
                   </button>
                 </div>
               </form>
