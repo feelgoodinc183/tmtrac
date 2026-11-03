@@ -103,6 +103,7 @@ export function getDefaultDeviceProfile(): DeviceTrackerProfile {
 }
 
 import { roomService } from './roomService';
+import { authService } from './authService';
 
 export type FleetMemberUpdateCallback = (members: HybridFleetMember[]) => void;
 export type DeviceGpsUpdateCallback = (gpsState: DeviceGpsState) => void;
@@ -159,6 +160,9 @@ class HybridDeviceTrackerService {
   private wsReconnectTimer: any = null;
   private pingTimer: any = null;
   private connectedPeerCount = 1;
+  // Room + PIN last sent to the server, so a PIN unlocked after connecting still reaches the socket
+  private joinedRoomCode = '';
+  private joinedRoomPin = '';
 
   // Secondary communication channels
   private broadcastChannel: BroadcastChannel | null = null;
@@ -230,7 +234,10 @@ class HybridDeviceTrackerService {
 
     // Listen to active room changes and seamlessly switch WebSocket room
     roomService.onRoomChange((code) => {
-      this.switchRoom(code);
+      const pin = roomService.getActiveRoomPin();
+      if (code !== this.joinedRoomCode || pin !== this.joinedRoomPin) {
+        this.switchRoom(code, pin);
+      }
     });
 
     // If on mobile / tablet, automatically request GPS permission & start tracking
@@ -586,6 +593,15 @@ class HybridDeviceTrackerService {
             }
           }, 15000);
 
+          // The connect URL carries only room + login token; re-join with the room PIN so
+          // PIN-unlocked Race Officers and participants get their role on this socket
+          const activePin = roomService.getActiveRoomPin();
+          this.joinedRoomCode = activeRoom;
+          this.joinedRoomPin = activePin;
+          if (activePin) {
+            this.sendWs('JOIN_ROOM', { roomCode: activeRoom, pin: activePin });
+          }
+
           // Immediately announce this device to server and all connected clients
           this.announceDevice();
           this.broadcastCurrentLocation();
@@ -743,9 +759,33 @@ class HybridDeviceTrackerService {
 
   // Switch the real-time session to another regatta room
   public switchRoom(roomCode: string, pin?: string) {
-    this.remoteMembers.clear();
-    this.notifyFleet();
-    this.sendWs('JOIN_ROOM', { roomCode, pin });
+    const effectivePin = pin ?? (roomCode === roomService.getActiveRoomCode() ? roomService.getActiveRoomPin() : '');
+    if (roomCode !== this.joinedRoomCode) {
+      this.remoteMembers.clear();
+      this.notifyFleet();
+    }
+    this.joinedRoomCode = roomCode;
+    this.joinedRoomPin = effectivePin;
+    this.sendWs('JOIN_ROOM', { roomCode, pin: effectivePin });
+  }
+
+  // HTTP fallback for room edits when the socket is down; carries room, PIN and login like the socket does
+  private postSessionUpdate(endpoint: string, body: unknown) {
+    try {
+      const room = roomService.getActiveRoomCode();
+      const pin = roomService.getActiveRoomPin();
+      const headers: Record<string, string> = { ...authService.getAuthHeaders(), 'x-regatta-room': room };
+      if (pin) headers['x-admin-pin'] = pin;
+      fetch(`${endpoint}?room=${encodeURIComponent(room)}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+        .then((res) => {
+          if (!res.ok) console.warn(`Room update ${endpoint} rejected by server (HTTP ${res.status})`);
+        })
+        .catch(() => {});
+    } catch (e) {}
   }
 
   // Broadcast a connected Bluetooth / USB / LoRa hardware node to the server so other users see it publicly
@@ -788,74 +828,46 @@ class HybridDeviceTrackerService {
 
   // Synchronize Mark Updates across all connected phones & server
   public broadcastMarks(marks: CourseMark[]) {
-    this.sendWs('UPDATE_MARKS', marks);
+    const sent = this.sendWs('UPDATE_MARKS', marks);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'MARKS_UPDATED', payload: marks });
       } catch (e) {}
     }
-    try {
-      fetch('/api/session/marks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(marks),
-      }).catch(() => {});
-    } catch (e) {}
+    if (!sent) this.postSessionUpdate('/api/session/marks', marks);
   }
 
   // Synchronize Race State & Start Countdown across all phones
   public broadcastRaceState(raceState: Partial<RaceState>) {
-    this.sendWs('UPDATE_RACE_STATE', raceState);
+    const sent = this.sendWs('UPDATE_RACE_STATE', raceState);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'RACE_STATE_UPDATED', payload: raceState });
       } catch (e) {}
     }
-    try {
-      fetch('/api/session/racestate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(raceState),
-      }).catch(() => {});
-    } catch (e) {}
+    if (!sent) this.postSessionUpdate('/api/session/racestate', raceState);
   }
 
   // Synchronize Fleet Boats across all phones
   public broadcastBoats(boats: Boat[]) {
-    this.sendWs('UPDATE_BOATS', boats);
+    const sent = this.sendWs('UPDATE_BOATS', boats);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'BOATS_UPDATED', payload: boats });
       } catch (e) {}
     }
-    try {
-      fetch('/api/session/boats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(boats),
-      }).catch(() => {});
-    } catch (e) {}
+    if (!sent) this.postSessionUpdate('/api/session/boats', boats);
   }
 
   // Synchronize Official Scoring Series Races across all connected devices in room
   public broadcastSeriesRaces(seriesRaces: CompletedRace[]) {
-    this.sendWs('UPDATE_SERIES_RACES', seriesRaces);
+    const sent = this.sendWs('UPDATE_SERIES_RACES', seriesRaces);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'SERIES_RACES_UPDATED', payload: seriesRaces });
       } catch (e) {}
     }
-    try {
-      const room = roomService.getActiveRoomCode();
-      fetch(`/api/session/series?room=${encodeURIComponent(room)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-regatta-room': room,
-        },
-        body: JSON.stringify(seriesRaces),
-      }).catch(() => {});
-    } catch (e) {}
+    if (!sent) this.postSessionUpdate('/api/session/series', seriesRaces);
   }
 
   // Synchronize VHF Bulletins across all phones

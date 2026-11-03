@@ -10,6 +10,8 @@ class RoomService {
   private activeRoomCode: string = 'LOBBY';
   private isOrganizerRole: boolean = false;
   private isParticipantRole: boolean = false;
+  // PIN that unlocked the active room; the real-time socket needs it to get the same role as the UI
+  private activeRoomPin: string = '';
   private currentRoomSummary: RegattaRoomSummary | null = null;
   private listeners: RoomChangeCallback[] = [];
 
@@ -62,6 +64,10 @@ class RoomService {
 
   public getActiveRoomCode(): string {
     return this.activeRoomCode;
+  }
+
+  public getActiveRoomPin(): string {
+    return this.activeRoomPin;
   }
 
   public getIsOrganizer(): boolean {
@@ -178,6 +184,7 @@ class RoomService {
           if (roomCode === this.activeRoomCode) {
             this.isOrganizerRole = !!data.isAdmin;
             this.isParticipantRole = !!data.isParticipant;
+            if (pin) this.activeRoomPin = pin;
             if (pin && data.isAdmin) localStorage.setItem(ROOM_PINS_KEY_PREFIX + roomCode, pin);
             this.notifyListeners();
           }
@@ -222,6 +229,7 @@ class RoomService {
     }
 
     this.activeRoomCode = cleanCode;
+    this.activeRoomPin = '';
     localStorage.setItem(ACTIVE_ROOM_KEY, cleanCode);
 
     // Update URL query without page reload
@@ -357,6 +365,7 @@ class RoomService {
 
   public lockAdmin() {
     this.isOrganizerRole = false;
+    this.activeRoomPin = '';
     this.notifyListeners();
   }
 

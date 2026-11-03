@@ -226,6 +226,58 @@ function persistRoom(room: ActiveRoomState) {
   }
 }
 
+export type RoomRole = 'ADMIN' | 'RACE_OFFICER' | 'PARTICIPANT' | 'SPECTATOR';
+
+export interface RoomRoleUser {
+  id: string;
+  role: string;
+  tenantId: string | null;
+  isSuperAdmin: boolean;
+}
+
+/**
+ * Single source of truth for what a user/PIN may do inside one room.
+ * Account roles only apply inside the user's own organization; PINs apply to the room they belong to.
+ */
+export function resolveRoomRole(user: RoomRoleUser | null, room: ActiveRoomState, pin?: string): RoomRole {
+  const cleanPin = (pin || '').trim();
+  const sameTenant = !!user && !!user.tenantId && user.tenantId === room.tenantId;
+
+  if (user && (user.isSuperAdmin || user.id === room.ownerId)) return 'ADMIN';
+  if (user && user.role === 'ADMIN' && sameTenant) return 'ADMIN';
+  if (cleanPin && room.adminPin && cleanPin === room.adminPin) return 'ADMIN';
+  if (user && user.role === 'RACE_OFFICER' && sameTenant) return 'RACE_OFFICER';
+  if (cleanPin && room.participantPin && cleanPin === room.participantPin) return 'PARTICIPANT';
+  if (user && (user.role === 'PARTICIPANT' || user.role === 'SKIPPER')) return 'PARTICIPANT';
+  return 'SPECTATOR';
+}
+
+function roomRoleUserFromRow(row: any): RoomRoleUser | null {
+  if (!row) return null;
+  const email = (row.email || '').toLowerCase().trim();
+  return {
+    id: row.id,
+    role: row.role,
+    tenantId: row.tenant_id || null,
+    isSuperAdmin: !!row.is_super_admin || (email === 'irsyadismail@gmail.com' && row.role === 'ADMIN'),
+  };
+}
+
+function roomRoleUserFromGate(req: express.Request): RoomRoleUser | null {
+  const user = req.gate?.user;
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    tenantId: user.tenantId || null,
+    isSuperAdmin: !!(req.gate?.isSuperAdmin || req.gate?.isUniversalAdmin || user.isSuperAdmin),
+  };
+}
+
+function canEditRoom(role: RoomRole): boolean {
+  return role === 'ADMIN' || role === 'RACE_OFFICER';
+}
+
 async function startServer() {
   const app = express();
   // Raw body parser for Stripe Webhook
@@ -249,7 +301,7 @@ async function startServer() {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-auth-token, x-super-admin-token');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-auth-token, x-super-admin-token, x-admin-pin, x-regatta-room');
       }
     }
     if (req.method === 'OPTIONS') {
@@ -351,17 +403,19 @@ async function startServer() {
       }
     }
 
-    const room = getOrLoadRoom(initialRoomCode);
-    const isAdmin = authUser?.role === 'ADMIN' || (room.adminPin && room.adminPin === initialPin);
-    const isParticipant = authUser?.role === 'PARTICIPANT' || authUser?.role === 'SKIPPER' || (room.participantPin && room.participantPin === initialPin);
+    // Unknown codes fall back to LOBBY instead of spawning an unsaved room with the default PIN
+    const room = getOrLoadRoom(initialRoomCode, false) || getOrLoadRoom('LOBBY', true)!;
+    const roleUser = roomRoleUserFromRow(authUser);
+    const roomRole = resolveRoomRole(roleUser, room, initialPin);
 
     (ws as any).id = 'sock-' + crypto.randomBytes(4).toString('hex');
     (ws as any).roomCode = room.code;
+    (ws as any).roleUser = roleUser;
     (ws as any).userId = authUser?.id || null;
     (ws as any).userEmail = authUser?.email || null;
     (ws as any).userName = authUser?.full_name || null;
-    (ws as any).userRole = isAdmin ? 'ADMIN' : (isParticipant ? 'PARTICIPANT' : 'SPECTATOR');
-    (ws as any).isAdmin = isAdmin;
+    (ws as any).userRole = roomRole;
+    (ws as any).isAdmin = roomRole === 'ADMIN';
     (ws as any).tenantId = room.tenantId;
     (ws as any).tenantName = room.tenantName;
     (ws as any).connectedAt = Date.now();
@@ -408,16 +462,17 @@ async function startServer() {
           case 'JOIN_ROOM': {
             if (payload && payload.roomCode) {
               const oldCode = (ws as any).roomCode;
-              const newCode = payload.roomCode.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
-              const newRoom = getOrLoadRoom(newCode);
-              (ws as any).roomCode = newRoom.code;
+              const requestedCode = String(payload.roomCode).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+              const newRoom = getOrLoadRoom(requestedCode, false) || getOrLoadRoom('LOBBY', true)!;
+              const newCode = newRoom.code;
+              (ws as any).roomCode = newCode;
 
-              const pinAttempt = payload.pin || '';
-              const isNowAdmin = (ws as any).userRole === 'ADMIN' || (newRoom.adminPin === pinAttempt);
-              const isNowParticipant = (ws as any).userRole === 'PARTICIPANT' || (newRoom.participantPin === pinAttempt);
+              // Re-derive the role for the new room; never carry admin over from the previous room
+              const newRole = resolveRoomRole((ws as any).roleUser || null, newRoom, typeof payload.pin === 'string' ? payload.pin : '');
+              const isNowAdmin = newRole === 'ADMIN';
 
               (ws as any).isAdmin = isNowAdmin;
-              (ws as any).userRole = isNowAdmin ? 'ADMIN' : (isNowParticipant ? 'PARTICIPANT' : 'SPECTATOR');
+              (ws as any).userRole = newRole;
 
               const newInitState = {
                 roomCode: newRoom.code,
@@ -757,7 +812,12 @@ async function startServer() {
   // Helper to extract room from any REST request
   function resolveRoom(req: express.Request): ActiveRoomState {
     const raw = (req.query.room as string) || (req.headers['x-regatta-room'] as string) || 'RLIR26';
-    return getOrLoadRoom(raw, true) || getOrLoadRoom('RLIR26', true)!;
+    return getOrLoadRoom(raw, false) || getOrLoadRoom('RLIR26', true)!;
+  }
+
+  function requestRoomRole(req: express.Request, room: ActiveRoomState): RoomRole {
+    const pin = (req.headers['x-admin-pin'] as string) || (typeof req.body?.pin === 'string' ? req.body.pin : '');
+    return resolveRoomRole(roomRoleUserFromGate(req), room, pin);
   }
 
   // ==========================================
@@ -1524,7 +1584,7 @@ async function startServer() {
 
     const user = req.gate?.user;
     const isOwner = !!(user && room.ownerId === user.id);
-    const isAdmin = isOwner || user?.role === 'ADMIN';
+    const isAdmin = resolveRoomRole(roomRoleUserFromGate(req), room) === 'ADMIN';
 
     res.json({
       success: true,
@@ -1557,7 +1617,7 @@ async function startServer() {
    */
   app.post('/api/rooms/:code/verify-pin', (req, res) => {
     const code = req.params.code.trim().toUpperCase();
-    const room = getOrLoadRoom(code);
+    const room = getOrLoadRoom(code, false);
     if (!room) {
       return res.status(404).json({ error: 'Event not found', valid: false });
     }
@@ -1567,9 +1627,10 @@ async function startServer() {
       return res.json({ success: true, valid: true, code: room.code, isOwner: true, isAdmin: true, isParticipant: true });
     }
 
-    const pin = (req.body?.pin || '').trim();
-    const isAdmin = room.adminPin === pin;
-    const isParticipant = room.participantPin === pin || isAdmin;
+    const pin = typeof req.body?.pin === 'string' ? req.body.pin.trim() : '';
+    const role = resolveRoomRole(roomRoleUserFromGate(req), room, pin);
+    const isAdmin = role === 'ADMIN';
+    const isParticipant = role !== 'SPECTATOR';
 
     res.json({
       success: true,
@@ -1678,9 +1739,7 @@ async function startServer() {
 
   app.post('/api/session/marks', (req, res) => {
     const room = resolveRoom(req);
-    const pin = (req.headers['x-admin-pin'] as string) || req.body?.pin || '';
-    const isAuthorized = req.gate?.user?.role === 'ADMIN' || room.adminPin === pin;
-    if (!isAuthorized) {
+    if (!canEditRoom(requestRoomRole(req, room))) {
       return res.status(403).json({ error: 'Unauthorized: Admin PIN or Organization Admin role required.' });
     }
 
@@ -1697,9 +1756,7 @@ async function startServer() {
 
   app.post('/api/session/boats', (req, res) => {
     const room = resolveRoom(req);
-    const pin = (req.headers['x-admin-pin'] as string) || req.body?.pin || '';
-    const isAuthorized = req.gate?.user?.role === 'ADMIN' || room.adminPin === pin;
-    if (!isAuthorized) {
+    if (!canEditRoom(requestRoomRole(req, room))) {
       return res.status(403).json({ error: 'Unauthorized: Admin PIN or Organization Admin role required.' });
     }
 
@@ -1716,9 +1773,7 @@ async function startServer() {
 
   app.post('/api/session/racestate', (req, res) => {
     const room = resolveRoom(req);
-    const pin = (req.headers['x-admin-pin'] as string) || req.body?.pin || '';
-    const isAuthorized = req.gate?.user?.role === 'ADMIN' || room.adminPin === pin;
-    if (!isAuthorized) {
+    if (!canEditRoom(requestRoomRole(req, room))) {
       return res.status(403).json({ error: 'Unauthorized: Admin PIN or Organization Admin role required.' });
     }
 
@@ -1730,6 +1785,23 @@ async function startServer() {
       res.json({ success: true, raceState: room.raceState, roomCode: room.code });
     } else {
       res.status(400).json({ error: 'Invalid race state payload' });
+    }
+  });
+
+  app.post('/api/session/series', (req, res) => {
+    const room = resolveRoom(req);
+    if (!canEditRoom(requestRoomRole(req, room))) {
+      return res.status(403).json({ error: 'Unauthorized: Admin PIN or Organization Admin role required.' });
+    }
+
+    const payload = req.body?.seriesRaces || req.body;
+    if (Array.isArray(payload)) {
+      room.seriesRaces = payload;
+      broadcastAllInRoom(room.code, 'SERIES_RACES_UPDATED', payload);
+      persistRoom(room);
+      res.json({ success: true, count: room.seriesRaces.length, roomCode: room.code });
+    } else {
+      res.status(400).json({ error: 'Payload must be an array of series races' });
     }
   });
 
