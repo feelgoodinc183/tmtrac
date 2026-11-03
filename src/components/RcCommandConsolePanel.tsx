@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Boat, CourseMark, RaceClass, RaceClassDefinition, RaceState } from '../types/regatta';
+import { serverNow } from '../services/serverClock';
 import {
   addCourseMark,
   removeCourseMark,
@@ -110,7 +111,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   const isSeqActive = activeClassState.startSequenceActive ?? raceState.startSequenceActive;
   const target = activeClassState.targetStartTime ?? raceState.targetStartTime;
   const displayCountdown = isSeqActive && target
-    ? Math.max(0, Math.ceil((target - Date.now()) / 1000))
+    ? Math.max(0, Math.ceil((target - serverNow()) / 1000))
     : (activeClassState.countdownSeconds ?? raceState.countdownSeconds);
 
   const formattedTimer = `${Math.floor(displayCountdown / 60)

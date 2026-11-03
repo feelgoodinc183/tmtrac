@@ -20,6 +20,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount, PlanTier } from '../types/regatta';
+import { serverNow } from '../services/serverClock';
 
 export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';
 
@@ -213,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
           };
           const target = rawClassState.targetStartTime ?? raceState.targetStartTime;
           const countdownSec = rawClassState.startSequenceActive && target
-            ? Math.max(0, Math.ceil((target - Date.now()) / 1000))
+            ? Math.max(0, Math.ceil((target - serverNow()) / 1000))
             : rawClassState.countdownSeconds;
           const isCountdown = rawClassState.startSequenceActive && countdownSec > 0;
           const displayStatus = isCountdown ? 'COUNTDOWN' : rawClassState.status;

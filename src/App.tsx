@@ -76,6 +76,7 @@ import { generateRaceHighlights } from './services/highlightService';
 import { meshtasticService } from './services/meshtasticBleMqttService';
 import { deviceTrackerService, getDefaultDeviceProfile } from './services/deviceTrackerService';
 import { roomService } from './services/roomService';
+import { serverNow } from './services/serverClock';
 import {
   addCourseMark,
   removeCourseMark,
@@ -142,7 +143,7 @@ export function getClassRaceState(raceState: RaceState, className: string): Clas
 
   // If this class has an active sequence anchored to targetStartTime, calculate exact real-time seconds
   if (baseState.startSequenceActive && baseState.targetStartTime) {
-    const msRemaining = baseState.targetStartTime - Date.now();
+    const msRemaining = baseState.targetStartTime - serverNow();
     const remainingSec = Math.max(0, Math.ceil(msRemaining / 1000));
     return {
       ...baseState,
@@ -538,7 +539,7 @@ export default function App() {
           // If incoming state is in start sequence but missing targetStartTime, derive it from countdownSeconds
           let targetStartTime = syncedRaceState.targetStartTime ?? prev.targetStartTime;
           if (syncedRaceState.startSequenceActive && !targetStartTime && typeof syncedRaceState.countdownSeconds === 'number' && syncedRaceState.countdownSeconds > 0) {
-            targetStartTime = Date.now() + (syncedRaceState.countdownSeconds * 1000);
+            targetStartTime = serverNow() + (syncedRaceState.countdownSeconds * 1000);
           }
 
           return {
@@ -1126,7 +1127,7 @@ export default function App() {
     if (!hasAnyActiveSequence) return;
 
     const timer = setInterval(() => {
-      const now = Date.now();
+      const now = serverNow();
 
       setRaceState((prev) => {
         const currentClassStates: Record<string, ClassRaceStatus> = { ...(prev.classStates || {}) };
@@ -1537,7 +1538,7 @@ export default function App() {
   // Handle Race State Updates and Broadcast with Per-Class State Synchronization
   const handleUpdateRaceState = (partial: Partial<RaceState>) => {
     setRaceState((prev) => {
-      const now = Date.now();
+      const now = serverNow();
       let updatedClassStates = { ...(prev.classStates || {}) };
       const currentClass = prev.activeClass;
       const newActiveClass = partial.activeClass || currentClass;
@@ -1665,7 +1666,7 @@ export default function App() {
   const handleToggleRaceTimer = (forClass?: string) => {
     const targetClass = forClass || raceState.activeClass;
     setRaceState((prev) => {
-      const now = Date.now();
+      const now = serverNow();
       const curClsState = getClassRaceState(prev, targetClass);
       const nextSequenceActive = !curClsState.startSequenceActive;
       const nextCountdown = curClsState.countdownSeconds > 0 ? curClsState.countdownSeconds : 300;
@@ -1750,7 +1751,7 @@ export default function App() {
     });
 
     setRaceState((prev) => {
-      const now = Date.now();
+      const now = serverNow();
       const curClsState = getClassRaceState(prev, targetClass);
       const updatedClassStates = {
         ...(prev.classStates || {}),
@@ -1894,7 +1895,7 @@ export default function App() {
 
   const handleEndRace = (forClass?: string) => {
     soundedSecondsRef.current.clear();
-    const now = Date.now();
+    const now = serverNow();
     setBoats((prev) => {
       const updated = prev.map((b) => {
         if (!forClass || b.class === forClass) {
@@ -1981,7 +1982,7 @@ export default function App() {
 
   const handleRestartRace = (forClass?: string) => {
     soundedSecondsRef.current.clear();
-    const now = Date.now();
+    const now = serverNow();
     setBoats((prev) => {
       const updated = prev.map((b) => {
         if (!forClass || b.class === forClass) {

@@ -104,6 +104,7 @@ export function getDefaultDeviceProfile(): DeviceTrackerProfile {
 
 import { roomService } from './roomService';
 import { authService } from './authService';
+import { recordRoundTrip, recordServerTimestamp } from './serverClock';
 
 export type FleetMemberUpdateCallback = (members: HybridFleetMember[]) => void;
 export type DeviceGpsUpdateCallback = (gpsState: DeviceGpsState) => void;
@@ -168,6 +169,8 @@ class HybridDeviceTrackerService {
   private connectedPeerCount = 1;
   // Room + PIN last sent to the server, so a PIN unlocked after connecting still reaches the socket
   private joinedRoomCode = '';
+  // Device time of the last PING, to measure the round trip when its PONG arrives
+  private lastPingSentAt = 0;
   private joinedRoomPin = '';
 
   // Secondary communication channels
@@ -638,11 +641,15 @@ class HybridDeviceTrackerService {
 
           // Start ping heartbeat
           if (this.pingTimer) clearInterval(this.pingTimer);
-          this.pingTimer = setInterval(() => {
+          const sendPing = () => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+              this.lastPingSentAt = Date.now();
               this.ws.send(JSON.stringify({ type: 'PING' }));
             }
-          }, 15000);
+          };
+          this.pingTimer = setInterval(sendPing, 15000);
+          // A few quick pings right after connecting so the race clock is accurate within seconds
+          [0, 1000, 3000].forEach((delay) => setTimeout(sendPing, delay));
 
           // The connect URL carries only room + login token; re-join with the room PIN so
           // PIN-unlocked Race Officers and participants get their role on this socket
@@ -669,6 +676,7 @@ class HybridDeviceTrackerService {
             switch (type) {
               case 'SESSION_INIT_STATE': {
                 if (payload) {
+                  if (typeof payload.serverTime === 'number') recordServerTimestamp(payload.serverTime);
                   if (payload.connectedClients) {
                     this.notifyPeerCount(payload.connectedClients);
                   }
@@ -701,6 +709,14 @@ class HybridDeviceTrackerService {
               case 'UPDATE_REJECTED': {
                 if (payload) {
                   this.editRejectedCallbacks.forEach((cb) => cb(payload));
+                }
+                break;
+              }
+
+              case 'PONG': {
+                if (this.lastPingSentAt && typeof data.timestamp === 'number') {
+                  recordRoundTrip(this.lastPingSentAt, data.timestamp, Date.now());
+                  this.lastPingSentAt = 0;
                 }
                 break;
               }
