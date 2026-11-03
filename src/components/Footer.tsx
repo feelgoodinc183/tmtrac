@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Radio, Database } from 'lucide-react';
+import { Radio } from 'lucide-react';
 import { MeshtasticNode, RaceState } from '../types/regatta';
 import { getClassRaceState } from '../services/classRaceState';
 import { serverNow } from '../services/serverClock';
@@ -9,8 +9,6 @@ interface FooterProps {
   raceState: RaceState;
   classNames: string[];
   nodes: MeshtasticNode[];
-  onOpenMqttInspector: () => void;
-  onOpenOfflineCache: () => void;
 }
 
 // A node counts as heard if it reported within this window.
@@ -40,8 +38,6 @@ export const Footer: React.FC<FooterProps> = ({
   raceState,
   classNames,
   nodes,
-  onOpenMqttInspector,
-  onOpenOfflineCache,
 }) => {
   const classes = classNames.length > 0 ? classNames : [raceState.activeClass];
   const rows = classes.map((name) => ({ name, ...describeClass(raceState, name) }));
@@ -73,28 +69,14 @@ export const Footer: React.FC<FooterProps> = ({
         ))}
       </div>
 
-      {/* Connection status, derived from nodes heard and the MQTT bridge */}
-      <div className="flex items-center gap-4 sm:gap-6 shrink-0 text-xs">
-        <button
-          onClick={onOpenMqttInspector}
-          className="flex items-center gap-2 hover:text-lt-e0e6ed transition-colors cursor-pointer"
-          title="Open MQTT packet inspector"
-        >
-          <span className={`w-2 h-2 rounded-full ${meshDot}`} />
-          <Radio className="w-3 h-3" />
-          <span className="whitespace-nowrap">
-            {meshLabel} · MQTT {raceState.mqttConnected ? 'online' : 'offline'}
-          </span>
-        </button>
-
-        <button
-          onClick={onOpenOfflineCache}
-          className="hidden sm:flex items-center gap-2 hover:text-lt-e0e6ed transition-colors cursor-pointer"
-          title="Open offline cache manager"
-        >
-          <Database className="w-3 h-3" />
-          <span>Offline cache</span>
-        </button>
+      {/* Connection status, derived from nodes heard and the MQTT bridge. Status only: the packet
+          inspector and offline cache live in Control Hub > System. */}
+      <div className="flex items-center gap-2 shrink-0 text-xs whitespace-nowrap" role="status">
+        <span className={`w-2 h-2 rounded-full ${meshDot}`} aria-hidden="true" />
+        <Radio className="w-3 h-3" aria-hidden="true" />
+        <span>
+          {meshLabel} · MQTT {raceState.mqttConnected ? 'online' : 'offline'}
+        </span>
       </div>
     </footer>
   );

@@ -92,15 +92,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
             <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
-          {/* Reset Zoom Icon Button */}
-          <button
-            onClick={onResetZoom}
-            className="p-1.5 sm:p-2 rounded-lg bg-lb-060b16 hover:bg-lb-1e293b text-lt-94a3b8 hover:text-lt-white transition-all flex items-center justify-center"
-            title="Reset Zoom & Center Fleet"
-          >
-            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-
+          {/* "Fit all" on the map toolbar re-centres the fleet */}
           <div className="w-[1px] h-4 bg-lb-1e293b mx-0.5" />
 
           {/* Map Size Toggles */}

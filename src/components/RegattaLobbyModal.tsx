@@ -19,6 +19,7 @@ import {
   Flag,
   Ship,
   User,
+  Shield,
   LogIn,
   Trash2,
   ShieldAlert,
@@ -130,6 +131,20 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
     }
   };
 
+  // Signed-in owners, club admins and officers: the server confirms edit rights, no PIN needed
+  const handleOpenConsole = async (code: string) => {
+    setErrorMessage(null);
+    const success = await roomService.switchRoom(code, undefined, false);
+    if (success && roomService.isOrganizer()) {
+      onSetViewMode('RC_CONSOLE');
+      onClose();
+    } else if (success) {
+      setErrorMessage(`Your account can't run #${code}. Ask its race officer for the PIN, or watch as a spectator.`);
+    } else {
+      setErrorMessage('Could not connect to room. Please check the room code.');
+    }
+  };
+
   const handleJoinOrganizer = async (codeToJoin = joinCodeInput) => {
     setErrorMessage(null);
     const code = codeToJoin.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
@@ -143,6 +158,15 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
     if (!val.valid) {
       setErrorMessage(val.error || `Regatta room code "${code}" does not exist. Please check the code.`);
       return;
+    }
+
+    if (!joinPinInput && currentUser) {
+      // A signed-in account that can already edit this room doesn't need the PIN
+      const byAccount = await roomService.verifyPin('', code);
+      if (byAccount.canEdit) {
+        await handleOpenConsole(code);
+        return;
+      }
     }
 
     if (!joinPinInput) {
@@ -300,18 +324,14 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                  {isRoomOwner && onOpenDashboard && (
+                  {(isRoomOwner || currentUser?.isSuperAdmin || currentUser?.role === 'ADMIN') && (
                     <button
-                      id={`lobby-manage-room-${room.code}`}
-                      onClick={() => {
-                        onClose();
-                        onOpenDashboard();
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-cyan-300 border border-ll-slate-700 text-xs font-mono flex items-center gap-1 transition-all"
-                      title="Manage PIN, Course & Event from Your Dashboard"
+                      id={`lobby-console-room-${room.code}`}
+                      onClick={() => handleOpenConsole(room.code)}
+                      className="px-3 py-1.5 rounded-lg bg-lb-00d4ff text-lt-020408 hover:brightness-110 text-xs font-bold flex items-center gap-1.5 transition-all"
                     >
-                      <User className="w-3.5 h-3.5" />
-                      <span>Manage</span>
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Open race console</span>
                     </button>
                   )}
 
@@ -390,18 +410,6 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                 </span>
               </div>
 
-              <button
-                id="lobby-my-dashboard-btn"
-                onClick={() => {
-                  onClose();
-                  onOpenDashboard?.();
-                }}
-                className="ml-auto shrink-0 px-3 py-1 rounded-lg bg-lb-00d4ff/15 hover:bg-lb-00d4ff/25 active:scale-95 border border-ll-00d4ff/40 hover:border-ll-00d4ff/70 text-lt-00d4ff hover:text-lt-white text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
-                title="Open My Regattas & Account Dashboard"
-              >
-                <User className="w-3.5 h-3.5 text-lt-00d4ff" />
-                <span>My Dashboard</span>
-              </button>
             </div>
           ) : (
             <div className="flex items-center justify-between w-full gap-2">

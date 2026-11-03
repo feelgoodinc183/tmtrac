@@ -18,6 +18,7 @@ import {
   Home,
   ShieldAlert,
   Layers,
+  Sun,
 } from 'lucide-react';
 import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount, PlanTier } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
@@ -76,6 +77,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   raceState,
   directSunlightMode,
+  onToggleSunlightMode,
   connectedPeerCount = 1,
   boatCount = 0,
   viewMode,
@@ -129,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
               <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
             </svg>
           </div>
-          <span className="text-sm sm:text-base font-bold tracking-tight text-lt-white font-google">
+          <span className="max-[359px]:hidden text-sm sm:text-base font-bold tracking-tight text-lt-white font-google">
             TMTRAC
           </span>
         </div>
@@ -150,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-live-peer-badge"
           onClick={onOpenQrModal}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
+          className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
             connectedPeerCount > 1
               ? 'bg-lb-emerald-500/15 text-lt-emerald-300 border border-ll-emerald-500/40 hover:bg-lb-emerald-500/25'
               : 'bg-lb-1e293b text-lt-slate-300 border border-ll-slate-700 hover:text-lt-white'
@@ -219,9 +221,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           return (
             <div
-              onClick={() => handleOpenHub('RACE')}
-              className="flex items-center gap-2 px-3 py-1 rounded-full bg-lb-121826 border border-ll-1e293b text-xs font-mono shadow-xs cursor-pointer hover:border-ll-slate-600 transition-colors"
-              title="Click to open Race & Course Console"
+              role="status"
+              aria-label={`Active class ${raceState.activeClass}`}
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-lb-121826 border border-ll-1e293b text-xs font-mono shadow-xs"
             >
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -263,17 +265,34 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Consolidated 4 Hubs + Quick Track Boat + User Profile */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Sunlight Mode: light, high-contrast theme for use outdoors */}
+        <button
+          id="header-sunlight-btn"
+          onClick={onToggleSunlightMode}
+          aria-pressed={directSunlightMode}
+          aria-label="Sunlight mode"
+          className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            directSunlightMode
+              ? 'bg-lb-fbbc04 text-lt-black border-ll-fbbc04'
+              : 'bg-lb-1e293b/60 text-lt-slate-200 border-ll-334155 hover:text-lt-white'
+          }`}
+        >
+          <Sun className="w-3.5 h-3.5" aria-hidden="true" />
+          <span className="hidden lg:inline">Sunlight</span>
+        </button>
+
         {/* Glowing 1-Tap Skipper Check-In / Track Boat */}
         {onOpenSkipperCheckIn && (
           <button
             id="header-skipper-checkin-btn"
             onClick={onOpenSkipperCheckIn}
+            aria-label="Track my boat"
             className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-ll-00d4ff/70 bg-lb-00d4ff/20 hover:bg-lb-00d4ff/35 text-lt-00d4ff font-mono font-bold text-xs sm:text-xs transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,212,255,0.25)] cursor-pointer active:scale-95 shrink-0"
             title="Skipper 1-Tap Check-In: Auto-bind your vessel & start live fleet GPS tracking"
           >
             <Navigation className="w-3.5 h-3.5 animate-pulse" />
             <span className="hidden xs:inline">TRACK BOAT</span>
-            <span className="xs:hidden">TRACK</span>
+            <span className="xs:hidden max-[359px]:hidden">TRACK</span>
           </button>
         )}
 

@@ -162,19 +162,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           </div>
 
           <div className="flex items-center justify-end sm:justify-start gap-1.5 sm:gap-2 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-ll-slate-800/60">
-            {user?.isSuperAdmin && onOpenSuperAdmin && (
-              <button
-                id="dashboard-superadmin-btn"
-                onClick={() => {
-                  onClose();
-                  onOpenSuperAdmin();
-                }}
-                className="px-2.5 py-1.5 bg-lb-purple-950/80 hover:bg-lb-purple-900 border border-ll-purple-700/70 text-lt-purple-200 text-xs font-semibold rounded-lg transition shadow flex items-center justify-center gap-1 flex-1 sm:flex-initial"
-              >
-                <Shield className="w-3.5 h-3.5 text-lt-purple-400" />
-                <span>Super Admin</span>
-              </button>
-            )}
             <button
               id="dashboard-host-room-btn"
               onClick={() => {

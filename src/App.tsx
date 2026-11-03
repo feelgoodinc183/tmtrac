@@ -38,7 +38,7 @@ import { MarineMapCanvas } from './components/MarineMapCanvas';
 import { Footer } from './components/Footer';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { RcCommandConsolePanel } from './components/RcCommandConsolePanel';
-import { MobileTab } from './components/MobileBottomBar';
+import { MobileBottomBar, MobileTab } from './components/MobileBottomBar';
 import { UnifiedHubModal, HubTab } from './components/UnifiedHubModal';
 import { NodeBindingModal } from './components/NodeBindingModal';
 import { HeadToHeadModal } from './components/HeadToHeadModal';
@@ -277,6 +277,22 @@ export default function App() {
     return 'RC_CONSOLE';
   });
   const [mobileTab, setMobileTab] = useState<MobileTab>('MAP');
+
+  useEffect(() => {
+    if (viewMode === 'SPECTATOR' && mobileTab === 'RC_CONSOLE') setMobileTab('MAP');
+  }, [viewMode, mobileTab]);
+
+  // Owners, club admins and officers with an account go straight to the race console once the
+  // server confirms they can edit this room (no PIN needed). Once per room, so choosing the
+  // spectator view afterwards sticks; "Join as Spectator" is always respected.
+  const autoConsoleRoomRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isOrganizer || roomService.isSpectatorByChoice()) return;
+    if (autoConsoleRoomRef.current === activeRoomCode) return;
+    autoConsoleRoomRef.current = activeRoomCode;
+    setViewMode('RC_CONSOLE');
+    setMobileTab('RC_CONSOLE');
+  }, [isOrganizer, activeRoomCode]);
   const [showRcConsoleOverlay, setShowRcConsoleOverlay] = useState<boolean>(false);
   const [showLeaderboardOverlay, setShowLeaderboardOverlay] = useState<boolean>(false);
   const [showToolsDrawer, setShowToolsDrawer] = useState<boolean>(false);
@@ -2723,8 +2739,9 @@ export default function App() {
           }}
           onViewRaceClick={(eventCode) => {
             if (eventCode) {
+              // A regatta picked from the landing page's spectator picker: join it directly
               const clean = eventCode.trim().toUpperCase();
-              roomService.switchRoom(clean);
+              roomService.switchRoom(clean, undefined, true);
               setActiveRoomCode(clean);
               deviceTrackerService.switchRoom(clean);
             } else {
@@ -2738,9 +2755,9 @@ export default function App() {
             setShowLandingPage(false);
             setViewMode('SPECTATOR');
 
-            // Automatically present Room Selector on first entrance
+            // No regatta chosen yet: show the room list once so the user can pick one
             const hasSeenLobby = localStorage.getItem('tmtrac_has_seen_room_selector');
-            if (!hasSeenLobby) {
+            if (!eventCode && !hasSeenLobby) {
               localStorage.setItem('tmtrac_has_seen_room_selector', 'true');
               setShowLobbyModal(true);
             }
@@ -3019,15 +3036,7 @@ export default function App() {
               showReplayBar={showReplayBar}
               onToggleReplayBar={() => setShowReplayBar((s) => !s)}
               showRcConsoleOverlay={showRcConsoleOverlay}
-              onToggleRcConsoleOverlay={() => {
-                setShowRcConsoleOverlay((s) => !s);
-                if (!showRcConsoleOverlay) setShowLeaderboardOverlay(false);
-              }}
               showLeaderboardOverlay={showLeaderboardOverlay}
-              onToggleLeaderboardOverlay={() => {
-                setShowLeaderboardOverlay((s) => !s);
-                if (!showLeaderboardOverlay) setShowRcConsoleOverlay(false);
-              }}
               showToolsDrawer={showToolsDrawer}
               onOpenTools={() => setShowToolsDrawer((prev) => !prev)}
               isToolsOpen={showToolsDrawer}
@@ -3179,15 +3188,7 @@ export default function App() {
                 showReplayBar={showReplayBar}
                 onToggleReplayBar={() => setShowReplayBar((s) => !s)}
                 showRcConsoleOverlay={showRcConsoleOverlay}
-                onToggleRcConsoleOverlay={() => {
-                  setShowRcConsoleOverlay((s) => !s);
-                  if (!showRcConsoleOverlay) setShowLeaderboardOverlay(false);
-                }}
                 showLeaderboardOverlay={showLeaderboardOverlay}
-                onToggleLeaderboardOverlay={() => {
-                  setShowLeaderboardOverlay((s) => !s);
-                  if (!showLeaderboardOverlay) setShowRcConsoleOverlay(false);
-                }}
                 showToolsDrawer={showToolsDrawer}
                 onOpenTools={() => setShowToolsDrawer((prev) => !prev)}
                 isToolsOpen={showToolsDrawer}
@@ -3303,13 +3304,6 @@ export default function App() {
                     IRC Corrected Leaderboard
                   </span>
                 </div>
-                <button
-                  onClick={() => setMobileTab('MAP')}
-                  className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff hover:text-lt-white rounded-lg text-xs font-mono font-bold flex items-center gap-1"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  View Map
-                </button>
               </div>
 
               <div className="flex-1 overflow-hidden">
@@ -3477,22 +3471,6 @@ export default function App() {
           {/* TAB 4: MOBILE RC RACE CONSOLE */}
           {mobileTab === 'RC_CONSOLE' && (
             <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-y-auto">
-              <div className="p-3 bg-lb-0a0f1e border-b border-ll-1e293b flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-lt-fbbc04" />
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-white">
-                    Race Committee Console
-                  </span>
-                </div>
-                <button
-                  onClick={() => setMobileTab('MAP')}
-                  className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff hover:text-lt-white rounded-lg text-xs font-mono font-bold flex items-center gap-1"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  View Map
-                </button>
-              </div>
-
               <div className="flex-1">
                 <RcCommandConsolePanel
                   raceState={raceState}
@@ -3528,6 +3506,15 @@ export default function App() {
         </div>
       </main>
 
+      {/* Phone navigation */}
+      <MobileBottomBar
+        activeTab={mobileTab}
+        onSelectTab={setMobileTab}
+        showRace={viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer}
+        onOpenResults={() => setShowResultsModal(true)}
+        onOpenTools={() => handleOpenHub('FLEET')}
+      />
+
       {/* Race Replay Scrubber for Spectator / Analysis mode - Slides open on demand */}
       {showReplayBar && (
         <RacePlaybackScrubber
@@ -3547,8 +3534,6 @@ export default function App() {
           raceState={raceState}
           classNames={raceClasses.map((c) => c.name)}
           nodes={nodes}
-          onOpenMqttInspector={() => setShowMqttInspector(true)}
-          onOpenOfflineCache={() => setShowOfflineCache(true)}
         />
       </div>
 
@@ -3558,6 +3543,7 @@ export default function App() {
       <UnifiedHubModal
         isOpen={showHubModal}
         onClose={() => setShowHubModal(false)}
+        onOpenMqttInspector={() => setShowMqttInspector(true)}
         initialHub={activeHubTab}
         boats={boats}
         nodes={nodes}

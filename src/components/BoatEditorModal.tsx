@@ -124,7 +124,7 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-lt-white font-google">
-                {isEdit ? `Edit Vessel: ${boatToEdit.name}` : 'Add New Racing Vessel'}
+                {isEdit ? `Edit Vessel: ${boatToEdit.name}` : 'Add boat'}
               </h2>
               <span className="text-xs text-lt-64748b font-mono">
                 {isEdit ? `ID: ${boatToEdit.id}` : 'Register a boat to the regatta fleet'}
@@ -421,7 +421,7 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
                 className="px-4 py-2 bg-lb-00d4ff hover:bg-lb-cyan-300 text-lt-slate-950 rounded-xl text-xs font-bold font-google flex items-center gap-1.5 transition-all shadow-lg shadow-ll-cyan-500/20"
               >
                 {isEdit ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                <span>{isEdit ? 'Save Changes' : 'Add Vessel'}</span>
+                <span>{isEdit ? 'Save Changes' : 'Add boat'}</span>
               </button>
             </div>
           </div>

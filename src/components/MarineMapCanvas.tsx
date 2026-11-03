@@ -1068,17 +1068,14 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       {/* FLOATING HEADER CONTROLS HUD */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 sm:gap-2 max-w-[calc(100vw-80px)] landscape:max-w-[calc(100vw-180px)] sm:max-w-none overflow-x-auto no-scrollbar py-0.5 pointer-events-auto">
         {/* Fleet Dashboard Sidebar Toggle for Tablets / Horizontal Screens (Icon Button) */}
-        {onToggleSidebar && (
+        {/* The sidebar collapses from its own button; this is the way back */}
+        {onToggleSidebar && !isSidebarOpen && (
           <button
             onClick={onToggleSidebar}
-            className={`p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md ${
-              isSidebarOpen
-                ? 'bg-lb-00d4ff/20 text-lt-00d4ff border border-ll-00d4ff/40 hover:bg-lb-00d4ff/30'
-                : 'bg-lb-060b16/90 hover:bg-lb-1e293b border border-ll-00d4ff/70 text-lt-00d4ff shadow-[0_0_12px_rgba(0,212,255,0.3)] animate-pulse'
-            }`}
-            title={isSidebarOpen ? 'Expand Map (Collapse sidebar)' : 'Restore Sidebar (Exit full map)'}
+            className="px-2.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg flex items-center gap-1.5 backdrop-blur-md bg-lb-060b16/90 hover:bg-lb-1e293b border border-ll-00d4ff/70 text-lt-00d4ff"
           >
-            {isSidebarOpen ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+            <Minimize2 className="w-4 h-4" />
+            <span>Show sidebar</span>
           </button>
         )}
 
@@ -1089,6 +1086,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           title="Fit All Fleet & Marks (Zoom to view fleet)"
         >
           <Crosshair className="w-4 h-4 text-lt-00ff9d" />
+          <span className="hidden md:inline ml-1.5">Fit all</span>
         </button>
 
         {/* Active Device Quick Finder Button (Sized like Replay icon button) */}
@@ -1159,6 +1157,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             title={isCourseBarOpen ? 'Close Course Editor' : 'Open Course Tools & Mark Layouts'}
           >
             <Route className="w-4 h-4" />
+            <span className="hidden md:inline ml-1.5">Course</span>
             {marks.length > 0 && (
               <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-lb-fbbc04 text-lt-black font-mono text-xs font-bold flex items-center justify-center">
                 {marks.length}
@@ -1190,6 +1189,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             title={showReplayBar ? 'Close Race Replay Controls' : 'Open Race Replay Timeline & Controls'}
           >
             <RotateCcw className="w-4 h-4" />
+            <span className="hidden md:inline ml-1.5">Replay</span>
           </button>
         )}
       </div>

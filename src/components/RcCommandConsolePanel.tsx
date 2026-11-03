@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Boat, CourseMark, RaceClass, RaceClassDefinition, RaceState } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
 import {
@@ -91,7 +91,20 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   onClose,
   isOverlay = false,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Collapsed, the console is one strip (class, clock, Start) so the map gets the screen.
+  // Remembered per device.
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('tmtrac_console_expanded') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('tmtrac_console_expanded', isExpanded ? '1' : '0');
+    } catch {}
+  }, [isExpanded]);
   const [activeTab, setActiveTab] = useState<'SEQUENCE' | 'OCS_FLEET' | 'ENVIRONMENT' | 'MARKS' | 'ANNOUNCE'>('SEQUENCE');
 
   // Announcement form
@@ -142,27 +155,24 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
     >
       {/* Console Title Bar */}
       <div
-        className={`px-3 sm:px-4 py-2.5 landscape:py-1.5 flex items-center justify-between border-b shrink-0 ${
+        className={`px-3 sm:px-4 py-2.5 landscape:py-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b shrink-0 ${
           isOverlay
             ? 'border-ll-334155/80 bg-lb-121826/75'
             : 'border-ll-3c4043 bg-lb-28292a/80'
         }`}
       >
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 basis-[16rem]">
           <div className="w-7 h-7 rounded-full bg-lb-fbbc04 text-lt-black flex items-center justify-center font-bold text-xs shadow-md shrink-0">
             <Compass className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <h2 className="text-xs sm:text-sm font-google font-bold tracking-tight text-lt-white flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span>Race Control</span>
-              <span className="bg-lb-fbbc04/20 text-lt-fbbc04 text-xs sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-mono border border-ll-fbbc04/40 font-bold">
-                ADMIN CONSOLE
-              </span>
               {(() => {
                  const currentClassDef = raceClasses.find(c => c.name === raceState.activeClass);
                  if (currentClassDef?.courseProfileName) {
                    return (
-                     <span className="bg-lb-00d4ff/20 text-lt-00d4ff text-xs sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-mono border border-ll-00d4ff/40 flex items-center gap-1 font-bold">
+                     <span className="bg-lb-00d4ff/20 text-lt-00d4ff text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-mono border border-ll-00d4ff/40 flex items-center gap-1 font-bold max-w-full truncate">
                        <Route className="w-3 h-3" />
                        Course: {currentClassDef.courseProfileName}
                      </span>
@@ -193,8 +203,8 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Quick Race Class Switcher */}
-          <div className="hidden sm:flex items-center bg-lb-1f1f1f border border-ll-3c4043 rounded-full p-1 text-xs font-mono gap-1">
+          {/* The one class picker: sets the class the clock, flags and finish act on */}
+          <div role="group" aria-label="Active class" className="flex items-center bg-lb-1f1f1f border border-ll-3c4043 rounded-full p-1 text-xs font-mono gap-1 overflow-x-auto no-scrollbar max-w-[60vw] sm:max-w-none">
             {(raceClasses.length > 0
               ? raceClasses.map((c) => c.name)
               : ['Class 1', 'Class 2', 'Class 3']
@@ -202,7 +212,8 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               <button
                 key={cls}
                 onClick={() => onUpdateRaceState({ activeClass: cls })}
-                className={`px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                aria-pressed={raceState.activeClass === cls}
+                className={`px-2.5 py-0.5 rounded-full font-bold transition-all shrink-0 ${
                   raceState.activeClass === cls
                     ? 'bg-lb-1a73e8 text-lt-white shadow-sm'
                     : 'text-lt-9aa0a6 hover:text-lt-white'
@@ -223,13 +234,31 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
             )}
           </div>
 
+          {!isOverlay && !isExpanded && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-mono text-lg font-bold text-lt-white tabular-nums" aria-label={`Start clock ${formattedTimer}`}>
+                {formattedTimer}
+              </span>
+              <button
+                onClick={onToggleRaceTimer}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                  isSeqActive ? 'bg-lb-fbbc04 text-lt-black' : 'bg-lb-34a853 text-lt-white'
+                }`}
+              >
+                {isSeqActive ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                {isSeqActive ? 'Pause' : `Start ${raceState.activeClass}`}
+              </button>
+            </div>
+          )}
+
           {!isOverlay && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 rounded-full text-lt-9aa0a6 hover:text-lt-white hover:bg-lb-3c4043 transition-all"
-              title={isExpanded ? 'Collapse Console' : 'Expand Console'}
+              aria-expanded={isExpanded}
+              className="px-2 py-1 rounded-full text-xs font-bold text-lt-9aa0a6 hover:text-lt-white hover:bg-lb-3c4043 transition-all flex items-center gap-1"
             >
-              {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
             </button>
           )}
 
@@ -330,8 +359,8 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               <div className="bg-lb-292a2d border border-ll-3c4043 p-3.5 rounded-2xl flex flex-col justify-between space-y-3">
                 {/* Header & Status Indicator */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-lt-9aa0a6 uppercase tracking-wider font-bold">
-                    Race Countdown Clock
+                  <span className="text-sm text-lt-9aa0a6 font-bold">
+                    Start clock: <span className="text-lt-white">{raceState.activeClass}</span>
                   </span>
                   <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${
                     isSeqActive
@@ -344,74 +373,6 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                   </span>
                 </div>
 
-                {/* Class List Selector for Countdown Timer */}
-                <div className="bg-lb-1f1f1f border border-ll-3c4043 p-2 rounded-xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-mono text-lt-8ab4f8 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <Layers className="w-3 h-3 text-lt-00d4ff" />
-                      Select Class for Start:
-                    </label>
-                    <span className="text-xs font-mono text-lt-9aa0a6">
-                      Active: <strong className="text-lt-white">{raceState.activeClass}</strong>
-                    </span>
-                  </div>
-
-                  {/* Dropdown for Mobile / Compact view */}
-                  <select
-                    value={raceState.activeClass}
-                    onChange={(e) => onUpdateRaceState({ activeClass: e.target.value })}
-                    className="w-full bg-lb-292a2d text-lt-white text-xs font-mono font-bold rounded-lg px-2.5 py-1.5 border border-ll-3c4043 focus:border-ll-00d4ff focus:outline-hidden cursor-pointer"
-                    title="Switch Class to Start Respective Race"
-                  >
-                    {(raceClasses.length > 0
-                      ? raceClasses
-                      : [
-                          { id: 'c1', name: 'Class 1' },
-                          { id: 'c2', name: 'Class 2' },
-                          { id: 'c3', name: 'Class 3' },
-                        ]
-                    ).map((c) => {
-                      const clsState = raceState.classStates?.[c.name];
-                      const clsStatus = clsState?.status || (c.name === raceState.activeClass ? raceState.status : 'NOT_STARTED');
-                      return (
-                        <option key={c.id || c.name} value={c.name}>
-                          {c.name} — [{clsStatus}]
-                        </option>
-                      );
-                    })}
-                  </select>
-
-                  {/* Quick-tap pills for available classes */}
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-0.5">
-                    {(raceClasses.length > 0
-                      ? raceClasses.map((c) => c.name)
-                      : ['Class 1', 'Class 2', 'Class 3']
-                    ).map((cls) => {
-                      const isSelected = raceState.activeClass === cls;
-                      const clsState = raceState.classStates?.[cls];
-                      const clsStatus = clsState?.status || (cls === raceState.activeClass ? raceState.status : 'NOT_STARTED');
-
-                      return (
-                        <button
-                          key={cls}
-                          type="button"
-                          onClick={() => onUpdateRaceState({ activeClass: cls })}
-                          className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold shrink-0 transition-all border ${
-                            isSelected
-                              ? 'bg-lb-1a73e8 text-lt-white border-ll-1a73e8 shadow-xs'
-                              : 'bg-lb-292a2d text-lt-9aa0a6 hover:text-lt-white border-ll-3c4043'
-                          }`}
-                          title={`Switch to ${cls} (${clsStatus})`}
-                        >
-                          <span>{cls}</span>
-                          {clsStatus === 'RACING' && (
-                            <span className="ml-1 text-xs text-lt-00ff9d">●</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 {/* Big Countdown Display */}
                 <div className="text-4xl sm:text-5xl font-mono font-black text-lt-white text-center py-1 tracking-tight">
@@ -585,39 +546,12 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-lb-1f1f1f border border-ll-3c4043/60 text-xs font-mono text-lt-9aa0a6 flex items-center justify-between">
-                  <span>Class in Sequence: <strong className="text-lt-white">{raceState.activeClass}</strong></span>
-                  <span className="text-lt-81c995">Ready to broadcast signals</span>
-                </div>
-              </div>
-
-              {/* Race Finish & Finalize Results Bar */}
-              <div className="col-span-1 md:col-span-2 bg-lb-1f1f1f border border-ll-3c4043 p-3.5 rounded-2xl flex items-center justify-between flex-wrap gap-2.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-lb-amber-500/20 border border-ll-amber-500/40 text-lt-amber-400 flex items-center justify-center font-bold text-sm">
-                    🏁
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-lt-white font-google flex items-center gap-2">
-                      Race Control: <span className="text-lt-00ff9d">{raceState.status === 'RACING' ? `In Progress (${raceState.activeClass})` : raceState.status === 'FINISHED' ? 'Race Concluded / Finished' : raceState.status}</span>
-                    </h4>
-                    <p className="text-xs text-lt-9aa0a6 font-mono">
-                      Fleet: {boats.filter((b) => b.status === 'RACING').length} Racing • {boats.filter((b) => b.status === 'FINISHED').length} Finished • {boats.filter((b) => b.status === 'OCS').length} OCS
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap flex-1 justify-end">
-                  {onOpenResults && (
-                    <button
-                      onClick={onOpenResults}
-                      className="px-3 py-1.5 bg-lb-amber-500/20 hover:bg-lb-amber-500/30 text-lt-amber-300 border border-ll-amber-500/40 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Trophy className="w-3.5 h-3.5 text-lt-ffb800" />
-                      <span>Official Results</span>
-                    </button>
-                  )}
-
+                {/* Finishing the race sits here, under the flags, instead of in a separate full-width bar */}
+                <div className="pt-3 border-t border-ll-3c4043 space-y-2.5">
+                  <p className="text-xs text-lt-9aa0a6">
+                    Fleet: {boats.filter((b) => b.status === 'RACING').length} racing · {boats.filter((b) => b.status === 'FINISHED').length} finished · {boats.filter((b) => b.status === 'OCS').length} OCS
+                  </p>
+                <div className="flex items-center gap-2 flex-wrap">
                   {onEndRace && (
                     <button
                       onClick={() => onEndRace(raceState.activeClass)}
@@ -654,7 +588,9 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     </div>
                   )}
                 </div>
+                </div>
               </div>
+
             </div>
           )}
 

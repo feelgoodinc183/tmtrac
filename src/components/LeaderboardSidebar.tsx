@@ -282,10 +282,12 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
       {activeTab === 'LEADERBOARD' && (
         <div className="p-3 border-b border-ll-1e293b bg-lb-0a0f1e/50 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-2 shrink-0 flex-wrap gap-1">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-lt-64748b font-mono font-bold">
-              Standing (IRC/ORC)
+            <h2 className="text-xs text-lt-94a3b8 font-bold">
+              Standings (IRC/ORC)
             </h2>
-            <div className="flex items-center gap-1 flex-wrap">
+            {/* Filters the leaderboard only; the race console's class tabs pick the active class */}
+            <div role="group" aria-label="Show class" className="flex items-center gap-1 flex-wrap">
+              <span className="text-xs text-lt-94a3b8 mr-0.5">Show</span>
               <button
                 onClick={() => setFilterClass('ALL')}
                 className={`text-xs px-1.5 py-0.5 rounded font-mono transition-all ${
@@ -294,7 +296,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     : 'bg-lb-1e293b/60 text-lt-94a3b8 hover:text-lt-white'
                 }`}
               >
-                ALL
+                All
               </button>
               {raceClasses.map((cls) => {
                 const clsState = raceState.classStates?.[cls.name] || (raceState.activeClass === cls.name ? {
@@ -333,16 +335,6 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   </button>
                 );
               })}
-              {viewMode !== 'SPECTATOR' && onOpenClassManager && (
-                <button
-                  onClick={onOpenClassManager}
-                  className="text-xs px-1.5 py-0.5 rounded font-mono bg-lb-cyan-950/70 hover:bg-lb-cyan-900 text-lt-cyan-300 border border-ll-cyan-500/40 flex items-center gap-1 transition-all shadow-sm"
-                  title="Manage, Add, Edit & Delete Race Classes"
-                >
-                  <Layers className="w-2.5 h-2.5 text-lt-00d4ff" />
-                  <span>+ Class</span>
-                </button>
-              )}
             </div>
           </div>
 
@@ -404,7 +396,8 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   </button>
                 )}
 
-                {onOpenResults && (
+                {/* Spectators' way to results; officers use the race console's Results button */}
+                {onOpenResults && viewMode === 'SPECTATOR' && (
                   <button
                     onClick={onOpenResults}
                     className="font-bold text-lt-amber-300 bg-lb-amber-500/20 hover:bg-lb-amber-500/30 border border-ll-amber-500/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all"
@@ -433,7 +426,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     title="Add a new racing boat to the regatta"
                   >
                     <Plus className="w-3 h-3" />
-                    <span>Add Boat</span>
+                    <span>Add boat</span>
                   </button>
                 )}
               </div>
@@ -477,7 +470,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     onClick={onOpenAddBoat}
                     className="w-full py-2 bg-lb-00d4ff hover:bg-lb-cyan-300 text-lt-020408 font-bold text-xs rounded-lg transition-all font-mono shadow-md"
                   >
-                    + Add New Racing Vessel
+                    Add boat
                   </button>
                 )}
                 {viewMode !== 'SPECTATOR' && onOpenHardwareScan && (
