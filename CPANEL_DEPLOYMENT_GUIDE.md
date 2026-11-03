@@ -130,9 +130,10 @@ HTTPS is required by modern browsers for Web Bluetooth and Geolocation APIs:
 
 ---
 
-## 🔑 Default Super Admin Login
+## 🔑 Super Admin Login
 - **Username / Email**: `irsyadismail@gmail.com`
-- **Default Password**: `outdoor1122`
+- **Password**: set `SUPER_ADMIN_PASSWORD` as an environment variable in cPanel **Setup Node.js App** before the first start. It is only used when the Super Admin account is first created; the server never resets an existing password. Without it, the account is created with a random password.
+- **Existing installs**: the password stays whatever it currently is. Change it after deploying this version.
 - **Access Level**: Full Super Admin (Multi-Tenant Organization Management, Event Creation, Database Backups)
 
 ---

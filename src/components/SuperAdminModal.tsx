@@ -118,9 +118,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
       currentUser?.token ||
       authService.getToken() ||
       (typeof window !== 'undefined'
-        ? localStorage.getItem('tmtrac_auth_token_v1') || localStorage.getItem('tmtrac_auth_token') || 'tmtrac_tk_admin_session_2026'
-        : '') ||
-      'tmtrac_tk_admin_session_2026'
+        ? localStorage.getItem('tmtrac_auth_token_v1') || localStorage.getItem('tmtrac_auth_token') || ''
+        : '')
     );
   };
 

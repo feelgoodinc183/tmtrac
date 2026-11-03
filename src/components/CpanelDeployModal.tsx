@@ -608,7 +608,7 @@ export const CpanelDeployModal: React.FC<CpanelDeployModalProps> = ({
                   </div>
                   <div className="p-2 rounded bg-slate-900 flex justify-between items-center">
                     <span className="text-slate-400">Password:</span>
-                    <span className="text-emerald-400 font-bold">outdoor1122</span>
+                    <span className="text-emerald-400 font-bold">SUPER_ADMIN_PASSWORD (set in cPanel before first start)</span>
                   </div>
                 </div>
               </div>

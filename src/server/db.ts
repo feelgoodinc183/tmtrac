@@ -248,7 +248,7 @@ function createFallbackDatabase() {
         tenant_id: 'tenant-rlyc-default',
         email: 'irsyadismail@gmail.com',
         username: 'irsyadismail',
-        password_hash: hashPassword('outdoor1122'),
+        password_hash: initialSuperAdminPasswordHash(),
         full_name: 'Irsyad Ismail',
         sailing_club: 'Royal Langkawi Yacht Club (RLYC)',
         sail_number: 'MAS 001',
@@ -256,7 +256,7 @@ function createFallbackDatabase() {
         role: 'ADMIN',
         participant_type: 'RACE_OFFICER',
         status: 'ACTIVE',
-        token: 'tmtrac_tk_admin_session_2026',
+        token: null,
         is_super_admin: 1,
         stats_json: JSON.stringify({
           racesOrganized: 12,
@@ -959,6 +959,18 @@ export function hashPassword(pwd: string): string {
   return crypto.createHash('sha256').update(pwd + 'salt_regatta_sea_2026').digest('hex');
 }
 
+/**
+ * Password for a freshly seeded Super Admin. Taken from SUPER_ADMIN_PASSWORD, otherwise random and
+ * never logged; set SUPER_ADMIN_PASSWORD before first start to choose it.
+ */
+export function initialSuperAdminPasswordHash(): string {
+  const fromEnv = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
+  if (!fromEnv) {
+    console.warn('[TMTRAC] SUPER_ADMIN_PASSWORD is not set: seeded Super Admin with a random password. Set it and reseed, or reset the password from an existing admin account.');
+  }
+  return hashPassword(fromEnv || crypto.randomBytes(24).toString('base64url'));
+}
+
 export function generateToken(): string {
   return 'tmtrac_tk_' + crypto.randomBytes(24).toString('hex');
 }
@@ -1247,8 +1259,7 @@ export function initDatabase() {
   // Affirmative Super Admin seeding & validation (decoupled from tenantCount === 0)
   try {
     const adminUserId = 'user-admin-0';
-    const adminToken = 'tmtrac_tk_admin_session_2026';
-    const outdoorHash = hashPassword('outdoor1122');
+    const adminToken = generateToken();
     const now = Date.now();
 
     const adminUser = db.prepare("SELECT id FROM users WHERE email = 'irsyadismail@gmail.com' OR id = 'user-admin-0' OR username = 'irsyadismail'").get();
@@ -1264,7 +1275,7 @@ export function initDatabase() {
         defaultTenantId,
         'irsyadismail@gmail.com',
         'irsyadismail',
-        outdoorHash,
+        initialSuperAdminPasswordHash(),
         'Irsyad Ismail',
         'Royal Langkawi Yacht Club (RLYC)',
         'MAS 001',
@@ -1286,11 +1297,12 @@ export function initDatabase() {
       );
       console.log('[SQLite DB] Seeded Super Admin irsyadismail@gmail.com');
     } else {
+      // Keep privileges affirmed, but never touch the password of an existing account
       db.prepare(`
-        UPDATE users 
-        SET is_super_admin = 1, status = 'ACTIVE', role = 'ADMIN', password_hash = ?
+        UPDATE users
+        SET is_super_admin = 1, status = 'ACTIVE', role = 'ADMIN'
         WHERE email = 'irsyadismail@gmail.com' OR id = 'user-admin-0' OR username = 'irsyadismail'
-      `).run(outdoorHash);
+      `).run();
     }
   } catch (err: any) {
     console.warn('[SQLite DB] Super admin affirmative seed warning:', err?.message);
@@ -1406,14 +1418,6 @@ export function initDatabase() {
     }
   } catch (err: any) {
     console.warn('[SQLite DB] LOBBY event init warning:', err?.message);
-  }
-
-  // Always ensure Super Admin password is up-to-date with outdoor1122
-  try {
-    const outdoorHash = hashPassword('outdoor1122');
-    db.prepare(`UPDATE users SET password_hash = ? WHERE email = 'irsyadismail@gmail.com' OR username = 'irsyadismail' OR username = 'admin' OR id = 'user-admin-0'`).run(outdoorHash);
-  } catch (err: any) {
-    console.warn('[SQLite DB] Notice: Super Admin password sync:', err?.message);
   }
 }
 
@@ -2206,7 +2210,7 @@ export function repairDatabase(): {
           'tenant-rlyc-default',
           'irsyadismail@gmail.com',
           'irsyadismail',
-          hashPassword('outdoor1122'),
+          initialSuperAdminPasswordHash(),
           'Irsyad Ismail',
           'Royal Langkawi Yacht Club (RLYC)',
           'MAS 001',
@@ -2214,7 +2218,7 @@ export function repairDatabase(): {
           'ADMIN',
           'RACE_OFFICER',
           'ACTIVE',
-          'tmtrac_tk_admin_session_2026',
+          generateToken(),
           1,
           JSON.stringify({ racesOrganized: 12, racesParticipated: 4, podiumFinishes: 3, totalNauticalMiles: 240, vmgEfficiency: 94, winRate: 75 }),
           '[]',
