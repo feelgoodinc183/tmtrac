@@ -385,7 +385,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-red-600/80 hover:bg-red-600 text-white transition-all shadow-sm flex items-center gap-1"
                   title="Finish active race class and lock final results"
                 >
-                  <span>🏁 End {filterClass === 'ALL' ? raceState.activeClass : filterClass}</span>
+                  <span>Finish {filterClass === 'ALL' ? raceState.activeClass : filterClass}</span>
                 </button>
               )}
             </div>

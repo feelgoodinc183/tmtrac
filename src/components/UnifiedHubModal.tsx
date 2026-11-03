@@ -49,6 +49,7 @@ import {
   CompletedRace,
 } from '../types/regatta';
 import { formatTime, safeFixed } from '../utils/formatters';
+import { APP_VERSION } from '../appVersion';
 
 export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';
 
@@ -1176,7 +1177,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
         {/* Footer info */}
         <div className="px-4 sm:px-6 py-2 border-t border-[#1E293B] bg-[#0A0F1A]/80 flex items-center justify-between text-[11px] font-mono text-slate-400 shrink-0">
           <div className="flex items-center gap-2">
-            <span>TMTRAC v3.4</span>
+            <span>TMTRAC v{APP_VERSION}</span>
             <span>·</span>
             <span>Handicap Default: 1.000</span>
           </div>

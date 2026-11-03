@@ -96,7 +96,7 @@ export function resolveGateContext(req: express.Request): GateContext {
     const isSuperAdmin = !!userRow.is_super_admin || (userEmail === 'irsyadismail@gmail.com' && userRow.role === 'ADMIN');
     const isUniversalAdmin = isSuperAdmin && (userRow.role === 'ADMIN' || userEmail === 'irsyadismail@gmail.com');
 
-    let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90, winRate: 0 };
+    let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 };
     let raceHistory = [];
     try {
       if (userRow.stats_json) stats = JSON.parse(userRow.stats_json);

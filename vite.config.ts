@@ -1,6 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+// One version number for the whole app, taken from package.json.
+const appVersion: string = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')).version;
 import { defineConfig, Plugin } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
@@ -153,6 +157,9 @@ Provide concise, sharp, professional sailing tactics, handicap strategy (IRC/ORC
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss(), geminiApiPlugin()],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

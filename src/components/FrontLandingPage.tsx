@@ -22,6 +22,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { PricingPackage, UserAccount } from '../types/regatta';
+import { APP_VERSION } from '../appVersion';
 
 interface FrontLandingPageProps {
   onLoginClick: () => void;
@@ -808,7 +809,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <div className="flex items-center space-x-2">
             <Compass className="w-4 h-4 text-cyan-600" />
             <span className="font-semibold text-slate-700">TMTRAC by tmtecq.com </span>
-            <span>• v1.6.0</span>
+            <span>• v{APP_VERSION}</span>
           </div>
 
           <div className="flex items-center space-x-6 text-slate-600">

@@ -255,6 +255,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   onOpenHub,
   viewMode = 'RC_CONSOLE',
 }) => {
+  // Only move boats along their trails when there is a recorded race to replay.
+  const replayActive = showReplayBar && (maxPlaybackDurationSec || 0) > 0;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseTileLayerRef = useRef<L.TileLayer | null>(null);
@@ -413,28 +415,28 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       const boatTrail = (targetBoat.trail && targetBoat.trail.length >= 2)
         ? targetBoat.trail
         : generateTrail(targetBoat.lat, targetBoat.lng, targetBoat.cog || targetBoat.heading || 320, 50);
-      const ratio = showReplayBar ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
+      const ratio = replayActive ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
       const interp = getInterpolatedTrajectory(
         boatTrail,
         targetBoat.lat,
         targetBoat.lng,
         targetBoat.heading || targetBoat.cog || 0,
         ratio,
-        showReplayBar
+        replayActive
       );
       targetLat = interp.lat;
       targetLng = interp.lng;
     } else {
       const targetNode = nodes.find((n) => n.id === followedTargetId);
       if (targetNode && typeof targetNode.lat === 'number' && typeof targetNode.lng === 'number') {
-        const ratio = showReplayBar ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
+        const ratio = replayActive ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
         const interp = getInterpolatedTrajectory(
           targetNode.trail,
           targetNode.lat,
           targetNode.lng,
           targetNode.headingDeg || 0,
           ratio,
-          showReplayBar
+          replayActive
         );
         targetLat = interp.lat;
         targetLng = interp.lng;
@@ -444,7 +446,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     if (isValidCoord(targetLat, targetLng)) {
       map.panTo([targetLat!, targetLng!], { animate: true });
     }
-  }, [followedTargetId, boats, nodes, playbackTimeSec, showReplayBar, maxPlaybackDurationSec]);
+  }, [followedTargetId, boats, nodes, playbackTimeSec, replayActive, maxPlaybackDurationSec]);
 
   // HANDLE INTERACTIVE MAP CLICK FOR DROPPING MARKS / LINES
   useEffect(() => {
@@ -714,7 +716,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         b.lng,
         b.heading || b.cog || 0,
         replayRatio,
-        showReplayBar
+        replayActive
       );
 
       // Draw Active Historical Breadcrumb Trail (solid)
@@ -727,7 +729,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       }
 
       // In Replay Mode, draw Ghost Future Trail (dashed, subtle)
-      if (showReplayBar && ghostTrail.length > 1) {
+      if (replayActive && ghostTrail.length > 1) {
         L.polyline(ghostTrail, {
           color: b.color || '#00D4FF',
           weight: isSelected ? 2 : 1.5,
@@ -859,7 +861,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         node.lng!,
         node.headingDeg || 0,
         replayRatio,
-        showReplayBar
+        replayActive
       );
 
       // Draw node trail if available
@@ -873,7 +875,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       }
 
       const hasMovement = (node.speedKt || 0) > 0.3;
-      const headingDeg = showReplayBar ? nodeHeading : (node.headingDeg || 0);
+      const headingDeg = replayActive ? nodeHeading : (node.headingDeg || 0);
 
       const nodeHtml = `
         <div style="display:flex; flex-direction:column; align-items:center; transform: translate(-50%, -50%); cursor: grab;" title="Drag mesh node to relocate position or click to inspect">
@@ -967,7 +969,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
       L.marker([deviceGps.lat!, deviceGps.lng!], { icon: gpsIcon }).addTo(group);
     }
-  }, [boats, marks, nodes, selectedBoatId, followedTargetId, playbackTimeSec, maxPlaybackDurationSec, showReplayBar, deviceGps, showCourseLegs, onMoveMarkPosition, onMoveBoatPosition, onMoveNodePosition]);
+  }, [boats, marks, nodes, selectedBoatId, followedTargetId, playbackTimeSec, maxPlaybackDurationSec, replayActive, deviceGps, showCourseLegs, onMoveMarkPosition, onMoveBoatPosition, onMoveNodePosition]);
 
   // Handle Zoom In/Out manually
   const handleMapZoomIn = () => {
@@ -1025,16 +1027,14 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       {/* LEAFLET TILE MAP CONTAINER */}
       <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0" />
 
-      {/* HISTORICAL REPLAY STATUS HUD INDICATOR */}
-      {showReplayBar && (
-        <div className="hidden md:flex absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-[#060B16]/95 border border-[#00D4FF]/60 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(0,212,255,0.35)] backdrop-blur-md items-center gap-2.5 font-mono text-xs text-[#00D4FF] animate-in fade-in zoom-in-95">
-          <RotateCcw className="w-3.5 h-3.5 text-[#FFB800] animate-spin" style={{ animationDuration: '6s' }} />
-          <span className="font-bold text-white tracking-wider">RACE REPLAY MODE</span>
-          <span className="text-slate-600">|</span>
-          <span className="text-[#00FF9D] font-bold">
-            {Math.floor((playbackTimeSec || 0) / 60).toString().padStart(2, '0')}:{Math.floor((playbackTimeSec || 0) % 60).toString().padStart(2, '0')}
+      {/* HISTORICAL REPLAY STATUS HUD INDICATOR (below the top toolbars so it doesn't cover them) */}
+      {showReplayBar && (maxPlaybackDurationSec || 0) > 0 && (
+        <div className="hidden md:flex absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-[#060B16]/95 border border-[#1E293B] px-4 py-1.5 rounded-full items-center gap-2.5 font-mono text-xs text-[#94A3B8]">
+          <span className="font-bold text-white">Replay</span>
+          <span className="text-[#00D4FF] font-bold">
+            {((sec: number) => `${Math.floor(sec / 60).toString().padStart(2, '0')}:${Math.floor(sec % 60).toString().padStart(2, '0')}`)(playbackTimeSec || 0)}
           </span>
-          <span className="text-[#64748B]">/ {Math.floor((maxPlaybackDurationSec || 1800) / 60)}:00</span>
+          <span>/ {((sec: number) => `${Math.floor(sec / 60).toString().padStart(2, '0')}:${Math.floor(sec % 60).toString().padStart(2, '0')}`)(maxPlaybackDurationSec || 0)}</span>
         </div>
       )}
 

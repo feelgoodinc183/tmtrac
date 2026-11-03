@@ -24,7 +24,6 @@ import { authService } from '../services/authService';
 import { roomService } from '../services/roomService';
 import { RoomPinModal, RoomDeleteModal } from './RoomManagementModals';
 import { AdminUserManagement } from './AdminUserManagement';
-import { safeFixed } from '../utils/formatters';
 
 interface UserDashboardModalProps {
   isOpen: boolean;
@@ -285,68 +284,34 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           {/* TAB 1: OVERVIEW & PERFORMANCE */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* Performance Metric Cards Grid */}
+              {/* Performance tiles. Only Hosted Rooms is backed by real data today; the others are
+                  not recorded by the app yet, so they say so instead of showing a number. */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
                   <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
                     Hosted Rooms
                   </div>
-                  <div className="text-xl sm:text-2xl font-black text-white mt-1">
-                    {user.stats?.racesOrganized ?? 0}
-                  </div>
-                  <div className="text-[10px] text-cyan-400 mt-0.5">Regattas Run</div>
+                  <div className="text-xl sm:text-2xl font-black text-white mt-1">{myRooms.length}</div>
+                  <div className="text-[10px] text-cyan-400 mt-0.5">Regattas you host</div>
                 </div>
 
-                <div className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
-                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    Participated
+                {[
+                  'Participated',
+                  'Podiums',
+                  'Distance Logged',
+                  'VMG Efficiency',
+                  'Win / Podium Rate',
+                ].map((label) => (
+                  <div key={label} className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                      {label}
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-slate-500 mt-1" aria-label="Not tracked yet">
+                      —
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Not tracked yet</div>
                   </div>
-                  <div className="text-xl sm:text-2xl font-black text-white mt-1">
-                    {user.stats?.racesParticipated ?? 0}
-                  </div>
-                  <div className="text-[10px] text-teal-400 mt-0.5">Starts Completed</div>
-                </div>
-
-                <div className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
-                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    Podiums
-                  </div>
-                  <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1 flex items-center gap-1">
-                    <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                    {user.stats?.podiumFinishes ?? 0}
-                  </div>
-                  <div className="text-[10px] text-amber-300 mt-0.5">Top 3 Finishes</div>
-                </div>
-
-                <div className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
-                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    Distance Logged
-                  </div>
-                  <div className="text-xl sm:text-2xl font-black text-white mt-1 font-mono">
-                    {user.stats?.totalNauticalMiles ?? 0}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Nautical Miles (NM)</div>
-                </div>
-
-                <div className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
-                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    VMG Efficiency
-                  </div>
-                  <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1 font-mono">
-                    {safeFixed(user.stats?.vmgEfficiency, 1, '90.0')}%
-                  </div>
-                  <div className="text-[10px] text-emerald-300 mt-0.5">Velocity Made Good</div>
-                </div>
-
-                <div className="bg-slate-950/70 border border-slate-800 p-3 sm:p-4 rounded-xl">
-                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    Win / Podium Rate
-                  </div>
-                  <div className="text-xl sm:text-2xl font-black text-purple-400 mt-1 font-mono">
-                    {safeFixed(user.stats?.winRate, 1, '0.0')}%
-                  </div>
-                  <div className="text-[10px] text-purple-300 mt-0.5">Performance Index</div>
-                </div>
+                ))}
               </div>
 
               {/* Sailor Status Card */}

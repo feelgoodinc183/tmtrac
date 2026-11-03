@@ -966,7 +966,7 @@ async function startServer() {
         'RACE_OFFICER',
         'ACTIVE',
         token,
-        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90, winRate: 0 }),
+        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
         JSON.stringify([]),
         now
       );
@@ -1101,7 +1101,7 @@ async function startServer() {
         assignedPartType,
         'ACTIVE',
         token,
-        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90.0, winRate: 0 }),
+        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
         JSON.stringify([]),
         now
       );
@@ -1212,7 +1212,7 @@ async function startServer() {
     }
     userRow.token = token;
 
-    let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90, winRate: 0 };
+    let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 };
     let raceHistory = [];
     try {
       if (userRow.stats_json) stats = JSON.parse(userRow.stats_json);
@@ -1502,7 +1502,7 @@ async function startServer() {
       storedRole === 'RACE_OFFICER' ? 'RACE_OFFICER' : 'SKIPPER',
       'ACTIVE',
       null,
-      JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90.0, winRate: 0 }),
+      JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
       JSON.stringify([]),
       now
     );

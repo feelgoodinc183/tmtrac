@@ -36,6 +36,7 @@ import { Header } from './components/Header';
 import { LeaderboardSidebar } from './components/LeaderboardSidebar';
 import { MarineMapCanvas } from './components/MarineMapCanvas';
 import { Footer } from './components/Footer';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { RcCommandConsolePanel } from './components/RcCommandConsolePanel';
 import { MobileTab } from './components/MobileBottomBar';
 import { UnifiedHubModal, HubTab } from './components/UnifiedHubModal';
@@ -72,11 +73,12 @@ import { authService } from './services/authService';
 import { tenantService } from './services/tenantService';
 import { UserAccount, Tenant, PlanTier } from './types/regatta';
 import { getSavedCourseProfiles } from './services/courseProfileService';
-import { generateRaceHighlights } from './services/highlightService';
+import { generateRaceHighlights, recordedRaceDurationSec } from './services/highlightService';
 import { meshtasticService } from './services/meshtasticBleMqttService';
 import { deviceTrackerService, getDefaultDeviceProfile } from './services/deviceTrackerService';
 import { roomService } from './services/roomService';
 import { serverNow } from './services/serverClock';
+import { getClassRaceState } from './services/classRaceState';
 import {
   addCourseMark,
   removeCourseMark,
@@ -120,40 +122,6 @@ export function deduplicateNodes(nodeList: MeshtasticNode[]): MeshtasticNode[] {
   return result;
 }
 
-export function getClassRaceState(raceState: RaceState, className: string): ClassRaceStatus {
-  let baseState: ClassRaceStatus;
-  if (raceState.classStates && raceState.classStates[className]) {
-    baseState = raceState.classStates[className];
-  } else if (raceState.activeClass === className) {
-    baseState = {
-      status: raceState.status,
-      countdownSeconds: raceState.countdownSeconds,
-      startSequenceActive: raceState.startSequenceActive,
-      targetStartTime: raceState.targetStartTime,
-      startTime: raceState.startTime,
-      updatedAt: raceState.updatedAt,
-    };
-  } else {
-    baseState = {
-      status: 'PRE_START',
-      countdownSeconds: 300,
-      startSequenceActive: false,
-    };
-  }
-
-  // If this class has an active sequence anchored to targetStartTime, calculate exact real-time seconds
-  if (baseState.startSequenceActive && baseState.targetStartTime) {
-    const msRemaining = baseState.targetStartTime - serverNow();
-    const remainingSec = Math.max(0, Math.ceil(msRemaining / 1000));
-    return {
-      ...baseState,
-      countdownSeconds: remainingSec,
-      status: remainingSec <= 0 ? 'RACING' : 'COUNTDOWN',
-    };
-  }
-
-  return baseState;
-}
 
 /**
  * Automatically computes live boat status with full RRS compliance:
@@ -833,8 +801,8 @@ export default function App() {
   const [playback, setPlayback] = useState<RacePlaybackState>({
     isPlaying: false,
     speedMultiplier: 1,
-    currentTimeSec: 640,
-    maxDurationSec: 1800,
+    currentTimeSec: 0,
+    maxDurationSec: 0, // set from the recorded race below
   });
 
   // Camera Follow State (Boat ID or Node ID)
@@ -933,6 +901,21 @@ export default function App() {
   const raceHighlights = useMemo(() => {
     return generateRaceHighlights(boats, raceState, marks);
   }, [boats, raceState, marks]);
+
+  // The replay timeline is as long as the recorded race; 0 means nothing recorded yet.
+  const recordedDurationSec = useMemo(() => recordedRaceDurationSec(boats, raceState), [boats, raceState]);
+  useEffect(() => {
+    setPlayback((prev) =>
+      prev.maxDurationSec === recordedDurationSec
+        ? prev
+        : {
+            ...prev,
+            maxDurationSec: recordedDurationSec,
+            currentTimeSec: Math.min(prev.currentTimeSec, recordedDurationSec),
+            isPlaying: recordedDurationSec > 0 ? prev.isPlaying : false,
+          }
+    );
+  }, [recordedDurationSec]);
 
   useEffect(() => {
     try {
@@ -2045,6 +2028,71 @@ export default function App() {
 
     playHornSound(520, 800, true);
   };
+  // Actions that change race results go through a confirmation step first.
+  type PendingRaceAction =
+    | { kind: 'FINISH_CLASS'; forClass: string }
+    | { kind: 'END_ALL' }
+    | { kind: 'RESTART'; forClass: string }
+    | { kind: 'RECALL'; forClass: string };
+  const [pendingRaceAction, setPendingRaceAction] = useState<PendingRaceAction | null>(null);
+
+  const requestEndRace = (forClass?: string) =>
+    setPendingRaceAction(forClass ? { kind: 'FINISH_CLASS', forClass } : { kind: 'END_ALL' });
+  const requestRestartRace = (forClass?: string) =>
+    setPendingRaceAction({ kind: 'RESTART', forClass: forClass || raceState.activeClass });
+  const requestGeneralRecall = (forClass?: string) =>
+    setPendingRaceAction({ kind: 'RECALL', forClass: forClass || raceState.activeClass });
+
+  const handleGeneralRecall = (forClass: string) => {
+    handleRestartRace(forClass);
+    handleSendVhfNotice(
+      'GENERAL RECALL (FIRST SUBSTITUTE)',
+      'General recall ordered under RRS 29.2. All boats return to pre-start area. Start sequence reset.',
+      'SAFETY_WARNING'
+    );
+  };
+
+  const runPendingRaceAction = () => {
+    const action = pendingRaceAction;
+    setPendingRaceAction(null);
+    if (!action) return;
+    if (action.kind === 'FINISH_CLASS') handleEndRace(action.forClass);
+    else if (action.kind === 'END_ALL') handleEndRace();
+    else if (action.kind === 'RESTART') handleRestartRace(action.forClass);
+    else handleGeneralRecall(action.forClass);
+  };
+
+  const describePendingRaceAction = (action: PendingRaceAction) => {
+    const boatCount = (cls?: string) => boats.filter((b) => !cls || b.class === cls).length;
+    const boatsText = (n: number) => `${n} ${n === 1 ? 'boat' : 'boats'}`;
+    switch (action.kind) {
+      case 'FINISH_CLASS':
+        return {
+          title: `Finish ${action.forClass}?`,
+          body: `Times for ${action.forClass} (${boatsText(boatCount(action.forClass))}) will be locked. Boats still racing are marked DNF and boats that never started are marked DNS. A "race finished" notice is broadcast to the fleet.`,
+          confirmLabel: `Finish ${action.forClass}`,
+        };
+      case 'END_ALL':
+        return {
+          title: 'End the race for all classes?',
+          body: `Every class stops and times are locked for all ${boatsText(boatCount())}. Boats still racing are marked DNF and boats that never started are marked DNS. A "race finished" notice is broadcast to the fleet.`,
+          confirmLabel: 'End entire race',
+        };
+      case 'RESTART':
+        return {
+          title: `Restart ${action.forClass}?`,
+          body: `Elapsed and corrected times and mark roundings for ${boatsText(boatCount(action.forClass))} in ${action.forClass} are cleared, and the start clock goes back to 5:00. This can't be undone.`,
+          confirmLabel: `Restart ${action.forClass}`,
+        };
+      case 'RECALL':
+        return {
+          title: `General recall for ${action.forClass}?`,
+          body: `${action.forClass} is restarted: times and mark roundings for ${boatsText(boatCount(action.forClass))} are cleared and the start clock goes back to 5:00. A General Recall safety notice is broadcast to the fleet straight away.`,
+          confirmLabel: 'Signal general recall',
+        };
+    }
+  };
+
 
   const handleToggleTelemetryRate = () => {
     handleUpdateRaceState({
@@ -2840,8 +2888,8 @@ export default function App() {
             raceState={raceState}
             boats={boats}
             marks={marks}
-            onToggleRaceTimer={handleToggleRaceTimer}
-            onResetTimer={handleResetTimer}
+            onToggleRaceTimer={() => handleToggleRaceTimer()}
+            onResetTimer={() => handleResetTimer()}
             onPlayStartSignal={() => playHornSound(880, 1200)}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
@@ -2851,8 +2899,9 @@ export default function App() {
             onUpdateWind={handleUpdateWind}
             onUpdateMarks={handleUpdateMarks}
             onSendVhfNotice={handleSendVhfNotice}
-            onEndRace={handleEndRace}
-            onRestartRace={handleRestartRace}
+            onEndRace={requestEndRace}
+            onRestartRace={requestRestartRace}
+            onGeneralRecall={requestGeneralRecall}
             directSunlightMode={directSunlightMode}
             raceClasses={raceClasses}
             onOpenClassManager={() => setShowClassManager(true)}
@@ -2902,7 +2951,7 @@ export default function App() {
                   onOpenResults={() => setShowResultsModal(true)}
                   onOpenBoatQr={handleOpenBoatQr}
                   onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
-                  onEndRace={handleEndRace}
+                  onEndRace={requestEndRace}
                   onCollapse={() => setIsSidebarOpen(false)}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
@@ -2994,7 +3043,7 @@ export default function App() {
                         startSequenceActive: !raceState.startSequenceActive,
                       })
                     }
-                    onResetTimer={handleResetTimer}
+                    onResetTimer={() => handleResetTimer()}
                     onPlayStartSignal={() => playHornSound(880, 1200)}
                     isMuted={isMuted}
                     onToggleMute={handleToggleMute}
@@ -3004,8 +3053,9 @@ export default function App() {
                     onUpdateWind={handleUpdateWind}
                     onUpdateMarks={handleUpdateMarks}
                     onSendVhfNotice={handleSendVhfNotice}
-                    onEndRace={handleEndRace}
-                    onRestartRace={handleRestartRace}
+                    onEndRace={requestEndRace}
+                    onRestartRace={requestRestartRace}
+            onGeneralRecall={requestGeneralRecall}
                     directSunlightMode={directSunlightMode}
                     raceClasses={raceClasses}
                     onOpenClassManager={() => setShowClassManager(true)}
@@ -3054,7 +3104,7 @@ export default function App() {
                     onOpenResults={() => setShowResultsModal(true)}
                     onOpenBoatQr={handleOpenBoatQr}
                     onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
-                    onEndRace={handleEndRace}
+                    onEndRace={requestEndRace}
                     viewMode={viewMode}
                     isOverlay={true}
                     isAdmin={isUserAdminOrOfficer}
@@ -3151,7 +3201,7 @@ export default function App() {
                           startSequenceActive: !raceState.startSequenceActive,
                         })
                       }
-                      onResetTimer={handleResetTimer}
+                      onResetTimer={() => handleResetTimer()}
                       onPlayStartSignal={() => playHornSound(880, 1200)}
                       isMuted={isMuted}
                       onToggleMute={handleToggleMute}
@@ -3161,8 +3211,9 @@ export default function App() {
                       onUpdateWind={handleUpdateWind}
                       onUpdateMarks={handleUpdateMarks}
                       onSendVhfNotice={handleSendVhfNotice}
-                      onEndRace={handleEndRace}
-                      onRestartRace={handleRestartRace}
+                      onEndRace={requestEndRace}
+                      onRestartRace={requestRestartRace}
+            onGeneralRecall={requestGeneralRecall}
                       directSunlightMode={directSunlightMode}
                       raceClasses={raceClasses}
                       onOpenClassManager={() => setShowClassManager(true)}
@@ -3211,7 +3262,7 @@ export default function App() {
                       onOpenResults={() => setShowResultsModal(true)}
                       onOpenBoatQr={handleOpenBoatQr}
                       onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
-                      onEndRace={handleEndRace}
+                      onEndRace={requestEndRace}
                       viewMode={viewMode}
                       isOverlay={true}
                       isAdmin={isUserAdminOrOfficer}
@@ -3271,7 +3322,7 @@ export default function App() {
                   onOpenResults={() => setShowResultsModal(true)}
                   onOpenBoatQr={handleOpenBoatQr}
                   onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
-                  onEndRace={handleEndRace}
+                  onEndRace={requestEndRace}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
                 />
@@ -3428,8 +3479,8 @@ export default function App() {
                   raceState={raceState}
                   boats={boats}
                   marks={marks}
-                  onToggleRaceTimer={handleToggleRaceTimer}
-                  onResetTimer={handleResetTimer}
+                  onToggleRaceTimer={() => handleToggleRaceTimer()}
+                  onResetTimer={() => handleResetTimer()}
                   onPlayStartSignal={() => playHornSound(880, 1200)}
                   isMuted={isMuted}
                   onToggleMute={handleToggleMute}
@@ -3439,8 +3490,9 @@ export default function App() {
                   onUpdateWind={handleUpdateWind}
                   onUpdateMarks={handleUpdateMarks}
                   onSendVhfNotice={handleSendVhfNotice}
-                  onEndRace={handleEndRace}
-                  onRestartRace={handleRestartRace}
+                  onEndRace={requestEndRace}
+                  onRestartRace={requestRestartRace}
+            onGeneralRecall={requestGeneralRecall}
                   directSunlightMode={directSunlightMode}
                   raceClasses={raceClasses}
                   onOpenClassManager={() => setShowClassManager(true)}
@@ -3474,6 +3526,8 @@ export default function App() {
       <div className="hidden md:block">
         <Footer
           raceState={raceState}
+          classNames={raceClasses.map((c) => c.name)}
+          nodes={nodes}
           onOpenMqttInspector={() => setShowMqttInspector(true)}
           onOpenOfflineCache={() => setShowOfflineCache(true)}
         />
@@ -3511,9 +3565,9 @@ export default function App() {
         marks={marks}
         viewMode={viewMode}
         onStartSequence={() => handleToggleRaceTimer()}
-        onStopSequence={() => handleEndRace()}
+        onStopSequence={() => handleToggleRaceTimer()}
         onPostpone={() => handleUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300 })}
-        onGeneralRecall={() => handleUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300 })}
+        onGeneralRecall={() => requestGeneralRecall(raceState.activeClass)}
         onAbandon={() => handleUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300 })}
         onSelectClass={(cls) => handleUpdateRaceState({ activeClass: cls })}
         onOpenCourseProfiles={() => {
@@ -3864,6 +3918,14 @@ export default function App() {
         isOpen={showCpanelDeployModal}
         onClose={() => setShowCpanelDeployModal(false)}
       />
+
+      {pendingRaceAction && (
+        <ConfirmDialog
+          {...describePendingRaceAction(pendingRaceAction)}
+          onConfirm={runPendingRaceAction}
+          onCancel={() => setPendingRaceAction(null)}
+        />
+      )}
 
       {/* Race Officer PIN Unlock Dialog for Spectator Mode */}
       <PinUnlockModal

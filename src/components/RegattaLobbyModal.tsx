@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { RegattaRoomSummary, UserAccount } from '../types/regatta';
 import { roomService } from '../services/roomService';
+import { APP_VERSION } from '../appVersion';
 
 interface RegattaLobbyModalProps {
   isOpen: boolean;
@@ -775,7 +776,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
 
         {/* Modal Footer */}
         <div className="p-3 bg-[#0A0F1E] border-t border-[#1E293B] flex items-center justify-between text-xs text-slate-400 font-mono">
-          <span>TMTRAC Regatta Engine v2.5</span>
+          <span>TMTRAC v{APP_VERSION}</span>
           <button
             id="close-lobby-footer-btn"
             onClick={onClose}
