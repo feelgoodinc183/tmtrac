@@ -137,6 +137,20 @@ HTTPS is required by modern browsers for Web Bluetooth and Geolocation APIs:
 
 ---
 
+## 📁 Recommended layout: app and data outside public_html
+
+LiteSpeed serves any file under `public_html`, and cPanel rewrites `.htaccess` whenever the Node app's settings change, which silently removes blocking rules. Keeping the app and its data outside `public_html` makes them unreachable from the web no matter what `.htaccess` says:
+
+```text
+/home/tmtecq00/tmtrac-app/      application root (app.js, package.json, dist/, tmp/)
+/home/tmtecq00/tmtrac-data/     DATA_DIR (tmtrac.db and its -wal/-shm files, backups)
+/home/tmtecq00/public_html/tmtrac.my/   only cPanel's .htaccess for the domain
+```
+
+Environment variables in **Setup Node.js App**: `DATA_DIR=/home/tmtecq00/tmtrac-data`, `SQLITE_DB_PATH=/home/tmtecq00/tmtrac-data/tmtrac.db`, plus the Stripe and Gemini keys. With this layout, upload and extract update zips in `/home/tmtecq00/tmtrac-app`.
+
+---
+
 ## 🗄️ Database: real SQLite on Node 22
 
 On Node 22.13 or later the app uses Node's built-in SQLite (`data/tmtrac.db`). On older Node it falls back to the JSON store (`data/tmtrac_store.json`), as before. The log line `[SQLite DB] Using node-sqlite at ...` confirms which one is active.
