@@ -13,6 +13,7 @@ import {
   Sailboat,
   MessageCircle,
 } from 'lucide-react';
+import { APP_VERSION } from '../appVersion';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -195,7 +196,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               >
                 Visit istmalaysia.my <ExternalLink className="w-3 h-3" />
               </a>
-              <span className="text-[#64748B]">v4.8 • Regatta Engine</span>
+              <span className="text-[#64748B]">v{APP_VERSION}</span>
             </div>
           </div>
         </div>

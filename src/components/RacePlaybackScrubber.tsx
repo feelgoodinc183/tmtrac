@@ -37,6 +37,27 @@ export const RacePlaybackScrubber: React.FC<RacePlaybackScrubberProps> = ({
     onSeek(next);
   };
 
+  if (playback.maxDurationSec <= 0) {
+    return (
+      <div className="fixed md:static bottom-16 md:bottom-auto left-0 right-0 z-40 bg-[#0A0F1E] border-t border-[#1E293B] text-[#E0E6ED] shrink-0">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-[#94A3B8]">
+            <span className="font-semibold text-[#E0E6ED]">Nothing to replay yet.</span> The replay appears once boats have
+            raced and sent positions.
+          </p>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="shrink-0 min-h-[40px] px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-sm font-semibold"
+            >
+              Close
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed md:static bottom-16 md:bottom-auto left-0 right-0 z-40 bg-[#0A0F1E]/95 border-t border-[#1E293B] shadow-[0_-8px_30px_rgba(0,0,0,0.6)] backdrop-blur-xl text-[#E0E6ED] shrink-0 animate-in slide-in-from-bottom-4 duration-200">
       <div className="max-w-7xl mx-auto px-2.5 sm:px-4 py-2 sm:py-3 space-y-1.5">

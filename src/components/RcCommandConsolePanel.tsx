@@ -53,6 +53,7 @@ interface RcCommandConsolePanelProps {
   onSendVhfNotice: (title: string, content: string, type: 'COURSE_CHANGE' | 'POSTPONEMENT' | 'SAFETY_WARNING' | 'GENERAL_ANNOUNCEMENT') => void;
   onEndRace?: (forClass?: string) => void;
   onRestartRace?: (forClass?: string) => void;
+  onGeneralRecall?: (forClass: string) => void;
   directSunlightMode: boolean;
   raceClasses?: RaceClassDefinition[];
   onOpenClassManager?: () => void;
@@ -80,6 +81,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   onSendVhfNotice,
   onEndRace,
   onRestartRace,
+  onGeneralRecall,
   directSunlightMode,
   raceClasses = [],
   onOpenClassManager,
@@ -557,6 +559,11 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
 
                     <button
                       onClick={() => {
+                        if (onGeneralRecall) {
+                          // Confirmed and broadcast by the parent.
+                          onGeneralRecall(raceState.activeClass);
+                          return;
+                        }
                         if (onRestartRace) {
                           onRestartRace(raceState.activeClass);
                         } else {
@@ -602,38 +609,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  {onEndRace && (
-                    <button
-                      onClick={() => onEndRace(raceState.activeClass)}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 shadow-md"
-                      title="Finish and lock times for active race class"
-                    >
-                      <span>🏁 Finish Class {raceState.activeClass}</span>
-                    </button>
-                  )}
-
-                  {onEndRace && (
-                    <button
-                      onClick={() => onEndRace()}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 shadow-md"
-                      title="Finish race for all classes, stop all timers, and open official scoring"
-                    >
-                      <span>🏁 End Entire Race</span>
-                    </button>
-                  )}
-
-                  {onRestartRace && (
-                    <button
-                      onClick={() => onRestartRace(raceState.activeClass)}
-                      className="px-3 py-1.5 bg-[#3C4043] hover:bg-[#4E5256] text-[#E8EAED] rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5"
-                      title="Reset elapsed time to 00:00 and reset fleet positions"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Restart Race</span>
-                    </button>
-                  )}
-
+                <div className="flex items-center gap-2 flex-wrap flex-1 justify-end">
                   {onOpenResults && (
                     <button
                       onClick={onOpenResults}
@@ -642,6 +618,42 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                       <Trophy className="w-3.5 h-3.5 text-[#FFB800]" />
                       <span>Official Results</span>
                     </button>
+                  )}
+
+                  {onEndRace && (
+                    <button
+                      onClick={() => onEndRace(raceState.activeClass)}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 shadow-md"
+                      title="Finish and lock times for the active class"
+                    >
+                      <span>Finish {raceState.activeClass}</span>
+                    </button>
+                  )}
+
+                  {/* Actions that wipe or end the race sit apart from Finish, behind a divider. */}
+                  {(onRestartRace || onEndRace) && (
+                    <div className="flex items-center gap-2 pl-3 ml-3 border-l border-[#3C4043]">
+                      {onRestartRace && (
+                        <button
+                          onClick={() => onRestartRace(raceState.activeClass)}
+                          className="px-3 py-1.5 bg-[#3C4043] hover:bg-[#4E5256] text-[#E8EAED] rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5"
+                          title="Clear times and mark roundings for the active class and reset the start clock"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restart {raceState.activeClass}</span>
+                        </button>
+                      )}
+
+                      {onEndRace && (
+                        <button
+                          onClick={() => onEndRace()}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 shadow-md"
+                          title="Finish the race for all classes, stop all timers, and open official scoring"
+                        >
+                          <span>End entire race</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
