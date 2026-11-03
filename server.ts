@@ -1395,13 +1395,174 @@ async function startServer() {
   app.get('/api/tenants/members', requireTenantAdmin, (req, res) => {
     const tenantId = req.gate!.tenant!.id;
     const members = db.prepare(`
-      SELECT id, email, username, full_name, sailing_club, sail_number, role, participant_type, status, created_at
+      SELECT id, tenant_id, email, username, full_name, sailing_club, sail_number, role, participant_type, status, created_at
       FROM users
       WHERE tenant_id = ?
       ORDER BY created_at DESC
     `).all(tenantId);
+    // Filter in code too: the JSON fallback store ignores WHERE when listing
+    const ownMembers = (members as any[]).filter((m) => m.tenant_id === tenantId);
 
-    res.json({ success: true, members });
+    res.json({ success: true, members: ownMembers });
+  });
+
+  // ==========================================
+  // CLUB USER MANAGEMENT (club admins: own club; Super Admin: everyone)
+  // ==========================================
+
+  // The management screen calls skippers SKIPPER; accounts store them as PARTICIPANT
+  const MANAGED_ROLES: Record<string, string> = { ADMIN: 'ADMIN', RACE_OFFICER: 'RACE_OFFICER', SKIPPER: 'PARTICIPANT', PARTICIPANT: 'PARTICIPANT', SPECTATOR: 'SPECTATOR' };
+
+  const isGateSuperAdmin = (req: express.Request) => !!(req.gate?.isSuperAdmin || req.gate?.isUniversalAdmin || req.gate?.user?.isSuperAdmin);
+
+  const toManagedUser = (u: any) => ({
+    id: u.id,
+    tenantId: u.tenant_id,
+    email: u.email,
+    username: u.username,
+    fullName: u.full_name || u.username || '',
+    sailingClub: u.sailing_club || '',
+    sailNumber: u.sail_number || '',
+    handicapRating: u.handicap_rating || '',
+    role: u.role === 'PARTICIPANT' ? 'SKIPPER' : u.role,
+    participantType: u.participant_type,
+    // Signed up as "Race Officer / Jury"; a club admin can promote them
+    requestedRole: u.role === 'PARTICIPANT' && u.participant_type === 'RACE_OFFICER' ? 'RACE_OFFICER' : undefined,
+    status: u.status || 'ACTIVE',
+    isSuperAdmin: !!u.is_super_admin,
+    createdAt: u.created_at,
+  });
+
+  // A user this admin may manage: same club (or any, for the Super Admin), never the Super Admin, never yourself
+  function loadManagedUser(req: express.Request, res: express.Response): any | null {
+    const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
+    const inScope = target && (isGateSuperAdmin(req) || target.tenant_id === req.gate!.tenant!.id);
+    if (!inScope) {
+      res.status(404).json({ success: false, error: 'User not found in your club.' });
+      return null;
+    }
+    if (target.id === req.gate!.user!.id) {
+      res.status(400).json({ success: false, error: 'You cannot change your own account here. Use your profile instead.' });
+      return null;
+    }
+    if (target.is_super_admin && !isGateSuperAdmin(req)) {
+      res.status(403).json({ success: false, error: 'The Super Admin account cannot be changed by a club admin.' });
+      return null;
+    }
+    return target;
+  }
+
+  app.get('/api/admin/users', requireTenantAdmin, (req, res) => {
+    const tenantId = req.gate!.tenant!.id;
+    const all = db.prepare('SELECT * FROM users WHERE tenant_id = ?').all(tenantId) as any[];
+    // Filter in code: the JSON fallback store ignores WHERE when listing
+    const users = (isGateSuperAdmin(req) ? db.prepare('SELECT * FROM users').all() as any[] : all.filter((u) => u.tenant_id === tenantId))
+      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+      .map(toManagedUser);
+    res.json({ success: true, users });
+  });
+
+  app.post('/api/admin/users', requireTenantAdmin, (req, res) => {
+    const { email, username, password, fullName, sailingClub, sailNumber, handicapRating, role } = req.body || {};
+    if (!email || !username || !password || !fullName) {
+      return res.status(400).json({ success: false, error: 'Email, username, password and full name are required.' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ success: false, error: 'The password must be at least 8 characters.' });
+    }
+    const storedRole = MANAGED_ROLES[String(role || 'SKIPPER').toUpperCase()];
+    if (!storedRole) {
+      return res.status(400).json({ success: false, error: 'Unknown role.' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanUsername = String(username).trim().toLowerCase();
+    if (db.prepare('SELECT id FROM users WHERE email = ? OR username = ?').get(cleanEmail, cleanUsername)) {
+      return res.status(400).json({ success: false, error: 'An account with this email or username already exists.' });
+    }
+    const tenantId = req.gate!.tenant!.id;
+    const userId = 'user-' + crypto.randomBytes(6).toString('hex');
+    const now = Date.now();
+    db.prepare(`
+      INSERT INTO users (
+        id, tenant_id, email, username, password_hash, full_name,
+        sailing_club, sail_number, handicap_rating, role, participant_type,
+        status, token, stats_json, race_history_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      userId,
+      tenantId,
+      cleanEmail,
+      cleanUsername,
+      hashPassword(String(password)),
+      String(fullName).trim(),
+      String(sailingClub || req.gate!.tenant!.name || '').trim(),
+      String(sailNumber || '').trim(),
+      String(handicapRating || 'Standard').trim(),
+      storedRole,
+      storedRole === 'RACE_OFFICER' ? 'RACE_OFFICER' : 'SKIPPER',
+      'ACTIVE',
+      null,
+      JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90.0, winRate: 0 }),
+      JSON.stringify([]),
+      now
+    );
+    insertAuditLog({ tenantId, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_CREATED', details: { userId, role: storedRole } });
+    const created = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
+    res.json({ success: true, user: toManagedUser(created) });
+  });
+
+  app.put('/api/admin/users/:id/role', requireTenantAdmin, (req, res) => {
+    const target = loadManagedUser(req, res);
+    if (!target) return;
+    const storedRole = MANAGED_ROLES[String(req.body?.role || '').toUpperCase()];
+    if (!storedRole) {
+      return res.status(400).json({ success: false, error: 'Unknown role.' });
+    }
+    db.prepare('UPDATE users SET role = ?, participant_type = ? WHERE id = ?').run(
+      storedRole,
+      storedRole === 'RACE_OFFICER' ? 'RACE_OFFICER' : target.participant_type === 'RACE_OFFICER' && storedRole === 'PARTICIPANT' ? 'SKIPPER' : target.participant_type,
+      target.id
+    );
+    insertAuditLog({ tenantId: target.tenant_id, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_ROLE_CHANGED', details: { userId: target.id, from: target.role, to: storedRole } });
+    res.json({ success: true, user: toManagedUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)) });
+  });
+
+  app.put('/api/admin/users/:id/status', requireTenantAdmin, (req, res) => {
+    const target = loadManagedUser(req, res);
+    if (!target) return;
+    const status = String(req.body?.status || '').toUpperCase();
+    if (status !== 'ACTIVE' && status !== 'SUSPENDED') {
+      return res.status(400).json({ success: false, error: 'Status must be ACTIVE or SUSPENDED.' });
+    }
+    // Suspending also signs the user out
+    if (status === 'SUSPENDED') {
+      db.prepare('UPDATE users SET status = ?, token = NULL WHERE id = ?').run(status, target.id);
+    } else {
+      db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, target.id);
+    }
+    insertAuditLog({ tenantId: target.tenant_id, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_STATUS_CHANGED', details: { userId: target.id, status } });
+    res.json({ success: true, user: toManagedUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)) });
+  });
+
+  app.post('/api/admin/users/:id/reset-password', requireTenantAdmin, (req, res) => {
+    const target = loadManagedUser(req, res);
+    if (!target) return;
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'The new password must be at least 8 characters.' });
+    }
+    // Signs the user out everywhere; they sign in again with the new password
+    db.prepare('UPDATE users SET password_hash = ?, token = NULL WHERE id = ?').run(hashPassword(newPassword), target.id);
+    insertAuditLog({ tenantId: target.tenant_id, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_PASSWORD_RESET', details: { userId: target.id } });
+    res.json({ success: true, message: 'Password reset. The user has been signed out.' });
+  });
+
+  app.delete('/api/admin/users/:id', requireTenantAdmin, (req, res) => {
+    const target = loadManagedUser(req, res);
+    if (!target) return;
+    db.prepare('DELETE FROM users WHERE id = ?').run(target.id);
+    insertAuditLog({ tenantId: target.tenant_id, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_DELETED', details: { userId: target.id, email: target.email } });
+    res.json({ success: true, message: 'User deleted.' });
   });
 
   // ==========================================
@@ -1417,7 +1578,11 @@ async function startServer() {
       LIMIT 100
     `).all(tenantId) as any[];
 
-    const formatted = logs.map((l) => ({
+    const formatted = logs
+      .filter((l) => l.tenant_id === tenantId)
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+      .slice(0, 100)
+      .map((l) => ({
       id: l.id,
       tenantId: l.tenant_id,
       eventId: l.event_id,
@@ -1465,7 +1630,15 @@ async function startServer() {
 
     query += ` ORDER BY e.last_active DESC`;
 
-    const rows = db.prepare(query).all(...params) as any[];
+    const visible = (r: any) => {
+      if (filter === 'mine' && user) return r.owner_id === user.id || r.tenant_id === user.tenantId;
+      if (user?.tenantId && !user.role?.includes('SPECTATOR')) return !!r.is_public || r.tenant_id === user.tenantId;
+      return !!r.is_public;
+    };
+    // Filter in code too: the JSON fallback store ignores WHERE when listing
+    const rows = (db.prepare(query).all(...params) as any[])
+      .filter(visible)
+      .sort((a, b) => (b.last_active || 0) - (a.last_active || 0));
 
     const list = rows.map((r) => {
       let boatCount = 0;
@@ -2162,7 +2335,10 @@ async function startServer() {
       }
 
       sql += ` ORDER BY u.created_at DESC`;
-      const rows = db.prepare(sql).all(...params) as any[];
+      const rows = (db.prepare(sql).all(...params) as any[])
+        .filter((r) => !role || r.role === role.toUpperCase())
+        .filter((r) => !q || [r.email, r.username, r.full_name, r.sailing_club].some((v) => (v || '').toLowerCase().includes(q)))
+        .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
 
       const users = rows.map(r => ({
         id: r.id,
@@ -2380,7 +2556,7 @@ async function startServer() {
       }
 
       // Delete associated events and active rooms
-      const events = db.prepare('SELECT code FROM events WHERE tenant_id = ?').all(clubId) as any[];
+      const events = (db.prepare('SELECT code, tenant_id FROM events WHERE tenant_id = ?').all(clubId) as any[]).filter((ev) => ev.tenant_id === clubId);
       events.forEach(ev => activeRooms.delete(ev.code));
 
       db.prepare('DELETE FROM tenants WHERE id = ?').run(clubId);

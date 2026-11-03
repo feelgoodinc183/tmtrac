@@ -79,6 +79,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   if (!isOpen || !user) return null;
 
   const isUniversalAdmin = user.email?.toLowerCase().trim() === 'irsyadismail@gmail.com';
+  // Club admins manage their own club's members; the server limits what each admin can see and change
+  const canManageUsers = isUniversalAdmin || !!user.isSuperAdmin || user.role === 'ADMIN';
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,7 +261,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             Profile & Yacht Specs
           </button>
 
-          {isUniversalAdmin && (
+          {canManageUsers && (
             <button
               id="tab-dashboard-admin-users"
               onClick={() => setActiveTab('admin_users')}
@@ -705,8 +707,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           )}
 
-          {/* TAB 5: ADMIN USER MANAGEMENT (Visible universally ONLY to irsyadismail@gmail.com) */}
-          {activeTab === 'admin_users' && isUniversalAdmin && (
+          {/* TAB 5: USER MANAGEMENT (club admins: own club; Super Admin: everyone) */}
+          {activeTab === 'admin_users' && canManageUsers && (
             <AdminUserManagement currentUser={user} />
           )}
         </div>

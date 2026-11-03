@@ -375,7 +375,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
                   >
                     <option value="SKIPPER">Skipper / Helm</option>
-                    <option value="RACE_OFFICER">Race Officer / Jury</option>
+                    <option value="RACE_OFFICER">Race Officer / Jury (your club admin approves)</option>
                     <option value="SPECTATOR">Spectator Only</option>
                   </select>
                 </div>

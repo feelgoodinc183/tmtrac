@@ -582,6 +582,8 @@ export interface UserRaceHistoryRecord {
 
 export interface UserAccount {
   id: string;
+  // Set by the club user list when someone asked for Race Officer at sign-up
+  requestedRole?: 'RACE_OFFICER';
   tenantId?: string;
   tenantName?: string;
   email: string;

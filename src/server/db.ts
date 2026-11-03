@@ -220,6 +220,30 @@ function applySetClause(row: Record<string, any>, setPart: string, params: any[]
   }
 }
 
+/**
+ * Keeps only the columns a SELECT names (`col`, `alias.col`, `alias.col AS name`). Rows pass
+ * through unchanged for `*` or computed columns. Without this, the JSON store returned whole
+ * rows, so a member list carried password hashes and session tokens.
+ */
+function projectSelectedColumns(cleanSql: string, rows: any[]): any[] {
+  const select = cleanSql.match(/^SELECT\s+(.+?)\s+FROM\s/i);
+  if (!select) return rows;
+  const list = select[1];
+  if (list.includes('*') || list.includes('(')) return rows;
+  const cols = list.split(',').map((c) => {
+    const m = c.trim().match(/^(?:[a-z0-9_]+\.)?([a-z0-9_]+)(?:\s+as\s+([a-z0-9_]+))?$/i);
+    return m ? { from: m[1], to: m[2] || m[1] } : null;
+  });
+  if (cols.some((c) => !c)) return rows;
+  return rows.map((r) => {
+    const out: Record<string, any> = {};
+    cols.forEach((c) => {
+      out[c!.to] = r[c!.from];
+    });
+    return out;
+  });
+}
+
 function createFallbackDatabase() {
   let store: {
     tenants: Record<string, any>;
@@ -831,17 +855,20 @@ function createFallbackDatabase() {
 
           return undefined;
         },
+        // Note: WHERE clauses are NOT applied here; callers that filter must also filter in code.
+        // The selected column list is honoured, so a query never returns columns it didn't ask for.
         all: (...params: any[]) => {
+          const pick = (rows: any[]) => projectSelectedColumns(cleanSql, rows);
           if (cleanSql.includes('FROM packages')) {
             const allPkg = Object.values(store.packages);
-            if (cleanSql.includes('WHERE is_active = 1')) return allPkg.filter((p: any) => p.is_active);
-            return allPkg;
+            if (cleanSql.includes('WHERE is_active = 1')) return pick(allPkg.filter((p: any) => p.is_active));
+            return pick(allPkg);
           }
-          if (cleanSql.includes('FROM tenants')) return Object.values(store.tenants);
-          if (cleanSql.includes('FROM users')) return Object.values(store.users);
-          if (cleanSql.includes('FROM events')) return Object.values(store.events);
-          if (cleanSql.includes('FROM audit_logs')) return store.audit_logs.slice(0, 500);
-          if (cleanSql.includes('FROM event_trackers')) return Object.values(store.event_trackers);
+          if (cleanSql.includes('FROM tenants')) return pick(Object.values(store.tenants));
+          if (cleanSql.includes('FROM users')) return pick(Object.values(store.users));
+          if (cleanSql.includes('FROM events')) return pick(Object.values(store.events));
+          if (cleanSql.includes('FROM audit_logs')) return pick(store.audit_logs.slice(0, 500));
+          if (cleanSql.includes('FROM event_trackers')) return pick(Object.values(store.event_trackers));
           return [];
         },
       };

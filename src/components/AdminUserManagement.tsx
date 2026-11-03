@@ -184,13 +184,15 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ curren
   const skipperCount = userList.filter((u) => u.role === 'SKIPPER').length;
   const suspendedCount = userList.filter((u) => u.status === 'SUSPENDED').length;
 
-  if (currentUser.email?.toLowerCase().trim() !== 'irsyadismail@gmail.com') {
+  // Club admins manage their own club; the server decides exactly which users each admin may see and change
+  const canManageUsers = currentUser.role === 'ADMIN' || !!currentUser.isSuperAdmin || currentUser.email?.toLowerCase().trim() === 'irsyadismail@gmail.com';
+  if (!canManageUsers) {
     return (
       <div className="p-8 text-center bg-slate-950/60 border border-red-500/30 rounded-2xl text-slate-300">
         <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
         <h3 className="text-base font-bold text-white mb-1">Access Restricted</h3>
         <p className="text-xs text-slate-400 font-mono">
-          The User Directory is universally restricted to irsyadismail@gmail.com.
+          Only club admins can manage members.
         </p>
       </div>
     );
@@ -396,6 +398,11 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ curren
                                 </span>
                               ) : null}
                             </div>
+                            {u.requestedRole === 'RACE_OFFICER' && (
+                              <div className="mt-0.5 inline-block px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono text-[9px]">
+                                WANTS RACE OFFICER: set role below to approve
+                              </div>
+                            )}
                             <div className="text-slate-400 font-mono text-[11px] flex items-center gap-2">
                               <span>@{u.username}</span>
                               <span>•</span>
