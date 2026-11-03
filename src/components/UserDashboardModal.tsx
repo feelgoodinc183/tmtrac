@@ -113,29 +113,29 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   return (
     <div
       id="user-dashboard-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-lb-slate-950/85 backdrop-blur-md overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-canvas/85 backdrop-blur-md overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="user-dashboard-modal-card"
-        className="bg-lb-slate-900 border border-ll-slate-700/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col text-lt-slate-100"
+        className="bg-surface border border-line/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col text-ink"
       >
         {/* Top Profile Banner - Responsive for Mobile & Desktop */}
-        <div className="bg-gradient-to-r from-lb-slate-950 via-lb-slate-900 to-lb-slate-950 px-3.5 py-2.5 sm:px-5 sm:py-3 border-b border-ll-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 relative">
+        <div className="bg-gradient-to-r from-canvas via-surface to-canvas px-3.5 py-2.5 sm:px-5 sm:py-3 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 relative">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-8 sm:pr-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-lb-cyan-600 to-lb-teal-500 p-0.5 shadow shrink-0">
-              <div className="w-full h-full bg-lb-slate-900 rounded-[10px] flex items-center justify-center text-lt-cyan-400 font-bold text-sm sm:text-base">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-accent to-accent p-0.5 shadow shrink-0">
+              <div className="w-full h-full bg-surface rounded-[10px] flex items-center justify-center text-accent font-bold text-sm sm:text-base">
                 {user.fullName.charAt(0) || 'S'}
               </div>
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-lt-white truncate max-w-[160px] sm:max-w-none">
+                <h2 className="text-sm sm:text-base font-bold text-ink truncate max-w-[160px] sm:max-w-none">
                   {user.fullName}
                 </h2>
-                <span className="px-2 py-0.5 bg-lb-00d4ff/10 border border-ll-00d4ff/40 text-lt-00d4ff text-xs sm:text-xs font-mono font-bold rounded-md uppercase tracking-wider shadow-sm shrink-0 inline-flex items-center">
+                <span className="px-2 py-0.5 bg-accent/10 border border-accent/40 text-accent text-xs sm:text-xs font-bold rounded-md shadow-sm shrink-0 inline-flex items-center">
                   {user.role === 'ADMIN'
                     ? 'Administrator'
                     : user.role === 'RACE_OFFICER'
@@ -145,14 +145,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     : 'Member'}
                 </span>
               </div>
-              <p className="text-xs sm:text-xs text-lt-slate-400 flex flex-wrap items-center gap-1 sm:gap-1.5 font-mono min-w-0 mt-0.5">
-                <span className="text-lt-00d4ff/90 font-medium shrink-0">@{user.username}</span>
-                <span className="text-lt-slate-600 shrink-0">•</span>
-                <span className="text-lt-slate-200 truncate max-w-[140px] sm:max-w-[220px] md:max-w-none">{user.sailingClub || 'Maritime Club'}</span>
+              <p className="text-xs sm:text-xs text-ink-muted flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0 mt-0.5">
+                <span className="text-accent/90 font-medium shrink-0">@{user.username}</span>
+                <span className="text-ink-muted shrink-0">•</span>
+                <span className="text-ink truncate max-w-[140px] sm:max-w-[220px] md:max-w-none">{user.sailingClub || 'Maritime Club'}</span>
                 {user.sailNumber && (
                   <>
-                    <span className="text-lt-slate-600 shrink-0">•</span>
-                    <span className="px-1.5 py-0.5 bg-lb-cyan-950/70 border border-ll-cyan-800/70 text-lt-cyan-300 rounded font-semibold text-xs sm:text-xs shrink-0 inline-flex items-center">
+                    <span className="text-ink-muted shrink-0">•</span>
+                    <span className="px-1.5 py-0.5 bg-surface/70 border border-accent/70 text-accent rounded font-semibold text-xs sm:text-xs shrink-0 inline-flex items-center">
                       {user.sailNumber}
                     </span>
                   </>
@@ -161,14 +161,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-end sm:justify-start gap-1.5 sm:gap-2 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-ll-slate-800/60">
+          <div className="flex items-center justify-end sm:justify-start gap-1.5 sm:gap-2 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-line/60">
             <button
               id="dashboard-host-room-btn"
               onClick={() => {
                 onClose();
                 onOpenCreateRoom();
               }}
-              className="px-2.5 py-1.5 bg-gradient-to-r from-lb-cyan-600 to-lb-teal-600 hover:from-lb-cyan-500 hover:to-lb-teal-500 text-lt-white text-xs font-semibold rounded-lg transition shadow flex items-center justify-center gap-1 flex-1 sm:flex-initial"
+              className="px-2.5 py-1.5 bg-gradient-to-r from-accent to-accent hover:from-accent hover:to-accent text-ink text-xs font-semibold rounded-lg transition shadow flex items-center justify-center gap-1 flex-1 sm:flex-initial"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Host Room</span>
@@ -176,7 +176,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <button
               id="dashboard-logout-btn"
               onClick={handleLogout}
-              className="px-2.5 py-1.5 bg-lb-slate-800/80 hover:bg-lb-red-950/50 hover:text-lt-red-300 border border-ll-slate-700 text-lt-slate-300 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 flex-1 sm:flex-initial"
+              className="px-2.5 py-1.5 bg-raised/80 hover:bg-surface/50 hover:text-danger-ink border border-line text-ink text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 flex-1 sm:flex-initial"
               title="Sign Out"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -185,7 +185,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <button
               id="dashboard-close-btn"
               onClick={onClose}
-              className="p-1.5 text-lt-slate-400 hover:text-lt-white rounded-lg hover:bg-lb-slate-800 transition absolute top-2.5 right-2.5 sm:static sm:top-auto sm:right-auto sm:ml-0.5"
+              className="p-1.5 text-ink-muted hover:text-ink rounded-lg hover:bg-raised transition absolute top-2.5 right-2.5 sm:static sm:top-auto sm:right-auto sm:ml-0.5"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -194,14 +194,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         </div>
 
         {/* Tab Navigation - Scrollable on mobile vertical / horizontal */}
-        <div className="flex border-b border-ll-slate-800 bg-lb-slate-950/60 px-3 sm:px-6 gap-1 overflow-x-auto no-scrollbar">
+        <div className="flex border-b border-line bg-canvas/60 px-3 sm:px-6 gap-1 overflow-x-auto no-scrollbar">
           <button
             id="tab-dashboard-overview"
             onClick={() => setActiveTab('overview')}
             className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
               activeTab === 'overview'
-                ? 'border-ll-cyan-400 text-lt-cyan-400'
-                : 'border-transparent text-lt-slate-400 hover:text-lt-slate-200'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
             <BarChart2 className="w-4 h-4" />
@@ -215,8 +215,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             }}
             className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
               activeTab === 'my_rooms'
-                ? 'border-ll-cyan-400 text-lt-cyan-400'
-                : 'border-transparent text-lt-slate-400 hover:text-lt-slate-200'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
             <Anchor className="w-4 h-4" />
@@ -227,11 +227,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             onClick={() => setActiveTab('history')}
             className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
               activeTab === 'history'
-                ? 'border-ll-cyan-400 text-lt-cyan-400'
-                : 'border-transparent text-lt-slate-400 hover:text-lt-slate-200'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
-            <Trophy className="w-4 h-4 text-lt-amber-400" />
+            <Trophy className="w-4 h-4 text-warning-ink" />
             Race History & Logbook
           </button>
           <button
@@ -239,8 +239,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             onClick={() => setActiveTab('profile')}
             className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
               activeTab === 'profile'
-                ? 'border-ll-cyan-400 text-lt-cyan-400'
-                : 'border-transparent text-lt-slate-400 hover:text-lt-slate-200'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
             <Edit3 className="w-4 h-4" />
@@ -253,13 +253,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               onClick={() => setActiveTab('admin_users')}
               className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
                 activeTab === 'admin_users'
-                  ? 'border-ll-amber-400 text-lt-amber-400 bg-lb-amber-950/20'
-                  : 'border-transparent text-lt-amber-400/80 hover:text-lt-amber-300'
+                  ? 'border-warning-ink text-warning-ink bg-surface/20'
+                  : 'border-transparent text-warning-ink/80 hover:text-warning-ink'
               }`}
             >
-              <Shield className="w-4 h-4 text-lt-amber-400" />
+              <Shield className="w-4 h-4 text-warning-ink" />
               <span>User Directory</span>
-              <span className="px-1.5 py-0.2 rounded bg-lb-amber-500/20 text-lt-amber-300 text-xs font-mono font-bold border border-ll-amber-500/30">
+              <span className="px-1.5 py-0.2 rounded bg-warning-ink/20 text-warning-ink text-xs font-bold border border-warning-ink/30">
                 ADMIN
               </span>
             </button>
@@ -274,12 +274,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {/* Performance tiles. Only Hosted Rooms is backed by real data today; the others are
                   not recorded by the app yet, so they say so instead of showing a number. */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <div className="bg-lb-slate-950/70 border border-ll-slate-800 p-3 sm:p-4 rounded-xl">
-                  <div className="text-xs sm:text-xs text-lt-slate-400 font-semibold uppercase tracking-wider">
+                <div className="bg-canvas/70 border border-line p-3 sm:p-4 rounded-xl">
+                  <div className="text-xs sm:text-xs text-ink-muted font-semibold">
                     Hosted Rooms
                   </div>
-                  <div className="text-xl sm:text-2xl font-black text-lt-white mt-1">{myRooms.length}</div>
-                  <div className="text-xs text-lt-cyan-400 mt-0.5">Regattas you host</div>
+                  <div className="text-xl sm:text-2xl font-black text-ink mt-1">{myRooms.length}</div>
+                  <div className="text-xs text-accent mt-0.5">Regattas you host</div>
                 </div>
 
                 {[
@@ -289,48 +289,48 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   'VMG Efficiency',
                   'Win / Podium Rate',
                 ].map((label) => (
-                  <div key={label} className="bg-lb-slate-950/70 border border-ll-slate-800 p-3 sm:p-4 rounded-xl">
-                    <div className="text-xs sm:text-xs text-lt-slate-400 font-semibold uppercase tracking-wider">
+                  <div key={label} className="bg-canvas/70 border border-line p-3 sm:p-4 rounded-xl">
+                    <div className="text-xs sm:text-xs text-ink-muted font-semibold">
                       {label}
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-lt-slate-500 mt-1" aria-label="Not tracked yet">
+                    <div className="text-xl sm:text-2xl font-black text-ink-muted mt-1" aria-label="Not tracked yet">
                       —
                     </div>
-                    <div className="text-xs text-lt-slate-400 mt-0.5">Not tracked yet</div>
+                    <div className="text-xs text-ink-muted mt-0.5">Not tracked yet</div>
                   </div>
                 ))}
               </div>
 
               {/* Sailor Status Card */}
-              <div className="bg-gradient-to-br from-lb-slate-950 to-lb-slate-900 border border-ll-slate-800 rounded-2xl p-4 sm:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ll-slate-800 pb-4">
+              <div className="bg-gradient-to-br from-canvas to-surface border border-line rounded-2xl p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
                   <div>
-                    <h3 className="text-sm sm:text-base font-bold text-lt-white flex items-center gap-2">
-                      <Award className="w-5 h-5 text-lt-amber-400" />
+                    <h3 className="text-sm sm:text-base font-bold text-ink flex items-center gap-2">
+                      <Award className="w-5 h-5 text-warning-ink" />
                       Regatta Accreditation & Yacht Dossier
                     </h3>
-                    <p className="text-xs text-lt-slate-400">
+                    <p className="text-xs text-ink-muted">
                       Authoritative status for international regattas and club races
                     </p>
                   </div>
-                  <span className="px-3 py-1 bg-lb-emerald-950/60 border border-ll-emerald-800/60 text-lt-emerald-300 text-xs font-semibold rounded-full self-start sm:self-auto flex items-center gap-1.5">
+                  <span className="px-3 py-1 bg-surface/60 border border-success-ink/60 text-success-ink text-xs font-semibold rounded-full self-start sm:self-auto flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Verified Skipper / RC
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 text-xs">
-                  <div className="p-3 bg-lb-slate-900/80 rounded-xl border border-ll-slate-800">
-                    <div className="text-lt-slate-400 mb-1">Affiliated Club</div>
-                    <div className="text-lt-white font-semibold">{user.sailingClub || 'Independent'}</div>
+                  <div className="p-3 bg-surface/80 rounded-xl border border-line">
+                    <div className="text-ink-muted mb-1">Affiliated Club</div>
+                    <div className="text-ink font-semibold">{user.sailingClub || 'Independent'}</div>
                   </div>
-                  <div className="p-3 bg-lb-slate-900/80 rounded-xl border border-ll-slate-800">
-                    <div className="text-lt-slate-400 mb-1">Registered Sail Number</div>
-                    <div className="text-lt-cyan-400 font-mono font-bold">{user.sailNumber || 'Unassigned'}</div>
+                  <div className="p-3 bg-surface/80 rounded-xl border border-line">
+                    <div className="text-ink-muted mb-1">Registered Sail Number</div>
+                    <div className="text-accent font-bold">{user.sailNumber || 'Unassigned'}</div>
                   </div>
-                  <div className="p-3 bg-lb-slate-900/80 rounded-xl border border-ll-slate-800">
-                    <div className="text-lt-slate-400 mb-1">Handicap Certificate</div>
-                    <div className="text-lt-amber-300 font-mono font-bold">{user.handicapRating || 'Standard IRC'}</div>
+                  <div className="p-3 bg-surface/80 rounded-xl border border-line">
+                    <div className="text-ink-muted mb-1">Handicap Certificate</div>
+                    <div className="text-warning-ink font-bold">{user.handicapRating || 'Standard IRC'}</div>
                   </div>
                 </div>
               </div>
@@ -342,10 +342,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-lt-white">
+                  <h3 className="text-sm sm:text-base font-bold text-ink">
                     Hosted Regatta Sessions
                   </h3>
-                  <p className="text-xs text-lt-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Rooms created under your account. You can launch, edit PINs, or delete sessions.
                   </p>
                 </div>
@@ -354,7 +354,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     id="refresh-my-rooms-btn"
                     onClick={loadUserRooms}
                     disabled={loadingRooms}
-                    className="p-2 text-lt-slate-400 hover:text-lt-white bg-lb-slate-800 hover:bg-lb-slate-700 rounded-xl transition"
+                    className="p-2 text-ink-muted hover:text-ink bg-raised hover:bg-raised rounded-xl transition"
                     title="Refresh rooms"
                   >
                     <RefreshCw className={`w-4 h-4 ${loadingRooms ? 'animate-spin' : ''}`} />
@@ -365,7 +365,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       onClose();
                       onOpenCreateRoom();
                     }}
-                    className="px-3 py-2 bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
+                    className="px-3 py-2 bg-accent hover:brightness-110 text-on-accent text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
                   >
                     <Plus className="w-4 h-4" />
                     Host New Regatta
@@ -374,14 +374,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
 
               {loadingRooms ? (
-                <div className="p-8 text-center text-lt-slate-400 text-xs">
+                <div className="p-8 text-center text-ink-muted text-xs">
                   Loading your hosted regatta rooms...
                 </div>
               ) : myRooms.length === 0 ? (
-                <div className="p-8 text-center bg-lb-slate-950/60 border border-ll-slate-800 rounded-2xl">
-                  <Anchor className="w-8 h-8 text-lt-slate-600 mx-auto mb-2" />
-                  <p className="text-sm text-lt-slate-300 font-semibold">No hosted rooms yet</p>
-                  <p className="text-xs text-lt-slate-500 mt-1 max-w-sm mx-auto">
+                <div className="p-8 text-center bg-canvas/60 border border-line rounded-2xl">
+                  <Anchor className="w-8 h-8 text-ink-muted mx-auto mb-2" />
+                  <p className="text-sm text-ink font-semibold">No hosted rooms yet</p>
+                  <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
                     Create a regatta room to start hosting live fleet tracking, course mark layout, and race signals.
                   </p>
                   <button
@@ -390,7 +390,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       onClose();
                       onOpenCreateRoom();
                     }}
-                    className="mt-4 px-4 py-2 bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white text-xs font-semibold rounded-xl inline-flex items-center gap-2"
+                    className="mt-4 px-4 py-2 bg-accent hover:brightness-110 text-on-accent text-xs font-semibold rounded-xl inline-flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Host Your First Regatta
@@ -401,48 +401,48 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {myRooms.map((room) => (
                     <div
                       key={room.code}
-                      className="p-4 bg-lb-slate-950/70 border border-ll-slate-800 rounded-2xl flex flex-col justify-between hover:border-ll-slate-700 transition-all"
+                      className="p-4 bg-canvas/70 border border-line rounded-2xl flex flex-col justify-between hover:border-line transition-all"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <span className="px-2 py-0.5 bg-lb-cyan-950 border border-ll-cyan-800/80 text-lt-cyan-300 font-mono font-bold text-xs rounded-md">
+                          <span className="px-2 py-0.5 bg-surface border border-accent/80 text-accent font-bold text-xs rounded-md">
                             #{room.code}
                           </span>
-                          <span className="px-2 py-0.5 bg-lb-slate-800 text-lt-slate-300 text-xs font-semibold rounded uppercase">
+                          <span className="px-2 py-0.5 bg-raised text-ink text-xs font-semibold rounded">
                             {room.raceStatus || 'PRE_START'}
                           </span>
                         </div>
 
-                        <h4 className="text-sm font-bold text-lt-white mb-1">
+                        <h4 className="text-sm font-bold text-ink mb-1">
                           {room.title}
                         </h4>
-                        <div className="text-xs text-lt-slate-400 flex items-center gap-1.5 mb-3">
-                          <MapPin className="w-3.5 h-3.5 text-lt-slate-500 shrink-0" />
+                        <div className="text-xs text-ink-muted flex items-center gap-1.5 mb-3">
+                          <MapPin className="w-3.5 h-3.5 text-ink-muted shrink-0" />
                           <span className="truncate">{room.locationName}</span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2 p-2 bg-lb-slate-900/80 rounded-xl text-center text-xs mb-4">
+                        <div className="grid grid-cols-3 gap-2 p-2 bg-surface/80 rounded-xl text-center text-xs mb-4">
                           <div>
-                            <div className="text-lt-slate-500 text-xs">Boats</div>
-                            <div className="font-bold text-lt-white">{room.boatCount || 0}</div>
+                            <div className="text-ink-muted text-xs">Boats</div>
+                            <div className="font-bold text-ink">{room.boatCount || 0}</div>
                           </div>
                           <div>
-                            <div className="text-lt-slate-500 text-xs">Marks</div>
-                            <div className="font-bold text-lt-white">{room.markCount || 0}</div>
+                            <div className="text-ink-muted text-xs">Marks</div>
+                            <div className="font-bold text-ink">{room.markCount || 0}</div>
                           </div>
                           <div>
-                            <div className="text-lt-slate-500 text-xs">Active</div>
-                            <div className="font-bold text-lt-cyan-400">{room.activeClients || 1}</div>
+                            <div className="text-ink-muted text-xs">Active</div>
+                            <div className="font-bold text-accent">{room.activeClients || 1}</div>
                           </div>
                         </div>
                       </div>
 
                       {/* Management Action Buttons */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-ll-slate-800/80">
+                      <div className="flex items-center gap-2 pt-2 border-t border-line/80">
                         <button
                           id={`join-myroom-${room.code}`}
                           onClick={() => handleJoinRoom(room.code)}
-                          className="flex-1 py-1.5 px-3 bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+                          className="flex-1 py-1.5 px-3 bg-accent hover:brightness-110 text-on-accent text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           Launch Room
@@ -451,7 +451,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <button
                           id={`edit-pin-myroom-${room.code}`}
                           onClick={() => setSelectedRoomForPin(room)}
-                          className="p-1.5 text-lt-slate-300 hover:text-lt-amber-400 bg-lb-slate-800 hover:bg-slate-750 border border-ll-slate-700 rounded-lg transition"
+                          className="p-1.5 text-ink hover:text-warning-ink bg-raised hover:bg-slate-750 border border-line rounded-lg transition"
                           title="Edit Room PIN"
                         >
                           <KeyRound className="w-4 h-4" />
@@ -460,7 +460,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <button
                           id={`delete-myroom-${room.code}`}
                           onClick={() => setSelectedRoomForDelete(room)}
-                          className="p-1.5 text-lt-slate-300 hover:text-lt-red-400 bg-lb-slate-800 hover:bg-slate-750 border border-ll-slate-700 rounded-lg transition"
+                          className="p-1.5 text-ink hover:text-danger-ink bg-raised hover:bg-slate-750 border border-line rounded-lg transition"
                           title="Delete Room"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -478,17 +478,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-lt-white">
+                  <h3 className="text-sm sm:text-base font-bold text-ink">
                     Sailing Regatta Logbook
                   </h3>
-                  <p className="text-xs text-lt-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Official race participation, finish rankings, and race committee service
                   </p>
                 </div>
               </div>
 
               {!user.raceHistory || user.raceHistory.length === 0 ? (
-                <div className="p-8 text-center bg-lb-slate-950/60 border border-ll-slate-800 rounded-2xl text-lt-slate-400 text-xs">
+                <div className="p-8 text-center bg-canvas/60 border border-line rounded-2xl text-ink-muted text-xs">
                   No historic regatta records found for this account.
                 </div>
               ) : (
@@ -496,24 +496,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {user.raceHistory.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3.5 sm:p-4 bg-lb-slate-950/70 border border-ll-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="p-3.5 sm:p-4 bg-canvas/70 border border-line rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-bold text-lt-white">
+                          <span className="text-sm font-bold text-ink">
                             {item.regattaName}
                           </span>
-                          <span className="px-1.5 py-0.5 bg-lb-slate-800 text-lt-cyan-300 font-mono text-xs rounded">
+                          <span className="px-1.5 py-0.5 bg-raised text-accent text-xs rounded">
                             #{item.roomCode}
                           </span>
                           {item.rank && (
                             <span
                               className={`px-2 py-0.5 text-xs font-bold rounded flex items-center gap-1 ${
                                 item.rank === 1
-                                  ? 'bg-lb-amber-500/20 text-lt-amber-300 border border-ll-amber-500/40'
+                                  ? 'bg-warning-ink/20 text-warning-ink border border-warning-ink/40'
                                   : item.rank === 2
-                                  ? 'bg-lb-slate-300/20 text-lt-slate-200 border border-ll-slate-400/40'
-                                  : 'bg-lb-amber-700/20 text-lt-amber-400 border border-ll-amber-700/40'
+                                  ? 'bg-ink/20 text-ink border border-line/40'
+                                  : 'bg-warning-ink/20 text-warning-ink border border-warning-ink/40'
                               }`}
                             >
                               <Trophy className="w-3 h-3" />
@@ -522,20 +522,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           )}
                         </div>
 
-                        <div className="text-xs text-lt-slate-400 flex flex-wrap items-center gap-3">
+                        <div className="text-xs text-ink-muted flex flex-wrap items-center gap-3">
                           <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-lt-slate-500" />
+                            <Calendar className="w-3.5 h-3.5 text-ink-muted" />
                             {item.date}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-lt-slate-500" />
+                            <MapPin className="w-3.5 h-3.5 text-ink-muted" />
                             {item.locationName}
                           </span>
                           {item.boatName && (
                             <>
                               <span>•</span>
-                              <span className="text-lt-slate-300 font-medium">{item.boatName}</span>
+                              <span className="text-ink font-medium">{item.boatName}</span>
                             </>
                           )}
                         </div>
@@ -543,11 +543,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                       <div className="flex items-center gap-3 self-end sm:self-auto text-right">
                         <div>
-                          <div className="text-xs font-semibold text-lt-white uppercase">
+                          <div className="text-xs font-semibold text-ink">
                             {item.role === 'RACE_OFFICER' ? 'Race Officer' : 'Skipper'}
                           </div>
                           {item.elapsedTime && (
-                            <div className="text-xs font-mono text-lt-cyan-400">
+                            <div className="text-xs text-accent">
                               {item.elapsedTime}
                             </div>
                           )}
@@ -555,10 +555,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <span
                           className={`px-2 py-1 text-xs font-bold rounded-lg ${
                             item.status === 'PODIUM'
-                              ? 'bg-lb-amber-950/80 text-lt-amber-300 border border-ll-amber-800'
+                              ? 'bg-surface/80 text-warning-ink border border-warning-ink'
                               : item.status === 'ORGANIZED'
-                              ? 'bg-lb-cyan-950/80 text-lt-cyan-300 border border-ll-cyan-800'
-                              : 'bg-lb-slate-800 text-lt-slate-300'
+                              ? 'bg-surface/80 text-accent border border-accent'
+                              : 'bg-raised text-ink'
                           }`}
                         >
                           {item.status}
@@ -575,24 +575,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           {activeTab === 'profile' && (
             <div className="max-w-xl mx-auto space-y-4">
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-lt-white">
+                <h3 className="text-sm sm:text-base font-bold text-ink">
                   Edit Sailor Profile & Specifications
                 </h3>
-                <p className="text-xs text-lt-slate-400">
+                <p className="text-xs text-ink-muted">
                   Update your display name, affiliated sailing club, and handicap rating.
                 </p>
               </div>
 
               {profileSuccess && (
-                <div className="p-3 bg-lb-emerald-950/60 border border-ll-emerald-800 text-lt-emerald-300 text-xs rounded-xl flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-lt-emerald-400 shrink-0" />
+                <div className="p-3 bg-surface/60 border border-success-ink text-success-ink text-xs rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0" />
                   <span>Profile updated successfully!</span>
                 </div>
               )}
 
-              <form onSubmit={handleSaveProfile} className="space-y-4 bg-lb-slate-950/60 p-4 sm:p-5 rounded-2xl border border-ll-slate-800">
+              <form onSubmit={handleSaveProfile} className="space-y-4 bg-canvas/60 p-4 sm:p-5 rounded-2xl border border-line">
                 <div>
-                  <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
                     Full Name
                   </label>
                   <input
@@ -601,12 +601,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-lb-slate-900 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white focus:outline-none focus:border-ll-cyan-500"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
                     Sailing Club or Association
                   </label>
                   <input
@@ -614,13 +614,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     type="text"
                     value={sailingClub}
                     onChange={(e) => setSailingClub(e.target.value)}
-                    className="w-full bg-lb-slate-900 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white focus:outline-none focus:border-ll-cyan-500"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-ink mb-1.5">
                       Default Sail Number
                     </label>
                     <input
@@ -629,11 +629,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       value={sailNumber}
                       onChange={(e) => setSailNumber(e.target.value)}
                       placeholder="e.g. MAS 2026"
-                      className="w-full bg-lb-slate-900 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white focus:outline-none focus:border-ll-cyan-500"
+                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-ink mb-1.5">
                       Handicap / Rating
                     </label>
                     <input
@@ -642,7 +642,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       value={handicapRating}
                       onChange={(e) => setHandicapRating(e.target.value)}
                       placeholder="e.g. IRC 1.000"
-                      className="w-full bg-lb-slate-900 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white focus:outline-none focus:border-ll-cyan-500"
+                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
                     />
                   </div>
                 </div>
@@ -651,7 +651,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   id="save-profile-btn"
                   type="submit"
                   disabled={profileSaving}
-                  className="w-full py-2.5 px-4 bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white font-semibold rounded-xl text-xs sm:text-sm transition shadow disabled:opacity-50"
+                  className="w-full py-2.5 px-4 bg-accent hover:brightness-110 text-on-accent font-semibold rounded-xl text-xs sm:text-sm transition shadow disabled:opacity-50"
                 >
                   {profileSaving ? 'Saving Changes...' : 'Save Profile Changes'}
                 </button>

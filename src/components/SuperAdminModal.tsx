@@ -371,7 +371,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   const renderDialogFeedback = () => {
     if (dialogInfo) {
       return (
-        <div role="status" className="rounded-lg border border-ll-emerald-500/40 bg-lb-emerald-950/60 px-3 py-2.5 text-xs text-lt-emerald-100">
+        <div role="status" className="rounded-lg border border-success-ink/40 bg-surface/60 px-3 py-2.5 text-xs text-success-ink">
           {dialogInfo}
         </div>
       );
@@ -379,12 +379,12 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
     if (!dialogError) return null;
     const accountEmail = (currentUser || authService.getCurrentUser())?.email;
     return (
-      <div role="alert" className="rounded-lg border border-ll-rose-500/50 bg-lb-rose-950/70 px-3 py-2.5 text-xs text-lt-rose-100 space-y-2">
+      <div role="alert" className="rounded-lg border border-danger-ink/50 bg-surface/70 px-3 py-2.5 text-xs text-ink space-y-2">
         <p className="font-semibold">Not saved</p>
         <p>{dialogError.message}</p>
         {dialogError.sessionEnded && accountEmail && (
           <div className="space-y-1.5 pt-1">
-            <label htmlFor="sa-reauth-password" className="block text-lt-rose-100">
+            <label htmlFor="sa-reauth-password" className="block text-ink">
               Password for {accountEmail}
             </label>
             <div className="flex gap-2">
@@ -402,13 +402,13 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     handleReauth();
                   }
                 }}
-                className="flex-1 px-3 py-2 bg-lb-slate-950 border border-ll-rose-500/50 rounded-lg text-lt-white"
+                className="flex-1 px-3 py-2 bg-canvas border border-danger-ink/50 rounded-lg text-ink"
               />
               <button
                 type="button"
                 onClick={handleReauth}
                 disabled={reauthBusy || !reauthPassword}
-                className="px-3 py-2 rounded-lg bg-lb-rose-600 hover:bg-lb-rose-500 disabled:opacity-50 text-lt-white font-semibold"
+                className="px-3 py-2 rounded-lg bg-danger hover:brightness-110 disabled:opacity-50 text-on-danger font-semibold"
               >
                 {reauthBusy ? 'Signing in…' : 'Sign in again'}
               </button>
@@ -847,22 +847,22 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-lb-black/85 backdrop-blur-md animate-fade-in font-sans">
-      <div className="bg-lb-0b101b border border-ll-purple-900/60 rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden text-lt-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-canvas/85 backdrop-blur-md animate-fade-in font-sans">
+      <div className="bg-surface border border-line/60 rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden text-ink">
         {/* Top Header */}
-        <div className="px-5 py-4 bg-lb-0e1424 border-b border-ll-purple-950/80 flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 bg-surface border-b border-line/80 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-lb-purple-700 to-lb-indigo-600 flex items-center justify-center shadow-lg shadow-ll-purple-950/60 ring-1 ring-ll-purple-400/30">
-              <ShieldAlert className="w-5 h-5 text-lt-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-raised to-raised flex items-center justify-center shadow-lg ring-1 ring-line/30">
+              <ShieldAlert className="w-5 h-5 text-ink" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-base font-bold text-lt-white tracking-tight">Super Admin Master Command</h2>
-                <span className="text-xs font-bold px-2 py-0.5 rounded bg-lb-purple-950 text-lt-purple-300 border border-ll-purple-700/60">
+                <h2 className="text-base font-bold text-ink tracking-tight">Super Admin Master Command</h2>
+                <span className="text-xs font-bold px-2 py-0.5 rounded bg-raised text-ink border border-line/60">
                   ROOT PRIVILEGES
                 </span>
               </div>
-              <p className="text-xs text-lt-slate-400">
+              <p className="text-xs text-ink-muted">
                 Central management for users, clubs, dynamic package pricing, database backups & live sockets
               </p>
             </div>
@@ -873,10 +873,10 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               <button
                 type="button"
                 onClick={onOpenCpanelDeploy}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-lb-cyan-950/80 hover:bg-lb-cyan-900 text-lt-cyan-300 border border-ll-cyan-500/50 hover:border-ll-cyan-400 transition-all shadow-xs cursor-pointer"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface/80 hover:brightness-110 text-accent border border-accent/50 hover:border-accent transition-all shadow-xs cursor-pointer"
                 title="cPanel Server Deployment Center & Live ZIP Installer for tmtrac.my"
               >
-                <Server className="w-3.5 h-3.5 text-lt-cyan-400" />
+                <Server className="w-3.5 h-3.5 text-accent" />
                 <span className="hidden sm:inline">cPanel Deployment</span>
                 <span className="sm:hidden">cPanel</span>
               </button>
@@ -885,14 +885,14 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               href={`/api/super-admin/backup/export?token=${encodeURIComponent(getActiveToken())}`}
               target="_blank"
               download
-              className="hidden sm:flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-slate-200 border border-ll-slate-700 transition-colors"
+              className="hidden sm:flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink border border-line transition-colors"
             >
-              <Download className="w-3.5 h-3.5 text-lt-cyan-400" />
+              <Download className="w-3.5 h-3.5 text-accent" />
               <span>Backup DB</span>
             </a>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-lb-slate-800 text-lt-slate-400 hover:text-lt-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -901,16 +901,16 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
         {/* Feedback Toasts */}
         {successMsg && (
-          <div className="bg-lb-emerald-950/90 border-b border-ll-emerald-800 text-lt-emerald-200 text-xs px-5 py-2 flex items-center space-x-2">
-            <Check className="w-4 h-4 text-lt-emerald-400 shrink-0" />
+          <div className="bg-surface/90 border-b border-success-ink text-success-ink text-xs px-5 py-2 flex items-center space-x-2">
+            <Check className="w-4 h-4 text-success-ink shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
         {errorMsg && (
-          <div className="bg-lb-rose-950/95 border-b border-ll-rose-800/80 text-lt-rose-200 text-xs px-5 py-2.5 flex items-center justify-between shadow-inner animate-in fade-in duration-200">
+          <div className="bg-surface/95 border-b border-danger-ink/80 text-danger-ink text-xs px-5 py-2.5 flex items-center justify-between shadow-inner animate-in fade-in duration-200">
             <div className="flex items-center space-x-2.5 min-w-0">
-              <AlertTriangle className="w-4 h-4 text-lt-rose-400 shrink-0" />
-              <span className="font-semibold text-lt-rose-100 tracking-wide text-xs truncate select-text">{errorMsg}</span>
+              <AlertTriangle className="w-4 h-4 text-danger-ink shrink-0" />
+              <span className="font-semibold text-ink text-xs truncate select-text">{errorMsg}</span>
             </div>
             <div className="flex items-center space-x-2 shrink-0 ml-3">
               <button
@@ -920,28 +920,28 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   fetchOverview();
                   fetchPackages();
                 }}
-                className="px-2.5 py-1 rounded bg-lb-rose-900/60 hover:bg-lb-rose-800 text-lt-white text-xs font-semibold border border-ll-rose-700/60 transition-colors"
+                className="px-2.5 py-1 rounded bg-danger/60 hover:brightness-110 text-ink text-xs font-semibold border border-danger-ink/60 transition-colors"
               >
                 Retry
               </button>
               <button
                 type="button"
                 onClick={() => setErrorMsg(null)}
-                className="text-lt-rose-400 hover:text-lt-white p-1 rounded hover:bg-lb-rose-900/40 transition-colors"
-                title="Dismiss message"
+                className="text-danger-ink hover:text-ink p-1 rounded hover:bg-danger/40 transition-colors"
+                aria-label="Dismiss message"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
         {/* Tab Navigation Ribbon */}
-        <div className="flex items-center space-x-1 px-4 py-2 bg-lb-090d16 border-b border-ll-slate-800/80 overflow-x-auto text-xs shrink-0">
+        <div className="flex items-center space-x-1 px-4 py-2 bg-canvas border-b border-line/80 overflow-x-auto text-xs shrink-0">
           <button
             onClick={() => setActiveTab('overview')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              activeTab === 'overview' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'overview' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -951,7 +951,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('packages')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              activeTab === 'packages' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'packages' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Package className="w-3.5 h-3.5" />
@@ -961,7 +961,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              activeTab === 'users' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'users' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -971,7 +971,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('clubs')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              activeTab === 'clubs' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'clubs' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Building className="w-3.5 h-3.5" />
@@ -981,7 +981,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('events')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'events' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'events' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
@@ -991,7 +991,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('database')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'database' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'database' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
@@ -1001,7 +1001,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('sockets')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'sockets' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'sockets' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
@@ -1011,7 +1011,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           <button
             onClick={() => setActiveTab('audit')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              activeTab === 'audit' ? 'bg-lb-purple-900/60 text-lt-purple-200 border border-ll-purple-700/60' : 'text-lt-slate-400 hover:text-lt-slate-200'
+              activeTab === 'audit' ? 'bg-raised/60 text-ink border border-line/60' : 'text-ink-muted hover:text-ink'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -1026,56 +1026,56 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-6">
               {/* Stat Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                  <div className="text-xs text-lt-slate-400 mb-1 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-surface/60 border border-line">
+                  <div className="text-xs text-ink-muted mb-1 flex items-center justify-between">
                     <span>Sailing Clubs</span>
-                    <Building className="w-3.5 h-3.5 text-lt-cyan-400" />
+                    <Building className="w-3.5 h-3.5 text-accent" />
                   </div>
-                  <div className="text-2xl font-bold text-lt-white">{overview?.stats?.clubsCount ?? '...'}</div>
-                  <div className="text-xs text-lt-slate-500 mt-1">Registered tenant orgs</div>
+                  <div className="text-2xl font-bold text-ink">{overview?.stats?.clubsCount ?? '...'}</div>
+                  <div className="text-xs text-ink-muted mt-1">Registered tenant orgs</div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                  <div className="text-xs text-lt-slate-400 mb-1 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-surface/60 border border-line">
+                  <div className="text-xs text-ink-muted mb-1 flex items-center justify-between">
                     <span>User Accounts</span>
-                    <Users className="w-3.5 h-3.5 text-lt-purple-400" />
+                    <Users className="w-3.5 h-3.5 text-ink-muted" />
                   </div>
-                  <div className="text-2xl font-bold text-lt-white">{overview?.stats?.usersCount ?? '...'}</div>
-                  <div className="text-xs text-lt-slate-500 mt-1">Admins, officers & skippers</div>
+                  <div className="text-2xl font-bold text-ink">{overview?.stats?.usersCount ?? '...'}</div>
+                  <div className="text-xs text-ink-muted mt-1">Admins, officers & skippers</div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                  <div className="text-xs text-lt-slate-400 mb-1 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-surface/60 border border-line">
+                  <div className="text-xs text-ink-muted mb-1 flex items-center justify-between">
                     <span>Active Sockets</span>
-                    <Radio className="w-3.5 h-3.5 text-lt-emerald-400" />
+                    <Radio className="w-3.5 h-3.5 text-success-ink" />
                   </div>
-                  <div className="text-2xl font-bold text-lt-emerald-400">{overview?.stats?.activeSocketsCount ?? '...'}</div>
-                  <div className="text-xs text-lt-slate-500 mt-1">Connected WebSocket clients</div>
+                  <div className="text-2xl font-bold text-success-ink">{overview?.stats?.activeSocketsCount ?? '...'}</div>
+                  <div className="text-xs text-ink-muted mt-1">Connected WebSocket clients</div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                  <div className="text-xs text-lt-slate-400 mb-1 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-surface/60 border border-line">
+                  <div className="text-xs text-ink-muted mb-1 flex items-center justify-between">
                     <span>SQLite Storage</span>
-                    <Database className="w-3.5 h-3.5 text-lt-amber-400" />
+                    <Database className="w-3.5 h-3.5 text-warning-ink" />
                   </div>
-                  <div className="text-2xl font-bold text-lt-white">{overview?.stats?.database?.fileSizeMb ?? '0'} MB</div>
-                  <div className="text-xs text-lt-slate-500 mt-1">data/tmtrac.db file</div>
+                  <div className="text-2xl font-bold text-ink">{overview?.stats?.database?.fileSizeMb ?? '0'} MB</div>
+                  <div className="text-xs text-ink-muted mt-1">data/tmtrac.db file</div>
                 </div>
               </div>
 
               {/* Maintenance Tools Row */}
-              <div className="p-5 rounded-xl bg-lb-slate-900/40 border border-ll-slate-800 space-y-4">
+              <div className="p-5 rounded-xl bg-surface/40 border border-line space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-lt-white">Platform Maintenance & Backups</h3>
-                    <p className="text-xs text-lt-slate-400">Download database dumps or JSON tables for off-site disaster recovery</p>
+                    <h3 className="text-sm font-bold text-ink">Platform Maintenance & Backups</h3>
+                    <p className="text-xs text-ink-muted">Download database dumps or JSON tables for off-site disaster recovery</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <a
                       href={`/api/super-admin/backup/export?token=${encodeURIComponent(getActiveToken())}`}
                       target="_blank"
                       download
-                      className="px-3 py-1.5 rounded-lg bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-accent hover:brightness-110 text-on-accent text-xs font-semibold flex items-center space-x-1.5 transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download .db File</span>
@@ -1084,7 +1084,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       href={`/api/super-admin/backup/export?format=json&token=${encodeURIComponent(getActiveToken())}`}
                       target="_blank"
                       download
-                      className="px-3 py-1.5 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs font-semibold flex items-center space-x-1.5 transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Export JSON</span>
@@ -1093,7 +1093,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     <button
                       type="button"
                       onClick={() => jsonInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-sm"
+                      className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-sm"
                       title="Upload and restore a database JSON export from AI Studio or local backup"
                     >
                       <Upload className="w-3.5 h-3.5" />
@@ -1113,8 +1113,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               {/* Active Regatta Rooms Telemetry */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-lt-white">Active In-Memory Regattas</h3>
-                  <button onClick={fetchOverview} className="text-xs text-lt-cyan-400 hover:text-lt-cyan-300 flex items-center space-x-1">
+                  <h3 className="text-sm font-bold text-ink">Active In-Memory Regattas</h3>
+                  <button onClick={fetchOverview} className="text-xs text-accent hover:text-accent flex items-center space-x-1">
                     <RefreshCw className="w-3 h-3" />
                     <span>Refresh</span>
                   </button>
@@ -1122,18 +1122,18 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {(overview?.activeRooms || []).map((r: any) => (
-                    <div key={r.code} className="p-4 rounded-xl bg-lb-slate-900/80 border border-ll-slate-800 flex items-center justify-between">
+                    <div key={r.code} className="p-4 rounded-xl bg-surface/80 border border-line flex items-center justify-between">
                       <div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-bold text-xs text-lt-white">{r.title}</span>
-                          <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-lb-cyan-950 text-lt-cyan-400 border border-ll-cyan-800">
+                          <span className="font-bold text-xs text-ink">{r.title}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-surface text-accent border border-accent">
                             {r.code}
                           </span>
                         </div>
-                        <div className="text-xs text-lt-slate-400 mt-1">
+                        <div className="text-xs text-ink-muted mt-1">
                           Tenant: {r.tenantName} • Status: {r.raceStatus}
                         </div>
-                        <div className="text-xs text-lt-slate-500 mt-0.5">
+                        <div className="text-xs text-ink-muted mt-0.5">
                           {r.boatCount} Boats • {r.markCount} Marks • {r.activeClients} Active Viewers
                         </div>
                       </div>
@@ -1144,7 +1144,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                             onClose();
                             onViewEvent(r.code);
                           }}
-                          className="p-2 rounded-lg bg-lb-slate-800 hover:bg-lb-cyan-600 hover:text-lt-white text-lt-slate-400 transition-colors"
+                          className="p-2 rounded-lg bg-raised hover:brightness-110 hover:text-ink text-ink-muted transition-colors"
                           title="Open Live Race"
                         >
                           <ArrowUpRight className="w-4 h-4" />
@@ -1162,8 +1162,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">Dynamic Pricing Packages</h3>
-                  <p className="text-xs text-lt-slate-400">
+                  <h3 className="text-sm font-bold text-ink">Dynamic Pricing Packages</h3>
+                  <p className="text-xs text-ink-muted">
                     Modifying packages directly updates the front landing page and subscription modals in real time
                   </p>
                 </div>
@@ -1189,7 +1189,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       sortOrder: 10,
                     });
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white text-xs font-semibold flex items-center space-x-1.5 shadow-md"
+                  className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs font-semibold flex items-center space-x-1.5 shadow-md"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Create Package</span>
@@ -1199,61 +1199,61 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               {/* Package Cards List */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {packages.map((pkg) => (
-                  <div key={pkg.id} className="p-5 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800 flex flex-col justify-between">
+                  <div key={pkg.id} className="p-5 rounded-xl bg-surface/60 border border-line flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-lt-white">{pkg.displayTitle}</span>
-                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-lb-slate-800 text-lt-slate-400">
+                        <span className="text-sm font-bold text-ink">{pkg.displayTitle}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-raised text-ink-muted">
                           {pkg.tierKey}
                         </span>
                       </div>
 
-                      <div className="text-2xl font-extrabold text-lt-white mb-2">
+                      <div className="text-2xl font-extrabold text-ink mb-2">
                         {pkg.priceAmount === 0 ? 'Free' : `${pkg.currencySymbol || '$'}${pkg.priceAmount}`}
-                        <span className="text-xs text-lt-slate-400 font-normal"> / {pkg.billingInterval}</span>
+                        <span className="text-xs text-ink-muted font-normal"> / {pkg.billingInterval}</span>
                       </div>
 
-                      <p className="text-xs text-lt-slate-400 mb-4">{pkg.description}</p>
+                      <p className="text-xs text-ink-muted mb-4">{pkg.description}</p>
 
-                      <div className="p-2.5 rounded-lg bg-lb-slate-950/60 border border-ll-slate-800 text-xs space-y-1 mb-4">
-                        <div className="flex justify-between text-lt-slate-400">
+                      <div className="p-2.5 rounded-lg bg-canvas/60 border border-line text-xs space-y-1 mb-4">
+                        <div className="flex justify-between text-ink-muted">
                           <span>Max Rooms:</span>
-                          <span className="text-lt-white font-semibold">{pkg.maxActiveRooms}</span>
+                          <span className="text-ink font-semibold">{pkg.maxActiveRooms}</span>
                         </div>
-                        <div className="flex justify-between text-lt-slate-400">
+                        <div className="flex justify-between text-ink-muted">
                           <span>Max Boats:</span>
-                          <span className="text-lt-white font-semibold">{pkg.maxBoatsPerRoom}</span>
+                          <span className="text-ink font-semibold">{pkg.maxBoatsPerRoom}</span>
                         </div>
-                        <div className="flex justify-between text-lt-slate-400">
+                        <div className="flex justify-between text-ink-muted">
                           <span>Admin Seats:</span>
-                          <span className="text-lt-white font-semibold">{pkg.maxAdminSeats}</span>
+                          <span className="text-ink font-semibold">{pkg.maxAdminSeats}</span>
                         </div>
-                        <div className="flex justify-between text-lt-slate-400">
+                        <div className="flex justify-between text-ink-muted">
                           <span>LoRa Priority:</span>
-                          <span className={pkg.loraPriority ? 'text-lt-emerald-400 font-semibold' : 'text-lt-slate-500'}>
+                          <span className={pkg.loraPriority ? 'text-success-ink font-semibold' : 'text-ink-muted'}>
                             {pkg.loraPriority ? 'Enabled' : 'No'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="text-xs text-lt-slate-400 space-y-1 mb-4">
-                        <span className="text-xs text-lt-slate-500 uppercase font-semibold block">Features ({pkg.features.length})</span>
+                      <div className="text-xs text-ink-muted space-y-1 mb-4">
+                        <span className="text-xs text-ink-muted font-semibold block">Features ({pkg.features.length})</span>
                         {pkg.features.slice(0, 3).map((f, i) => (
                           <div key={i} className="truncate">• {f}</div>
                         ))}
                         {pkg.features.length > 3 && (
-                          <div className="text-lt-slate-500 italic text-xs">+{pkg.features.length - 3} more...</div>
+                          <div className="text-ink-muted italic text-xs">+{pkg.features.length - 3} more...</div>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 pt-3 border-t border-ll-slate-800">
+                    <div className="flex items-center space-x-2 pt-3 border-t border-line">
                       <button
                         onClick={() => {
                           setIsNewPackage(false);
                           setEditingPackage({ ...pkg });
                         }}
-                        className="flex-1 py-1.5 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-xs text-lt-slate-200 font-medium flex items-center justify-center space-x-1"
+                        className="flex-1 py-1.5 rounded-lg bg-raised hover:bg-raised text-xs text-ink font-medium flex items-center justify-center space-x-1"
                       >
                         <Edit2 className="w-3 h-3" />
                         <span>Edit Pricing</span>
@@ -1261,7 +1261,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       {pkg.tierKey !== 'FREE' && pkg.tierKey !== 'CLUB' && (
                         <button
                           onClick={() => handleDeletePackage(pkg.id, pkg.displayTitle)}
-                          className="p-1.5 rounded-lg hover:bg-lb-rose-950/60 text-lt-slate-400 hover:text-lt-rose-400"
+                          className="p-1.5 rounded-lg hover:bg-surface/60 text-ink-muted hover:text-danger-ink"
                           title="Delete package"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1279,14 +1279,14 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <div className="relative w-full sm:w-72">
-                  <Search className="w-4 h-4 text-lt-slate-500 absolute left-3 top-2.5" />
+                  <Search className="w-4 h-4 text-ink-muted absolute left-3 top-2.5" />
                   <input
                     type="text"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
                     placeholder="Search users by email, name, club..."
-                    className="w-full pl-9 pr-3 py-2 bg-lb-slate-900 border border-ll-slate-800 rounded-xl text-xs text-lt-white focus:outline-none focus:border-ll-purple-500"
+                    className="w-full pl-9 pr-3 py-2 bg-surface border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-line"
                   />
                 </div>
 
@@ -1297,7 +1297,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       setUserRoleFilter(e.target.value);
                       setTimeout(fetchUsers, 50);
                     }}
-                    className="bg-lb-slate-900 border border-ll-slate-800 rounded-xl px-3 py-2 text-xs text-lt-slate-300"
+                    className="bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink"
                   >
                     <option value="">All Roles</option>
                     <option value="ADMIN">Admin</option>
@@ -1309,7 +1309,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                   <button
                     onClick={fetchUsers}
-                    className="px-3 py-2 rounded-xl bg-lb-slate-800 hover:bg-lb-slate-700 text-xs font-semibold text-lt-slate-200"
+                    className="px-3 py-2 rounded-xl bg-raised hover:bg-raised text-xs font-semibold text-ink"
                   >
                     Search
                   </button>
@@ -1317,9 +1317,9 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               </div>
 
               {/* Users Table */}
-              <div className="rounded-xl border border-ll-slate-800 overflow-hidden bg-lb-slate-900/40">
-                <table className="w-full text-left text-xs text-lt-slate-300">
-                  <thead className="bg-lb-slate-950/80 text-xs text-lt-slate-400 uppercase tracking-wider border-b border-ll-slate-800">
+              <div className="rounded-xl border border-line overflow-hidden bg-surface/40">
+                <table className="w-full text-left text-xs text-ink">
+                  <thead className="bg-canvas/80 text-xs text-ink-muted border-b border-line">
                     <tr>
                       <th className="px-4 py-3">User / Email</th>
                       <th className="px-4 py-3">Organization / Club</th>
@@ -1329,36 +1329,36 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-ll-slate-800/60">
+                  <tbody className="divide-y divide-line/60">
                     {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-lb-slate-800/30">
+                      <tr key={u.id} className="hover:bg-raised/30">
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-lt-white">{u.fullName}</div>
-                          <div className="text-xs text-lt-slate-500 font-mono">{u.email}</div>
+                          <div className="font-semibold text-ink">{u.fullName}</div>
+                          <div className="text-xs text-ink-muted">{u.email}</div>
                         </td>
                         <td className="px-4 py-3">
                           <div>{u.tenantName}</div>
-                          <div className="text-xs text-lt-slate-500">{u.sailingClub || 'Independent'}</div>
+                          <div className="text-xs text-ink-muted">{u.sailingClub || 'Independent'}</div>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                            u.role === 'ADMIN' ? 'bg-lb-cyan-950 text-lt-cyan-300 border border-ll-cyan-800' : 'bg-lb-slate-800 text-lt-slate-300'
+                            u.role === 'ADMIN' ? 'bg-surface text-accent border border-accent' : 'bg-raised text-ink'
                           }`}>
                             {u.role}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {u.isSuperAdmin ? (
-                            <span className="px-2 py-0.5 rounded bg-lb-purple-950 text-lt-purple-300 text-xs font-bold border border-ll-purple-800">
+                            <span className="px-2 py-0.5 rounded bg-raised text-ink text-xs font-bold border border-line">
                               SUPER ADMIN
                             </span>
                           ) : (
-                            <span className="text-lt-slate-600 text-xs">No</span>
+                            <span className="text-ink-muted text-xs">No</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                            u.status === 'SUSPENDED' ? 'bg-lb-rose-950 text-lt-rose-300' : 'bg-lb-emerald-950 text-lt-emerald-300'
+                            u.status === 'SUSPENDED' ? 'bg-surface text-danger-ink' : 'bg-surface text-success-ink'
                           }`}>
                             {u.status || 'ACTIVE'}
                           </span>
@@ -1366,7 +1366,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                         <td className="px-4 py-3 text-right space-x-2">
                           <button
                             onClick={() => setEditingUser({ ...u })}
-                            className="p-1 rounded hover:bg-lb-slate-800 text-lt-slate-400 hover:text-lt-white"
+                            className="p-1 rounded hover:bg-raised text-ink-muted hover:text-ink"
                             title="Edit User"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -1376,7 +1376,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                               setResetPwdUserId(u.id);
                               setNewPasswordVal('');
                             }}
-                            className="p-1 rounded hover:bg-lb-slate-800 text-lt-slate-400 hover:text-lt-amber-400"
+                            className="p-1 rounded hover:bg-raised text-ink-muted hover:text-warning-ink"
                             title="Reset Password"
                           >
                             <Lock className="w-3.5 h-3.5" />
@@ -1384,7 +1384,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                           {currentUser?.id !== u.id && (
                             <button
                               onClick={() => handleDeleteUser(u.id, u.email)}
-                              className="p-1 rounded hover:bg-lb-rose-950/60 text-lt-slate-400 hover:text-lt-rose-400"
+                              className="p-1 rounded hover:bg-surface/60 text-ink-muted hover:text-danger-ink"
                               title="Delete User"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1404,49 +1404,49 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">Registered Organizations</h3>
-                  <p className="text-xs text-lt-slate-400">Manage tenant plans, quotas, and club owners</p>
+                  <h3 className="text-sm font-bold text-ink">Registered Organizations</h3>
+                  <p className="text-xs text-ink-muted">Manage tenant plans, quotas, and club owners</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {clubs.map((c) => (
-                  <div key={c.id} className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800 flex flex-col justify-between">
+                  <div key={c.id} className="p-4 rounded-xl bg-surface/60 border border-line flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-bold text-sm text-lt-white">{c.name}</span>
-                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-lb-purple-950 text-lt-purple-300 border border-ll-purple-800">
+                        <span className="font-bold text-sm text-ink">{c.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-raised text-ink border border-line">
                           {c.planTier}
                         </span>
                       </div>
-                      <div className="text-xs text-lt-slate-400 mb-3">Owner: {c.ownerEmail || 'Unknown'}</div>
+                      <div className="text-xs text-ink-muted mb-3">Owner: {c.ownerEmail || 'Unknown'}</div>
 
-                      <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-lb-slate-950/70 border border-ll-slate-800 text-xs mb-3">
+                      <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-canvas/70 border border-line text-xs mb-3">
                         <div>
-                          <span className="text-lt-slate-500 block text-xs">Members</span>
-                          <span className="text-lt-white font-semibold">{c.membersCount} users</span>
+                          <span className="text-ink-muted block text-xs">Members</span>
+                          <span className="text-ink font-semibold">{c.membersCount} users</span>
                         </div>
                         <div>
-                          <span className="text-lt-slate-500 block text-xs">Regattas</span>
-                          <span className="text-lt-white font-semibold">{c.eventsCount} events</span>
+                          <span className="text-ink-muted block text-xs">Regattas</span>
+                          <span className="text-ink font-semibold">{c.eventsCount} events</span>
                         </div>
                         <div>
-                          <span className="text-lt-slate-500 block text-xs">Max Rooms</span>
-                          <span className="text-lt-white font-semibold">{c.maxActiveRooms} allowed</span>
+                          <span className="text-ink-muted block text-xs">Max Rooms</span>
+                          <span className="text-ink font-semibold">{c.maxActiveRooms} allowed</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 pt-2 border-t border-ll-slate-800">
+                    <div className="flex items-center space-x-2 pt-2 border-t border-line">
                       <button
                         onClick={() => setEditingClub({ ...c })}
-                        className="flex-1 py-1.5 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-xs text-lt-slate-200 font-medium"
+                        className="flex-1 py-1.5 rounded-lg bg-raised hover:bg-raised text-xs text-ink font-medium"
                       >
                         Adjust Plan / Limits
                       </button>
                       <button
                         onClick={() => handleDeleteClub(c.id, c.name)}
-                        className="p-1.5 rounded-lg hover:bg-lb-rose-950/60 text-lt-slate-400 hover:text-lt-rose-400"
+                        className="p-1.5 rounded-lg hover:bg-surface/60 text-ink-muted hover:text-danger-ink"
                         title="Delete Club"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1463,18 +1463,18 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">Global Regattas & Races</h3>
-                  <p className="text-xs text-lt-slate-400">Inspect and purge events across all organizations</p>
+                  <h3 className="text-sm font-bold text-ink">Global Regattas & Races</h3>
+                  <p className="text-xs text-ink-muted">Inspect and purge events across all organizations</p>
                 </div>
-                <button onClick={fetchEvents} className="text-xs text-lt-cyan-400 hover:text-lt-cyan-300 flex items-center space-x-1">
+                <button onClick={fetchEvents} className="text-xs text-accent hover:text-accent flex items-center space-x-1">
                   <RefreshCw className="w-3 h-3" />
                   <span>Refresh</span>
                 </button>
               </div>
 
-              <div className="rounded-xl border border-ll-slate-800 overflow-hidden bg-lb-slate-900/40">
-                <table className="w-full text-left text-xs text-lt-slate-300">
-                  <thead className="bg-lb-slate-950/80 text-xs text-lt-slate-400 uppercase tracking-wider border-b border-ll-slate-800">
+              <div className="rounded-xl border border-line overflow-hidden bg-surface/40">
+                <table className="w-full text-left text-xs text-ink">
+                  <thead className="bg-canvas/80 text-xs text-ink-muted border-b border-line">
                     <tr>
                       <th className="px-4 py-3">Event Code & Title</th>
                       <th className="px-4 py-3">Host Organization</th>
@@ -1484,22 +1484,22 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-ll-slate-800/60">
+                  <tbody className="divide-y divide-line/60">
                     {events.map((ev) => (
-                      <tr key={ev.code} className="hover:bg-lb-slate-800/30">
+                      <tr key={ev.code} className="hover:bg-raised/30">
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-lt-white">{ev.title}</div>
-                          <div className="text-xs text-lt-cyan-400 font-mono">{ev.code} • {ev.locationName}</div>
+                          <div className="font-semibold text-ink">{ev.title}</div>
+                          <div className="text-xs text-accent">{ev.code} • {ev.locationName}</div>
                         </td>
                         <td className="px-4 py-3">{ev.tenantName}</td>
                         <td className="px-4 py-3">
                           {ev.boatCount} Boats • {ev.markCount} Marks
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs">
+                        <td className="px-4 py-3 text-xs">
                           Admin: {ev.adminPin} | Part: {ev.participantPin}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-semibold text-lt-emerald-400">{ev.activeClients} connected</span>
+                          <span className="font-semibold text-success-ink">{ev.activeClients} connected</span>
                         </td>
                         <td className="px-4 py-3 text-right space-x-1 sm:space-x-2">
                           {onViewEvent && (
@@ -1508,7 +1508,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                                 onClose();
                                 onViewEvent(ev.code);
                               }}
-                              className="p-1 rounded hover:bg-lb-slate-800 text-lt-slate-400 hover:text-lt-cyan-400 transition-colors cursor-pointer"
+                              className="p-1 rounded hover:bg-raised text-ink-muted hover:text-accent transition-colors cursor-pointer"
                               title="Spectate / View Race Room"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -1528,14 +1528,14 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                                 tenantName: ev.tenantName,
                               })
                             }
-                            className="p-1 rounded hover:bg-lb-slate-800 text-lt-slate-400 hover:text-lt-amber-400 transition-colors cursor-pointer"
+                            className="p-1 rounded hover:bg-raised text-ink-muted hover:text-warning-ink transition-colors cursor-pointer"
                             title="Edit Event Details (Title, Code, PINs, Location, Status)"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteEvent(ev.code, ev.title)}
-                            className="p-1 rounded hover:bg-lb-rose-950/60 text-lt-slate-400 hover:text-lt-rose-400 transition-colors cursor-pointer"
+                            className="p-1 rounded hover:bg-surface/60 text-ink-muted hover:text-danger-ink transition-colors cursor-pointer"
                             title="Delete Event"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1553,13 +1553,13 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
           {activeTab === 'database' && (
             <div className="space-y-6">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-ll-slate-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-line/80">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white flex items-center gap-2">
-                    <Database className="w-4 h-4 text-lt-cyan-400" />
+                  <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+                    <Database className="w-4 h-4 text-accent" />
                     Database Health & Diagnostics
                   </h3>
-                  <p className="text-xs text-lt-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Real-time connection verification, SQLite engine pragma status, storage stats & optimization tools
                   </p>
                 </div>
@@ -1567,15 +1567,15 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   <button
                     onClick={handleTestDbPing}
                     disabled={dbPingTesting}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-lb-cyan-950/80 hover:bg-lb-cyan-900 border border-ll-cyan-500/40 text-lt-cyan-300 transition-all cursor-pointer disabled:opacity-50"
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface/80 hover:brightness-110 border border-accent/40 text-accent transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <Zap className={`w-3.5 h-3.5 text-lt-cyan-400 ${dbPingTesting ? 'animate-bounce' : ''}`} />
+                    <Zap className={`w-3.5 h-3.5 text-accent ${dbPingTesting ? 'animate-bounce' : ''}`} />
                     <span>{dbPingTesting ? 'Testing...' : 'Test Connection'}</span>
                   </button>
                   <button
                     onClick={fetchDatabaseStatus}
                     disabled={dbLoading}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-slate-200 border border-ll-slate-700 transition-all cursor-pointer"
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-raised hover:bg-raised text-ink border border-line transition-all cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${dbLoading ? 'animate-spin' : ''}`} />
                     <span>Refresh</span>
@@ -1594,44 +1594,44 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className={`p-4 rounded-xl border flex items-center space-x-3.5 transition-all duration-200 ${
                         isDbConnected
-                          ? 'bg-lb-emerald-950/25 border-ll-emerald-500/40 shadow-xs shadow-ll-emerald-950/30'
-                          : 'bg-lb-rose-950/25 border-ll-rose-500/40 shadow-xs shadow-ll-rose-950/30'
+                          ? 'bg-surface/25 border-success-ink/40 shadow-xs '
+                          : 'bg-surface/25 border-danger-ink/40 shadow-xs '
                       }`}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                           isDbConnected
-                            ? 'bg-lb-emerald-950/80 border border-ll-emerald-500/40 text-lt-emerald-400'
-                            : 'bg-lb-rose-950/80 border border-ll-rose-500/40 text-lt-rose-400'
+                            ? 'bg-surface/80 border border-success-ink/40 text-success-ink'
+                            : 'bg-surface/80 border border-danger-ink/40 text-danger-ink'
                         }`}>
-                          {isDbConnected ? <CheckCircle2 className="w-5 h-5 text-lt-emerald-400" /> : <XCircle className="w-5 h-5 text-lt-rose-400" />}
+                          {isDbConnected ? <CheckCircle2 className="w-5 h-5 text-success-ink" /> : <XCircle className="w-5 h-5 text-danger-ink" />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 block font-semibold">
+                          <span className="text-xs text-ink-muted block font-semibold">
                             Connection Status
                           </span>
-                          <span className="text-sm font-bold text-lt-white flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${isDbConnected ? 'bg-lb-emerald-400 animate-pulse' : 'bg-lb-rose-400'}`} />
+                          <span className="text-sm font-bold text-ink flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${isDbConnected ? 'bg-success-ink ' : 'bg-danger'}`} />
                             {isDbConnected ? 'ONLINE & READY' : 'OFFLINE / ERROR'}
                           </span>
-                          <span className="text-xs font-mono text-lt-cyan-400 truncate block">
+                          <span className="text-xs text-accent truncate block">
                             {dbStatus?.pingMs !== undefined ? `Ping: ${dbStatus.pingMs} ms` : 'Active'} • {isDbConnected ? 'Connected & Verified' : (dbStatus?.error || 'Check Diagnostics')}
                           </span>
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800 flex items-center space-x-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-lb-purple-950/80 border border-ll-purple-500/40 flex items-center justify-center text-lt-purple-400 shrink-0">
+                      <div className="p-4 rounded-xl bg-surface/60 border border-line flex items-center space-x-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-raised/80 border border-line/40 flex items-center justify-center text-ink-muted shrink-0">
                           <Cpu className="w-5 h-5" />
                         </div>
                         <div>
-                          <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 block font-semibold">
+                          <span className="text-xs text-ink-muted block font-semibold">
                             Driver Engine
                           </span>
-                          <span className="text-sm font-bold text-lt-white">
+                          <span className="text-sm font-bold text-ink">
                             {dbStatus?.driver === 'fallback-store' || !dbStatus?.isNative
                               ? 'JSON Store (cPanel Mode)'
                               : (dbStatus?.driver || 'better-sqlite3')}
                           </span>
-                          <span className="text-xs font-mono text-lt-purple-300">
+                          <span className="text-xs text-ink">
                             {dbStatus?.driver === 'fallback-store' || !dbStatus?.isNative
                               ? 'Autonomous Persistent Sync • Auto-Seeding'
                               : `Journal: ${dbStatus?.journalMode || 'WAL'} • Sync: ${dbStatus?.synchronous || 'NORMAL'}`}
@@ -1639,19 +1639,19 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800 flex items-center space-x-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-lb-cyan-950/80 border border-ll-cyan-500/40 flex items-center justify-center text-lt-cyan-400 shrink-0">
+                      <div className="p-4 rounded-xl bg-surface/60 border border-line flex items-center space-x-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-surface/80 border border-accent/40 flex items-center justify-center text-accent shrink-0">
                           <HardDrive className="w-5 h-5" />
                         </div>
                         <div>
-                          <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 block font-semibold">
+                          <span className="text-xs text-ink-muted block font-semibold">
                             File Size on Disk
                           </span>
-                          <span className="text-sm font-bold text-lt-white">
+                          <span className="text-sm font-bold text-ink">
                             {dbStatus?.fileSizeMb ? `${dbStatus.fileSizeMb} MB` : 'Dynamic'}
                           </span>
-                          <span className="text-xs font-mono text-lt-slate-400">
-                            Integrity: <span className="text-lt-emerald-400 font-bold">{dbStatus?.integrityCheck || 'Verified (ok)'}</span>
+                          <span className="text-xs text-ink-muted">
+                            Integrity: <span className="text-success-ink font-bold">{dbStatus?.integrityCheck || 'Verified (ok)'}</span>
                           </span>
                         </div>
                       </div>
@@ -1659,12 +1659,12 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                     {/* Error Notice & Quick Fix Banner if DB has an issue */}
                     {!isDbConnected && dbStatus && (
-                      <div className="p-4 rounded-xl bg-lb-rose-950/30 border border-ll-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                      <div className="p-4 rounded-xl bg-surface/30 border border-danger-ink/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
                         <div className="flex items-start space-x-3">
-                          <AlertTriangle className="w-5 h-5 text-lt-rose-400 shrink-0 mt-0.5" />
+                          <AlertTriangle className="w-5 h-5 text-danger-ink shrink-0 mt-0.5" />
                           <div>
-                            <h4 className="text-xs font-bold text-lt-rose-200">Database Connection Needs Attention</h4>
-                            <p className="text-xs text-lt-rose-300/90 mt-0.5">
+                            <h4 className="text-xs font-bold text-danger-ink">Database Connection Needs Attention</h4>
+                            <p className="text-xs text-danger-ink/90 mt-0.5">
                               {dbStatus?.error || 'Database responded with an error or credentials were not accepted. Run the Self-Repair tool below to restore directory permissions and database tables.'}
                             </p>
                           </div>
@@ -1672,7 +1672,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                         <button
                           onClick={handleSelfRepair}
                           disabled={repairing}
-                          className="px-3 py-1.5 rounded-lg bg-lb-rose-600 hover:bg-lb-rose-500 text-lt-white font-bold text-xs flex items-center justify-center space-x-1.5 shrink-0 shadow-md cursor-pointer disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg bg-danger hover:brightness-110 text-on-danger font-bold text-xs flex items-center justify-center space-x-1.5 shrink-0 shadow-md cursor-pointer disabled:opacity-50"
                         >
                           <Wrench className={`w-3.5 h-3.5 ${repairing ? 'animate-spin' : ''}`} />
                           <span>{repairing ? 'Repairing...' : 'Fix & Repair Now'}</span>
@@ -1684,30 +1684,30 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               })()}
 
               {/* Where is the Database Stored? (Cloud cPanel Guide) */}
-              <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-br from-lb-slate-900/90 via-lb-0d1627 to-lb-slate-900/90 border border-ll-cyan-900/50 space-y-3.5">
+              <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-br from-surface/90 via-surface to-surface/90 border border-accent/50 space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center space-x-2">
-                    <FolderOpen className="w-4 h-4 text-lt-cyan-400" />
-                    <h4 className="text-xs font-bold text-lt-white uppercase tracking-wider font-mono">
+                    <FolderOpen className="w-4 h-4 text-accent" />
+                    <h4 className="text-xs font-bold text-ink">
                       Where is the Database Stored? (Cloud cPanel & Server Environment)
                     </h4>
                   </div>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-lb-cyan-950 text-lt-cyan-300 border border-ll-cyan-700/60 w-fit">
+                  <span className="text-xs px-2 py-0.5 rounded bg-surface text-accent border border-accent/60 w-fit">
                     SQLite Standalone Storage
                   </span>
                 </div>
 
                 <div className="space-y-2 text-xs">
-                  <p className="text-lt-slate-300 leading-relaxed">
-                    This system uses a zero-configuration, high-performance <strong className="text-lt-white">SQLite database</strong> with Write-Ahead Logging (WAL mode). All tables, regatta rooms, accounts, pricing plans, and tracking histories reside in a standalone file directly inside your application folder.
+                  <p className="text-ink leading-relaxed">
+                    This system uses a zero-configuration, high-performance <strong className="text-ink">SQLite database</strong> with Write-Ahead Logging (WAL mode). All tables, regatta rooms, accounts, pricing plans, and tracking histories reside in a standalone file directly inside your application folder.
                   </p>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-1">
                     {/* cPanel Path */}
-                    <div className="p-3 rounded-lg bg-lb-slate-950/80 border border-ll-cyan-900/60 space-y-1.5">
+                    <div className="p-3 rounded-lg bg-canvas/80 border border-accent/60 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-lt-cyan-300 flex items-center gap-1.5">
-                          <Server className="w-3.5 h-3.5 text-lt-cyan-400" />
+                        <span className="text-xs font-bold text-accent flex items-center gap-1.5">
+                          <Server className="w-3.5 h-3.5 text-accent" />
                           Cloud cPanel Production Path (tmtrac.my)
                         </span>
                         <button
@@ -1716,39 +1716,39 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                             setCopiedDbPath(true);
                             setTimeout(() => setCopiedDbPath(false), 2000);
                           }}
-                          className="text-xs font-mono px-2 py-0.5 rounded bg-lb-cyan-950 hover:bg-lb-cyan-900 text-lt-cyan-300 border border-ll-cyan-700/40 flex items-center gap-1 cursor-pointer transition-colors"
+                          className="text-xs px-2 py-0.5 rounded bg-surface hover:brightness-110 text-accent border border-accent/40 flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <Copy className="w-3 h-3" />
                           <span>{copiedDbPath ? 'Copied!' : 'Copy Path'}</span>
                         </button>
                       </div>
-                      <div className="p-2 rounded bg-lb-slate-900 border border-ll-slate-800 font-mono text-xs text-lt-emerald-300 break-all select-all">
+                      <div className="p-2 rounded bg-surface border border-line text-xs text-success-ink break-all select-all">
                         /home/tmtecq00/public_html/tmtrac.my/data/tmtrac.db
                       </div>
-                      <p className="text-xs text-lt-slate-400">
-                        In cPanel File Manager, navigate to <code className="text-lt-slate-300">public_html/tmtrac.my/data/</code>. Ensure folder permission is <strong className="text-lt-amber-300 font-mono">0755</strong>.
+                      <p className="text-xs text-ink-muted">
+                        In cPanel File Manager, navigate to <code className="text-ink">public_html/tmtrac.my/data/</code>. Ensure folder permission is <strong className="text-warning-ink">0755</strong>.
                       </p>
                     </div>
 
                     {/* Local/Active Runtime Path */}
-                    <div className="p-3 rounded-lg bg-lb-slate-950/80 border border-ll-slate-800 space-y-1.5">
+                    <div className="p-3 rounded-lg bg-canvas/80 border border-line space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-lt-slate-200 flex items-center gap-1.5">
-                          <HardDrive className="w-3.5 h-3.5 text-lt-purple-400" />
+                        <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                          <HardDrive className="w-3.5 h-3.5 text-ink-muted" />
                           Current Active Runtime Path
                         </span>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-lb-emerald-950 text-lt-emerald-300 border border-ll-emerald-800">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-surface text-success-ink border border-success-ink">
                           READ-WRITE
                         </span>
                       </div>
-                      <div className="p-2 rounded bg-lb-slate-900 border border-ll-slate-800 font-mono text-xs text-lt-purple-300 break-all select-all">
+                      <div className="p-2 rounded bg-surface border border-line text-xs text-ink break-all select-all">
                         {dbStatus?.dbPath || './data/tmtrac.db'}
                       </div>
-                      <p className="text-xs text-lt-slate-400">
-                        SQLite creates <code className="text-lt-slate-300">tmtrac.db-wal</code> and <code className="text-lt-slate-300">tmtrac.db-shm</code> alongside for lockless concurrent reads/writes.
+                      <p className="text-xs text-ink-muted">
+                        SQLite creates <code className="text-ink">tmtrac.db-wal</code> and <code className="text-ink">tmtrac.db-shm</code> alongside for lockless concurrent reads/writes.
                       </p>
-                      <p className="text-xs text-lt-amber-300/90 bg-lb-amber-950/40 p-1.5 rounded border border-ll-amber-900/40">
-                        💡 <strong>Notice:</strong> If the runtime path still shows old files after extracting a new zip, click <strong>"Restart Node Server"</strong> below or the orange <strong>"Restart"</strong> button in cPanel &gt; Setup Node.js App to recycle the resident worker process.
+                      <p className="text-xs text-warning-ink/90 bg-surface/40 p-1.5 rounded border border-warning-ink/40">
+                        <strong>Note:</strong> If the runtime path still shows old files after extracting a new zip, click <strong>"Restart Node Server"</strong> below or the orange <strong>"Restart"</strong> button in cPanel &gt; Setup Node.js App to recycle the resident worker process.
                       </p>
                     </div>
                   </div>
@@ -1756,16 +1756,16 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               </div>
 
               {/* 8-Point Comprehensive Diagnostics Troubleshooter */}
-              <div className="p-4 sm:p-5 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800 space-y-4">
+              <div className="p-4 sm:p-5 rounded-xl bg-surface/60 border border-line space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center space-x-2">
-                      <ShieldCheck className="w-4 h-4 text-lt-emerald-400" />
-                      <h4 className="text-xs font-bold text-lt-white uppercase tracking-wider font-mono">
+                      <ShieldCheck className="w-4 h-4 text-success-ink" />
+                      <h4 className="text-xs font-bold text-ink">
                         8-Point Database & System Diagnostic Troubleshooter
                       </h4>
                     </div>
-                    <p className="text-xs text-lt-slate-400 mt-0.5">
+                    <p className="text-xs text-ink-muted mt-0.5">
                       Comprehensive automated audit inspecting filesystem permissions, driver bindings, engine pragmas, schema tables & seeds.
                     </p>
                   </div>
@@ -1773,16 +1773,16 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     <button
                       onClick={handleRestartServer}
                       disabled={restartingServer}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-lb-amber-950/80 hover:bg-lb-amber-900 border border-ll-amber-600/50 text-lt-amber-300 transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface/80 hover:brightness-110 border border-warning-ink/50 text-warning-ink transition-all cursor-pointer disabled:opacity-50"
                       title="Touches tmp/restart.txt and recycles Passenger worker to reload newest compiled server bundle"
                     >
-                      <Power className={`w-3.5 h-3.5 ${restartingServer ? 'animate-spin text-lt-amber-400' : ''}`} />
+                      <Power className={`w-3.5 h-3.5 ${restartingServer ? 'animate-spin text-warning-ink' : ''}`} />
                       <span>{restartingServer ? 'Restarting...' : 'Restart Node Server'}</span>
                     </button>
                     <button
                       onClick={fetchDiagnostics}
                       disabled={diagnosticsLoading}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-lb-cyan-950/80 hover:bg-lb-cyan-900 border border-ll-cyan-500/40 text-lt-cyan-300 transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface/80 hover:brightness-110 border border-accent/40 text-accent transition-all cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${diagnosticsLoading ? 'animate-spin' : ''}`} />
                       <span>{diagnosticsLoading ? 'Running Scan...' : 'Re-Run Diagnostic Scan'}</span>
@@ -1790,7 +1790,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     <button
                       onClick={handleSelfRepair}
                       disabled={repairing}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-lb-purple-700 hover:bg-lb-purple-600 text-lt-white transition-all shadow-md cursor-pointer disabled:opacity-50"
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-raised hover:bg-raised text-ink transition-all shadow-md cursor-pointer disabled:opacity-50"
                     >
                       <Wrench className={`w-3.5 h-3.5 ${repairing ? 'animate-spin' : ''}`} />
                       <span>{repairing ? 'Repairing...' : 'Self-Repair Database'}</span>
@@ -1799,7 +1799,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                 </div>
 
                 {/* Diagnostics Results List */}
-                <div className="divide-y divide-ll-slate-800/80 border border-ll-slate-800 rounded-xl overflow-hidden bg-lb-slate-950/60">
+                <div className="divide-y divide-line/80 border border-line rounded-xl overflow-hidden bg-canvas/60">
                   {diagnostics && diagnostics.length > 0 ? (
                     diagnostics.map((diag: any, idx: number) => {
                       const isPass = diag.status === 'PASS';
@@ -1807,45 +1807,45 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       const checkTitle = diag.title || diag.check || `Diagnostic Check #${idx + 1}`;
                       const checkDetail = diag.details || diag.detail || '';
                       return (
-                        <div key={diag.id || idx} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-lb-slate-900/40 transition-colors">
+                        <div key={diag.id || idx} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface/40 transition-colors">
                           <div className="flex items-start space-x-3 min-w-0">
                             <div className="mt-0.5 shrink-0">
                               {isPass ? (
-                                <CheckCircle2 className="w-4 h-4 text-lt-emerald-400" />
+                                <CheckCircle2 className="w-4 h-4 text-success-ink" />
                               ) : isWarn ? (
-                                <AlertTriangle className="w-4 h-4 text-lt-amber-400" />
+                                <AlertTriangle className="w-4 h-4 text-warning-ink" />
                               ) : (
-                                <XCircle className="w-4 h-4 text-lt-rose-400" />
+                                <XCircle className="w-4 h-4 text-danger-ink" />
                               )}
                             </div>
                             <div>
                               <div className="flex items-center space-x-2 flex-wrap">
-                                <span className="text-xs font-bold text-lt-white">{checkTitle}</span>
-                                <span className={`text-xs font-mono font-bold px-1.5 py-0.2 rounded border ${
+                                <span className="text-xs font-bold text-ink">{checkTitle}</span>
+                                <span className={`text-xs  font-bold px-1.5 py-0.2 rounded border ${
                                   isPass
-                                    ? 'bg-lb-emerald-950/80 text-lt-emerald-300 border-ll-emerald-700/60'
+                                    ? 'bg-surface/80 text-success-ink border-success-ink/60'
                                     : isWarn
-                                    ? 'bg-lb-amber-950/80 text-lt-amber-300 border-ll-amber-700/60'
-                                    : 'bg-lb-rose-950/80 text-lt-rose-300 border-ll-rose-700/60'
+                                    ? 'bg-surface/80 text-warning-ink border-warning-ink/60'
+                                    : 'bg-surface/80 text-danger-ink border-danger-ink/60'
                                 }`}>
                                   {diag.status}
                                 </span>
                               </div>
                               {diag.value && (
-                                <p className="text-xs font-mono text-lt-cyan-300/90 mt-0.5">{diag.value}</p>
+                                <p className="text-xs text-accent/90 mt-0.5">{diag.value}</p>
                               )}
                               {checkDetail && (
-                                <p className="text-xs text-lt-slate-300 mt-0.5">{checkDetail}</p>
+                                <p className="text-xs text-ink mt-0.5">{checkDetail}</p>
                               )}
                               {diag.recommendation && (
-                                <p className="text-xs text-lt-amber-300/90 font-mono mt-1 flex items-center gap-1">
+                                <p className="text-xs text-warning-ink/90 mt-1 flex items-center gap-1">
                                   <span>Fix tip:</span> {diag.recommendation}
                                 </p>
                               )}
                             </div>
                           </div>
                           {diag.path && (
-                            <div className="shrink-0 font-mono text-xs text-lt-slate-500 bg-lb-slate-900 px-2 py-1 rounded border border-ll-slate-800 break-all max-w-xs">
+                            <div className="shrink-0 text-xs text-ink-muted bg-surface px-2 py-1 rounded border border-line break-all max-w-xs">
                               {diag.path}
                             </div>
                           )}
@@ -1853,8 +1853,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       );
                     })
                   ) : (
-                    <div className="p-6 text-center text-lt-slate-400 text-xs flex flex-col items-center justify-center space-y-2">
-                      <RefreshCw className={`w-5 h-5 text-lt-cyan-400 ${diagnosticsLoading ? 'animate-spin' : ''}`} />
+                    <div className="p-6 text-center text-ink-muted text-xs flex flex-col items-center justify-center space-y-2">
+                      <RefreshCw className={`w-5 h-5 text-accent ${diagnosticsLoading ? 'animate-spin' : ''}`} />
                       <span>{diagnosticsLoading ? 'Scanning system filesystem, engine bindings and SQLite tables...' : 'Click "Re-Run Diagnostic Scan" above to test the database subsystems.'}</span>
                     </div>
                   )}
@@ -1862,131 +1862,131 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               </div>
 
               {/* Technical Pragmas Quick-Grid */}
-              <div className="p-4 sm:p-5 rounded-xl bg-lb-slate-900/40 border border-ll-slate-800 space-y-3">
-                <h4 className="text-xs font-bold text-lt-slate-200 uppercase tracking-wider font-mono">
+              <div className="p-4 sm:p-5 rounded-xl bg-surface/40 border border-line space-y-3">
+                <h4 className="text-xs font-bold text-ink">
                   Engine Pragmas & Runtime Concurrency Settings
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-                  <div className="p-2.5 rounded-lg bg-lb-slate-950/50 border border-ll-slate-800/60">
-                    <span className="text-xs text-lt-slate-500 block">Foreign Keys</span>
-                    <span className="font-bold text-lt-slate-200">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  <div className="p-2.5 rounded-lg bg-canvas/50 border border-line/60">
+                    <span className="text-xs text-ink-muted block">Foreign Keys</span>
+                    <span className="font-bold text-ink">
                       {dbStatus?.foreignKeys ? 'ENABLED (ON)' : 'ACTIVE'}
                     </span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-lb-slate-950/50 border border-ll-slate-800/60">
-                    <span className="text-xs text-lt-slate-500 block">WAL Multi-Access</span>
-                    <span className="font-bold text-lt-emerald-400">ACTIVE (High Concurrency)</span>
+                  <div className="p-2.5 rounded-lg bg-canvas/50 border border-line/60">
+                    <span className="text-xs text-ink-muted block">WAL Multi-Access</span>
+                    <span className="font-bold text-success-ink">ACTIVE (High Concurrency)</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-lb-slate-950/50 border border-ll-slate-800/60">
-                    <span className="text-xs text-lt-slate-500 block">Isolation Level</span>
-                    <span className="font-bold text-lt-slate-200">SERIALIZED</span>
+                  <div className="p-2.5 rounded-lg bg-canvas/50 border border-line/60">
+                    <span className="text-xs text-ink-muted block">Isolation Level</span>
+                    <span className="font-bold text-ink">SERIALIZED</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-lb-slate-950/50 border border-ll-slate-800/60">
-                    <span className="text-xs text-lt-slate-500 block">Integrity Test</span>
-                    <span className="font-bold text-lt-emerald-400">{dbStatus?.integrityCheck || 'PASSED (ok)'}</span>
+                  <div className="p-2.5 rounded-lg bg-canvas/50 border border-line/60">
+                    <span className="text-xs text-ink-muted block">Integrity Test</span>
+                    <span className="font-bold text-success-ink">{dbStatus?.integrityCheck || 'PASSED (ok)'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Table Records Breakdown */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-lt-slate-200 uppercase tracking-wider font-mono">
+                <h4 className="text-xs font-bold text-ink">
                   Database Schema & Table Row Metrics
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs font-mono">
-                  <div className="p-3 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                    <span className="text-lt-slate-400 block text-xs mb-1">tenants</span>
-                    <span className="text-base font-bold text-lt-white">{dbStatus?.counts?.tenants ?? 0}</span>
-                    <span className="text-xs text-lt-slate-500 block mt-0.5">Clubs & Orgs</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-surface/60 border border-line">
+                    <span className="text-ink-muted block text-xs mb-1">tenants</span>
+                    <span className="text-base font-bold text-ink">{dbStatus?.counts?.tenants ?? 0}</span>
+                    <span className="text-xs text-ink-muted block mt-0.5">Clubs & Orgs</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                    <span className="text-lt-slate-400 block text-xs mb-1">users</span>
-                    <span className="text-base font-bold text-lt-white">{dbStatus?.counts?.users ?? 0}</span>
-                    <span className="text-xs text-lt-slate-500 block mt-0.5">Accounts</span>
+                  <div className="p-3 rounded-xl bg-surface/60 border border-line">
+                    <span className="text-ink-muted block text-xs mb-1">users</span>
+                    <span className="text-base font-bold text-ink">{dbStatus?.counts?.users ?? 0}</span>
+                    <span className="text-xs text-ink-muted block mt-0.5">Accounts</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                    <span className="text-lt-slate-400 block text-xs mb-1">events</span>
-                    <span className="text-base font-bold text-lt-white">{dbStatus?.counts?.events ?? 0}</span>
-                    <span className="text-xs text-lt-slate-500 block mt-0.5">Regatta Rooms</span>
+                  <div className="p-3 rounded-xl bg-surface/60 border border-line">
+                    <span className="text-ink-muted block text-xs mb-1">events</span>
+                    <span className="text-base font-bold text-ink">{dbStatus?.counts?.events ?? 0}</span>
+                    <span className="text-xs text-ink-muted block mt-0.5">Regatta Rooms</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                    <span className="text-lt-slate-400 block text-xs mb-1">event_trackers</span>
-                    <span className="text-base font-bold text-lt-white">{dbStatus?.counts?.event_trackers ?? 0}</span>
-                    <span className="text-xs text-lt-slate-500 block mt-0.5">GPS Nodes</span>
+                  <div className="p-3 rounded-xl bg-surface/60 border border-line">
+                    <span className="text-ink-muted block text-xs mb-1">event_trackers</span>
+                    <span className="text-base font-bold text-ink">{dbStatus?.counts?.event_trackers ?? 0}</span>
+                    <span className="text-xs text-ink-muted block mt-0.5">GPS Nodes</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                    <span className="text-lt-slate-400 block text-xs mb-1">packages</span>
-                    <span className="text-base font-bold text-lt-white">{dbStatus?.counts?.packages ?? 0}</span>
-                    <span className="text-xs text-lt-slate-500 block mt-0.5">Tier Plans</span>
+                  <div className="p-3 rounded-xl bg-surface/60 border border-line">
+                    <span className="text-ink-muted block text-xs mb-1">packages</span>
+                    <span className="text-base font-bold text-ink">{dbStatus?.counts?.packages ?? 0}</span>
+                    <span className="text-xs text-ink-muted block mt-0.5">Tier Plans</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800">
-                    <span className="text-lt-slate-400 block text-xs mb-1">audit_logs</span>
-                    <span className="text-base font-bold text-lt-white">{dbStatus?.counts?.audit_logs ?? 0}</span>
-                    <span className="text-xs text-lt-slate-500 block mt-0.5">Audit Events</span>
+                  <div className="p-3 rounded-xl bg-surface/60 border border-line">
+                    <span className="text-ink-muted block text-xs mb-1">audit_logs</span>
+                    <span className="text-base font-bold text-ink">{dbStatus?.counts?.audit_logs ?? 0}</span>
+                    <span className="text-xs text-ink-muted block mt-0.5">Audit Events</span>
                   </div>
                 </div>
               </div>
 
               {/* Maintenance Tools */}
-              <div className="p-5 rounded-xl bg-lb-slate-900/60 border border-ll-slate-800 space-y-4">
-                <h4 className="text-xs font-bold text-lt-slate-200 uppercase tracking-wider font-mono">
+              <div className="p-5 rounded-xl bg-surface/60 border border-line space-y-4">
+                <h4 className="text-xs font-bold text-ink">
                   Database Optimization & Maintenance Tools
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-lg bg-lb-slate-950/60 border border-ll-slate-800 flex flex-col justify-between">
+                  <div className="p-3.5 rounded-lg bg-canvas/60 border border-line flex flex-col justify-between">
                     <div>
-                      <h5 className="font-bold text-lt-white text-xs mb-1">Compact & Optimize (VACUUM)</h5>
-                      <p className="text-xs text-lt-slate-400 leading-relaxed">
+                      <h5 className="font-bold text-ink text-xs mb-1">Compact & Optimize (VACUUM)</h5>
+                      <p className="text-xs text-ink-muted leading-relaxed">
                         Defragments SQLite database pages, rebuilds index statistics (ANALYZE), and reclaims free disk space.
                       </p>
                     </div>
                     <button
                       onClick={handleOptimizeDatabase}
                       disabled={dbOptimizing}
-                      className="mt-3 w-full py-2 px-3 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="mt-3 w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${dbOptimizing ? 'animate-spin' : ''}`} />
                       <span>{dbOptimizing ? 'Optimizing...' : 'Run VACUUM & ANALYZE'}</span>
                     </button>
                   </div>
 
-                  <div className="p-3.5 rounded-lg bg-lb-slate-950/60 border border-ll-slate-800 flex flex-col justify-between">
+                  <div className="p-3.5 rounded-lg bg-canvas/60 border border-line flex flex-col justify-between">
                     <div>
-                      <h5 className="font-bold text-lt-white text-xs mb-1">Download Database File (.db)</h5>
-                      <p className="text-xs text-lt-slate-400 leading-relaxed">
+                      <h5 className="font-bold text-ink text-xs mb-1">Download Database File (.db)</h5>
+                      <p className="text-xs text-ink-muted leading-relaxed">
                         Direct binary copy of SQLite database file for local analysis, DB Browser inspection, or cold storage backup.
                       </p>
                     </div>
                     <a
                       href={`/api/super-admin/backup/export?format=db&token=${encodeURIComponent(getActiveToken())}`}
                       download
-                      className="mt-3 w-full py-2 px-3 rounded-lg bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                      className="mt-3 w-full py-2 px-3 rounded-lg bg-accent hover:brightness-110 text-on-accent font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download tmtrac.db</span>
                     </a>
                   </div>
 
-                  <div className="p-3.5 rounded-lg bg-lb-slate-950/60 border border-ll-slate-800 flex flex-col justify-between">
+                  <div className="p-3.5 rounded-lg bg-canvas/60 border border-line flex flex-col justify-between">
                     <div>
-                      <h5 className="font-bold text-lt-white text-xs mb-1">cPanel Server Deployment</h5>
-                      <p className="text-xs text-lt-slate-400 leading-relaxed">
+                      <h5 className="font-bold text-ink text-xs mb-1">cPanel Server Deployment</h5>
+                      <p className="text-xs text-ink-muted leading-relaxed">
                         Build and deploy latest codebase, migrations, and database schema to production host at tmtrac.my.
                       </p>
                     </div>
                     {onOpenCpanelDeploy ? (
                       <button
                         onClick={onOpenCpanelDeploy}
-                        className="mt-3 w-full py-2 px-3 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-cyan-300 font-semibold text-xs border border-ll-cyan-500/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="mt-3 w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-accent font-semibold text-xs border border-accent/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <Server className="w-3.5 h-3.5 text-lt-cyan-400" />
+                        <Server className="w-3.5 h-3.5 text-accent" />
                         <span>Launch cPanel Center</span>
                       </button>
                     ) : (
                       <a
                         href="/download/cpanel-fullstack"
                         download
-                        className="mt-3 w-full py-2 px-3 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-cyan-300 font-semibold text-xs border border-ll-cyan-500/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                        className="mt-3 w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-accent font-semibold text-xs border border-accent/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download cPanel ZIP</span>
@@ -2003,29 +2003,29 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">Live WebSocket Client Telemetry</h3>
-                  <p className="text-xs text-lt-slate-400">Real-time open connection pool across all rooms</p>
+                  <h3 className="text-sm font-bold text-ink">Live WebSocket Client Telemetry</h3>
+                  <p className="text-xs text-ink-muted">Real-time open connection pool across all rooms</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <label className="text-xs text-lt-slate-400 flex items-center space-x-1.5 cursor-pointer">
+                  <label className="text-xs text-ink-muted flex items-center space-x-1.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={autoRefreshSockets}
                       onChange={(e) => setAutoRefreshSockets(e.target.checked)}
-                      className="rounded bg-lb-slate-900 border-ll-slate-700 text-lt-purple-600 focus:ring-0"
+                      className="rounded bg-surface border-line text-ink-muted focus:ring-0"
                     />
                     <span>Auto-refresh (4s)</span>
                   </label>
-                  <button onClick={fetchSockets} className="text-xs text-lt-cyan-400 hover:text-lt-cyan-300 flex items-center space-x-1">
+                  <button onClick={fetchSockets} className="text-xs text-accent hover:text-accent flex items-center space-x-1">
                     <RefreshCw className="w-3 h-3" />
                     <span>Refresh</span>
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-ll-slate-800 overflow-hidden bg-lb-slate-900/40">
-                <table className="w-full text-left text-xs text-lt-slate-300">
-                  <thead className="bg-lb-slate-950/80 text-xs text-lt-slate-400 uppercase tracking-wider border-b border-ll-slate-800">
+              <div className="rounded-xl border border-line overflow-hidden bg-surface/40">
+                <table className="w-full text-left text-xs text-ink">
+                  <thead className="bg-canvas/80 text-xs text-ink-muted border-b border-line">
                     <tr>
                       <th className="px-4 py-3">Client ID</th>
                       <th className="px-4 py-3">Room Code</th>
@@ -2036,36 +2036,36 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       <th className="px-4 py-3">Uptime</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-ll-slate-800/60 font-mono text-xs">
+                  <tbody className="divide-y divide-line/60 text-xs">
                     {sockets.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-6 text-center text-lt-slate-500 font-sans">
+                        <td colSpan={7} className="px-4 py-6 text-center text-ink-muted font-sans">
                           No active WebSocket clients connected currently.
                         </td>
                       </tr>
                     ) : (
                       sockets.map((s) => (
-                        <tr key={s.id} className="hover:bg-lb-slate-800/30">
-                          <td className="px-4 py-3 text-lt-cyan-400">{s.id}</td>
-                          <td className="px-4 py-3 font-bold text-lt-white">{s.roomCode}</td>
+                        <tr key={s.id} className="hover:bg-raised/30">
+                          <td className="px-4 py-3 text-accent">{s.id}</td>
+                          <td className="px-4 py-3 font-bold text-ink">{s.roomCode}</td>
                           <td className="px-4 py-3 font-sans">
-                            <span className="text-lt-white font-medium">{s.userName}</span>
-                            {s.userEmail && <span className="block text-xs text-lt-slate-500">{s.userEmail}</span>}
+                            <span className="text-ink font-medium">{s.userName}</span>
+                            {s.userEmail && <span className="block text-xs text-ink-muted">{s.userEmail}</span>}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
-                              s.role === 'ADMIN' ? 'bg-lb-cyan-950 text-lt-cyan-400' : 'bg-lb-slate-800 text-lt-slate-400'
+                              s.role === 'ADMIN' ? 'bg-surface text-accent' : 'bg-raised text-ink-muted'
                             }`}>
                               {s.userRole}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={s.platform === 'ANDROID' ? 'text-lt-emerald-400' : 'text-lt-slate-400'}>
+                            <span className={s.platform === 'ANDROID' ? 'text-success-ink' : 'text-ink-muted'}>
                               {s.platform}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-lt-slate-500">{s.remoteAddress}</td>
-                          <td className="px-4 py-3 text-lt-slate-400">{s.uptimeSeconds}s</td>
+                          <td className="px-4 py-3 text-ink-muted">{s.remoteAddress}</td>
+                          <td className="px-4 py-3 text-ink-muted">{s.uptimeSeconds}s</td>
                         </tr>
                       ))
                     )}
@@ -2080,18 +2080,18 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">Global System Audit Logs</h3>
-                  <p className="text-xs text-lt-slate-400">Tamper-proof record of logins, role updates, and plan changes</p>
+                  <h3 className="text-sm font-bold text-ink">Global System Audit Logs</h3>
+                  <p className="text-xs text-ink-muted">Tamper-proof record of logins, role updates, and plan changes</p>
                 </div>
-                <button onClick={fetchAuditLogs} className="text-xs text-lt-cyan-400 hover:text-lt-cyan-300 flex items-center space-x-1">
+                <button onClick={fetchAuditLogs} className="text-xs text-accent hover:text-accent flex items-center space-x-1">
                   <RefreshCw className="w-3 h-3" />
                   <span>Refresh</span>
                 </button>
               </div>
 
-              <div className="rounded-xl border border-ll-slate-800 overflow-hidden bg-lb-slate-900/40">
-                <table className="w-full text-left text-xs text-lt-slate-300">
-                  <thead className="bg-lb-slate-950/80 text-xs text-lt-slate-400 uppercase tracking-wider border-b border-ll-slate-800">
+              <div className="rounded-xl border border-line overflow-hidden bg-surface/40">
+                <table className="w-full text-left text-xs text-ink">
+                  <thead className="bg-canvas/80 text-xs text-ink-muted border-b border-line">
                     <tr>
                       <th className="px-4 py-3">Timestamp</th>
                       <th className="px-4 py-3">Action</th>
@@ -2101,22 +2101,22 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       <th className="px-4 py-3">Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-ll-slate-800/60 text-xs">
+                  <tbody className="divide-y divide-line/60 text-xs">
                     {auditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-lb-slate-800/30">
-                        <td className="px-4 py-3 text-lt-slate-500 font-mono whitespace-nowrap">
+                      <tr key={log.id} className="hover:bg-raised/30">
+                        <td className="px-4 py-3 text-ink-muted whitespace-nowrap">
                           {new Date(log.timestamp).toLocaleTimeString()}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-lt-purple-300 font-mono">
+                        <td className="px-4 py-3 font-semibold text-ink">
                           {log.action}
                         </td>
-                        <td className="px-4 py-3 text-lt-slate-400">{log.tenantName}</td>
+                        <td className="px-4 py-3 text-ink-muted">{log.tenantName}</td>
                         <td className="px-4 py-3">
-                          <span className="text-lt-white font-medium">{log.userEmail || 'Anonymous'}</span>
-                          <span className="block text-xs text-lt-slate-500">{log.userRole}</span>
+                          <span className="text-ink font-medium">{log.userEmail || 'Anonymous'}</span>
+                          <span className="block text-xs text-ink-muted">{log.userRole}</span>
                         </td>
-                        <td className="px-4 py-3 text-lt-slate-400 font-mono">{log.platform}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-lt-slate-400 max-w-xs truncate">
+                        <td className="px-4 py-3 text-ink-muted">{log.platform}</td>
+                        <td className="px-4 py-3 text-xs text-ink-muted max-w-xs truncate">
                           {JSON.stringify(log.details)}
                         </td>
                       </tr>
@@ -2130,38 +2130,39 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
         {/* MODAL: EDIT PACKAGE */}
         {editingPackage && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-lb-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-lb-slate-900 border border-ll-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-surface border border-line rounded-2xl p-6 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setEditingPackage(null)}
-                className="absolute top-4 right-4 text-lt-slate-400 hover:text-lt-white"
+                aria-label="Close"
+                className="absolute top-3 right-3 h-10 w-10 inline-flex items-center justify-center rounded-control text-ink-muted hover:text-ink hover:bg-raised"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
-              <h3 className="text-base font-bold text-lt-white mb-4">
+              <h3 className="text-base font-bold text-ink mb-4">
                 {isNewPackage ? 'Create New Pricing Package' : `Edit Package: ${editingPackage.displayTitle}`}
               </h3>
 
               <form onSubmit={handleSavePackage} className="space-y-3.5 text-xs">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Display Title</label>
+                    <label className="block text-ink-muted mb-1">Display Title</label>
                     <input
                       type="text"
                       value={editingPackage.displayTitle}
                       onChange={(e) => setEditingPackage({ ...editingPackage, displayTitle: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Tier Key</label>
+                    <label className="block text-ink-muted mb-1">Tier Key</label>
                     <input
                       type="text"
                       value={editingPackage.tierKey}
                       onChange={(e) => setEditingPackage({ ...editingPackage, tierKey: e.target.value.toUpperCase() })}
                       disabled={!isNewPackage}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white uppercase font-mono disabled:opacity-60"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink disabled:opacity-60"
                       required
                     />
                   </div>
@@ -2169,7 +2170,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Price Amount</label>
+                    <label className="block text-ink-muted mb-1">Price Amount</label>
                     <input
                       type="number"
                       step="any"
@@ -2182,25 +2183,25 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                           priceAmount: val === '' ? '' : parseFloat(val),
                         });
                       }}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white font-mono"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Currency Symbol</label>
+                    <label className="block text-ink-muted mb-1">Currency Symbol</label>
                     <input
                       type="text"
                       value={editingPackage.currencySymbol}
                       onChange={(e) => setEditingPackage({ ...editingPackage, currencySymbol: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Billing Interval</label>
+                    <label className="block text-ink-muted mb-1">Billing Interval</label>
                     <select
                       value={editingPackage.billingInterval}
                       onChange={(e) => setEditingPackage({ ...editingPackage, billingInterval: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     >
                       <option value="month">Month</option>
                       <option value="year">Year</option>
@@ -2210,110 +2211,110 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-lt-slate-400 mb-1">Badge Text (optional)</label>
+                  <label className="block text-ink-muted mb-1">Badge Text (optional)</label>
                   <input
                     type="text"
                     value={editingPackage.badge || ''}
                     onChange={(e) => setEditingPackage({ ...editingPackage, badge: e.target.value })}
                     placeholder="e.g. Most Popular, Pro Grade"
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-lt-slate-400 mb-1">Description</label>
+                  <label className="block text-ink-muted mb-1">Description</label>
                   <textarea
                     rows={2}
                     value={editingPackage.description}
                     onChange={(e) => setEditingPackage({ ...editingPackage, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                   />
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Max Rooms</label>
+                    <label className="block text-ink-muted mb-1">Max Rooms</label>
                     <input
                       type="number"
                       value={editingPackage.maxActiveRooms}
                       onChange={(e) => setEditingPackage({ ...editingPackage, maxActiveRooms: parseInt(e.target.value) || 1 })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Max Boats / Race</label>
+                    <label className="block text-ink-muted mb-1">Max Boats / Race</label>
                     <input
                       type="number"
                       value={editingPackage.maxBoatsPerRoom}
                       onChange={(e) => setEditingPackage({ ...editingPackage, maxBoatsPerRoom: parseInt(e.target.value) || 10 })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Admin Seats</label>
+                    <label className="block text-ink-muted mb-1">Admin Seats</label>
                     <input
                       type="number"
                       value={editingPackage.maxAdminSeats}
                       onChange={(e) => setEditingPackage({ ...editingPackage, maxAdminSeats: parseInt(e.target.value) || 2 })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-6 py-1">
-                  <label className="flex items-center space-x-2 cursor-pointer text-lt-slate-300">
+                  <label className="flex items-center space-x-2 cursor-pointer text-ink">
                     <input
                       type="checkbox"
                       checked={!!editingPackage.loraPriority}
                       onChange={(e) => setEditingPackage({ ...editingPackage, loraPriority: e.target.checked })}
-                      className="rounded bg-lb-slate-950 border-ll-slate-800 text-lt-purple-600"
+                      className="rounded bg-canvas border-line text-ink-muted"
                     />
                     <span>LoRa Priority</span>
                   </label>
-                  <label className="flex items-center space-x-2 cursor-pointer text-lt-slate-300">
+                  <label className="flex items-center space-x-2 cursor-pointer text-ink">
                     <input
                       type="checkbox"
                       checked={!!editingPackage.customBranding}
                       onChange={(e) => setEditingPackage({ ...editingPackage, customBranding: e.target.checked })}
-                      className="rounded bg-lb-slate-950 border-ll-slate-800 text-lt-purple-600"
+                      className="rounded bg-canvas border-line text-ink-muted"
                     />
                     <span>Custom Branding</span>
                   </label>
-                  <label className="flex items-center space-x-2 cursor-pointer text-lt-slate-300">
+                  <label className="flex items-center space-x-2 cursor-pointer text-ink">
                     <input
                       type="checkbox"
                       checked={editingPackage.isActive !== false}
                       onChange={(e) => setEditingPackage({ ...editingPackage, isActive: e.target.checked })}
-                      className="rounded bg-lb-slate-950 border-ll-slate-800 text-lt-purple-600"
+                      className="rounded bg-canvas border-line text-ink-muted"
                     />
                     <span>Active in Public Catalog</span>
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-lt-slate-400 mb-1">Features (One per line)</label>
+                  <label className="block text-ink-muted mb-1">Features (One per line)</label>
                   <textarea
                     rows={4}
                     value={(editingPackage.features || []).join('\n')}
                     onChange={(e) => setEditingPackage({ ...editingPackage, features: e.target.value.split('\n').filter(Boolean) })}
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white font-mono text-xs"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink text-xs"
                   />
                 </div>
 
                 {renderDialogFeedback()}
 
-                <div className="flex justify-end space-x-2 pt-3 border-t border-ll-slate-800">
+                <div className="flex justify-end space-x-2 pt-3 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setEditingPackage(null)}
-                    className="px-4 py-2 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-slate-300 font-semibold"
+                    className="px-4 py-2 rounded-lg bg-raised hover:bg-raised text-ink font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={dialogSaving}
-                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white font-semibold shadow-md"
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-raised hover:bg-raised text-ink font-semibold shadow-md"
                   >
                     {dialogSaving ? 'Saving…' : 'Save Changes'}
                   </button>
@@ -2325,29 +2326,29 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
         {/* MODAL: EDIT USER */}
         {editingUser && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-lb-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-lb-slate-900 border border-ll-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
-              <button onClick={() => setEditingUser(null)} className="absolute top-4 right-4 text-lt-slate-400 hover:text-lt-white">✕</button>
-              <h3 className="text-base font-bold text-lt-white mb-4">Edit User: {editingUser.email}</h3>
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-surface border border-line rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+              <button onClick={() => setEditingUser(null)} aria-label="Close" className="absolute top-3 right-3 h-10 w-10 inline-flex items-center justify-center rounded-control text-ink-muted hover:text-ink hover:bg-raised"><X className="w-4 h-4" /></button>
+              <h3 className="text-base font-bold text-ink mb-4">Edit User: {editingUser.email}</h3>
 
               <form onSubmit={handleSaveUser} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-lt-slate-400 mb-1">Full Name</label>
+                  <label className="block text-ink-muted mb-1">Full Name</label>
                   <input
                     type="text"
                     value={editingUser.fullName}
                     onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Role</label>
+                    <label className="block text-ink-muted mb-1">Role</label>
                     <select
                       value={editingUser.role}
                       onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     >
                       <option value="ADMIN">ADMIN</option>
                       <option value="RACE_OFFICER">RACE_OFFICER</option>
@@ -2357,11 +2358,11 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Status</label>
+                    <label className="block text-ink-muted mb-1">Status</label>
                     <select
                       value={editingUser.status}
                       onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     >
                       <option value="ACTIVE">ACTIVE</option>
                       <option value="SUSPENDED">SUSPENDED</option>
@@ -2371,51 +2372,51 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Sail Number</label>
+                    <label className="block text-ink-muted mb-1">Sail Number</label>
                     <input
                       type="text"
                       value={editingUser.sailNumber || ''}
                       onChange={(e) => setEditingUser({ ...editingUser, sailNumber: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Handicap Rating</label>
+                    <label className="block text-ink-muted mb-1">Handicap Rating</label>
                     <input
                       type="text"
                       value={editingUser.handicapRating || ''}
                       onChange={(e) => setEditingUser({ ...editingUser, handicapRating: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <label className="flex items-center space-x-2 cursor-pointer text-lt-slate-300">
+                  <label className="flex items-center space-x-2 cursor-pointer text-ink">
                     <input
                       type="checkbox"
                       checked={!!editingUser.isSuperAdmin}
                       onChange={(e) => setEditingUser({ ...editingUser, isSuperAdmin: e.target.checked })}
-                      className="rounded bg-lb-slate-950 border-ll-slate-800 text-lt-purple-600"
+                      className="rounded bg-canvas border-line text-ink-muted"
                     />
-                    <span className="font-semibold text-lt-purple-300">Grant Super Administrator Privileges</span>
+                    <span className="font-semibold text-ink">Grant Super Administrator Privileges</span>
                   </label>
                 </div>
 
                 {renderDialogFeedback()}
 
-                <div className="flex justify-end space-x-2 pt-4 border-t border-ll-slate-800">
+                <div className="flex justify-end space-x-2 pt-4 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setEditingUser(null)}
-                    className="px-4 py-2 rounded-lg bg-lb-slate-800 text-lt-slate-300 font-semibold"
+                    className="px-4 py-2 rounded-lg bg-raised text-ink font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={dialogSaving}
-                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white font-semibold"
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-raised hover:bg-raised text-ink font-semibold"
                   >
                     {dialogSaving ? 'Saving…' : 'Save User'}
                   </button>
@@ -2427,21 +2428,21 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
         {/* MODAL: RESET PASSWORD */}
         {resetPwdUserId && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-lb-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-lb-slate-900 border border-ll-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
-              <button onClick={() => setResetPwdUserId(null)} className="absolute top-4 right-4 text-lt-slate-400 hover:text-lt-white">✕</button>
-              <h3 className="text-base font-bold text-lt-white mb-2">Reset User Password</h3>
-              <p className="text-xs text-lt-slate-400 mb-4">Set a direct new password for this account.</p>
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-surface border border-line rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+              <button onClick={() => setResetPwdUserId(null)} aria-label="Close" className="absolute top-3 right-3 h-10 w-10 inline-flex items-center justify-center rounded-control text-ink-muted hover:text-ink hover:bg-raised"><X className="w-4 h-4" /></button>
+              <h3 className="text-base font-bold text-ink mb-2">Reset User Password</h3>
+              <p className="text-xs text-ink-muted mb-4">Set a direct new password for this account.</p>
 
               <form onSubmit={handleResetPassword} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-lt-slate-300 mb-1">New Password</label>
+                  <label className="block text-ink mb-1">New Password</label>
                   <input
                     type="password"
                     value={newPasswordVal}
                     onChange={(e) => setNewPasswordVal(e.target.value)}
                     placeholder="Enter new password..."
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     required
                   />
                 </div>
@@ -2452,14 +2453,14 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setResetPwdUserId(null)}
-                    className="px-3 py-1.5 rounded-lg bg-lb-slate-800 text-lt-slate-300"
+                    className="px-3 py-1.5 rounded-lg bg-raised text-ink"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={dialogSaving}
-                    className="disabled:opacity-60 disabled:cursor-wait px-4 py-1.5 rounded-lg bg-lb-amber-600 hover:bg-lb-amber-500 text-lt-white font-semibold"
+                    className="disabled:opacity-60 disabled:cursor-wait px-4 py-1.5 rounded-lg bg-warning-ink hover:brightness-110 text-canvas font-semibold"
                   >
                     {dialogSaving ? 'Saving…' : 'Update Password'}
                   </button>
@@ -2471,28 +2472,28 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
         {/* MODAL: EDIT CLUB */}
         {editingClub && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-lb-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-lb-slate-900 border border-ll-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
-              <button onClick={() => setEditingClub(null)} className="absolute top-4 right-4 text-lt-slate-400 hover:text-lt-white">✕</button>
-              <h3 className="text-base font-bold text-lt-white mb-4">Manage Club: {editingClub.name}</h3>
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-surface border border-line rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+              <button onClick={() => setEditingClub(null)} aria-label="Close" className="absolute top-3 right-3 h-10 w-10 inline-flex items-center justify-center rounded-control text-ink-muted hover:text-ink hover:bg-raised"><X className="w-4 h-4" /></button>
+              <h3 className="text-base font-bold text-ink mb-4">Manage Club: {editingClub.name}</h3>
 
               <form onSubmit={handleSaveClub} className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-lt-slate-400 mb-1">Club Name</label>
+                  <label className="block text-ink-muted mb-1">Club Name</label>
                   <input
                     type="text"
                     value={editingClub.name}
                     onChange={(e) => setEditingClub({ ...editingClub, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-lt-slate-400 mb-1">Plan Tier</label>
+                  <label className="block text-ink-muted mb-1">Plan Tier</label>
                   <select
                     value={editingClub.planTier}
                     onChange={(e) => setEditingClub({ ...editingClub, planTier: e.target.value })}
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                   >
                     <option value="FREE">FREE (Starter)</option>
                     <option value="CLUB">CLUB (Yacht Club & Fleet)</option>
@@ -2502,39 +2503,39 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Max Active Regattas</label>
+                    <label className="block text-ink-muted mb-1">Max Active Regattas</label>
                     <input
                       type="number"
                       value={editingClub.maxActiveRooms}
                       onChange={(e) => setEditingClub({ ...editingClub, maxActiveRooms: parseInt(e.target.value) || 1 })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1">Max Boats / Room</label>
+                    <label className="block text-ink-muted mb-1">Max Boats / Room</label>
                     <input
                       type="number"
                       value={editingClub.maxBoatsPerRoom}
                       onChange={(e) => setEditingClub({ ...editingClub, maxBoatsPerRoom: parseInt(e.target.value) || 15 })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink"
                     />
                   </div>
                 </div>
 
                 {renderDialogFeedback()}
 
-                <div className="flex justify-end space-x-2 pt-4 border-t border-ll-slate-800">
+                <div className="flex justify-end space-x-2 pt-4 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setEditingClub(null)}
-                    className="px-4 py-2 rounded-lg bg-lb-slate-800 text-lt-slate-300 font-semibold"
+                    className="px-4 py-2 rounded-lg bg-raised text-ink font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={dialogSaving}
-                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white font-semibold"
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-raised hover:bg-raised text-ink font-semibold"
                   >
                     {dialogSaving ? 'Saving…' : 'Save Changes'}
                   </button>
@@ -2546,74 +2547,75 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
         {/* MODAL: EDIT GLOBAL EVENT */}
         {editingEvent && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-lb-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-lb-slate-900 border border-ll-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-surface border border-line rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
               <button
                 onClick={() => setEditingEvent(null)}
-                className="absolute top-4 right-4 text-lt-slate-400 hover:text-lt-white"
+                aria-label="Close"
+                className="absolute top-3 right-3 h-10 w-10 inline-flex items-center justify-center rounded-control text-ink-muted hover:text-ink hover:bg-raised"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
-              <h3 className="text-base font-bold text-lt-white mb-1">Edit Event: {editingEvent.code}</h3>
-              <p className="text-xs text-lt-slate-400 mb-4">
+              <h3 className="text-base font-bold text-ink mb-1">Edit Event: {editingEvent.code}</h3>
+              <p className="text-xs text-ink-muted mb-4">
                 Modify regatta metadata, event code, security access PINs, and status.
               </p>
 
               <form onSubmit={handleSaveEvent} className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-lt-slate-400 mb-1 font-semibold">Event Title / Name</label>
+                  <label className="block text-ink-muted mb-1 font-semibold">Event Title / Name</label>
                   <input
                     type="text"
                     value={editingEvent.title}
                     onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                    className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white focus:outline-none focus:border-ll-purple-500"
+                    className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:outline-none focus:border-line"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1 font-semibold">Event Code (Unique)</label>
+                    <label className="block text-ink-muted mb-1 font-semibold">Event Code (Unique)</label>
                     <input
                       type="text"
                       value={editingEvent.code}
                       onChange={(e) => setEditingEvent({ ...editingEvent, code: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-cyan-300 font-mono uppercase focus:outline-none focus:border-ll-cyan-500"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-accent focus:outline-none focus:border-accent"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1 font-semibold">Location / Water Body</label>
+                    <label className="block text-ink-muted mb-1 font-semibold">Location / Water Body</label>
                     <input
                       type="text"
                       value={editingEvent.locationName || ''}
                       onChange={(e) => setEditingEvent({ ...editingEvent, locationName: e.target.value })}
                       placeholder="e.g. Strait of Malacca, Port Dickson"
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white focus:outline-none focus:border-ll-purple-500"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:outline-none focus:border-line"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1 font-semibold">Race Officer PIN (Admin)</label>
+                    <label className="block text-ink-muted mb-1 font-semibold">Race Officer PIN (Admin)</label>
                     <input
                       type="text"
                       value={editingEvent.adminPin || ''}
                       onChange={(e) => setEditingEvent({ ...editingEvent, adminPin: e.target.value })}
                       placeholder="4-digit PIN"
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-amber-300 font-mono focus:outline-none focus:border-ll-amber-500"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-warning-ink focus:outline-none focus:border-warning-ink"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-lt-slate-400 mb-1 font-semibold">Participant PIN</label>
+                    <label className="block text-ink-muted mb-1 font-semibold">Participant PIN</label>
                     <input
                       type="text"
                       value={editingEvent.participantPin || ''}
                       onChange={(e) => setEditingEvent({ ...editingEvent, participantPin: e.target.value })}
                       placeholder="e.g. 1234"
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-emerald-300 font-mono focus:outline-none focus:border-ll-emerald-500"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-success-ink focus:outline-none focus:border-success-ink"
                       required
                     />
                   </div>
@@ -2621,11 +2623,11 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-lt-slate-400 mb-1 font-semibold">Race Status</label>
+                    <label className="block text-ink-muted mb-1 font-semibold">Race Status</label>
                     <select
                       value={editingEvent.status || 'PRE_START'}
                       onChange={(e) => setEditingEvent({ ...editingEvent, status: e.target.value })}
-                      className="w-full px-3 py-2 bg-lb-slate-950 border border-ll-slate-800 rounded-lg text-lt-white focus:outline-none focus:border-ll-purple-500"
+                      className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:outline-none focus:border-line"
                     >
                       <option value="PRE_START">PRE_START (Preparing)</option>
                       <option value="COUNTDOWN">COUNTDOWN (Sequence Running)</option>
@@ -2635,32 +2637,32 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     </select>
                   </div>
                   <div className="flex items-center pt-5">
-                    <label className="flex items-center space-x-2 cursor-pointer text-lt-slate-300">
+                    <label className="flex items-center space-x-2 cursor-pointer text-ink">
                       <input
                         type="checkbox"
                         checked={editingEvent.isPublic !== false}
                         onChange={(e) => setEditingEvent({ ...editingEvent, isPublic: e.target.checked })}
-                        className="rounded bg-lb-slate-950 border-ll-slate-800 text-lt-purple-600 focus:ring-0"
+                        className="rounded bg-canvas border-line text-ink-muted focus:ring-0"
                       />
-                      <span className="font-semibold text-lt-slate-200">Public Regatta</span>
+                      <span className="font-semibold text-ink">Public Regatta</span>
                     </label>
                   </div>
                 </div>
 
                 {renderDialogFeedback()}
 
-                <div className="flex justify-end space-x-2 pt-4 border-t border-ll-slate-800">
+                <div className="flex justify-end space-x-2 pt-4 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setEditingEvent(null)}
-                    className="px-4 py-2 rounded-lg bg-lb-slate-800 hover:bg-lb-slate-700 text-lt-slate-300 font-semibold cursor-pointer"
+                    className="px-4 py-2 rounded-lg bg-raised hover:bg-raised text-ink font-semibold cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={dialogSaving}
-                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-lb-purple-600 hover:bg-lb-purple-500 text-lt-white font-semibold cursor-pointer shadow-md"
+                    className="disabled:opacity-60 disabled:cursor-wait px-5 py-2 rounded-lg bg-raised hover:bg-raised text-ink font-semibold cursor-pointer shadow-md"
                   >
                     {dialogSaving ? 'Saving…' : 'Save Event Details'}
                   </button>
