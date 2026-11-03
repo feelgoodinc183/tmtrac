@@ -12,6 +12,8 @@ import {
   initDatabase,
   hashPassword,
   generateToken,
+  generateAdminPin,
+  generateParticipantPin,
   insertAuditLog,
   PLAN_CONFIG,
   getAllPackages,
@@ -135,7 +137,7 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
       title: row.title,
       locationName: row.location_name,
       adminPin: row.admin_pin,
-      participantPin: row.participant_pin || '1234',
+      participantPin: row.participant_pin || '',
       isPublic: !!row.is_public,
       ownerId: row.owner_id,
       ownerEmail: row.owner_email,
@@ -167,8 +169,8 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
     code,
     title: `${code} Regatta`,
     locationName: 'Coastal Waters',
-    adminPin: '2026',
-    participantPin: '1234',
+    adminPin: generateAdminPin(),
+    participantPin: generateParticipantPin(),
     isPublic: true,
     ownerId: 'user-admin-0',
     createdAt: Date.now(),
@@ -276,6 +278,52 @@ function roomRoleUserFromGate(req: express.Request): RoomRoleUser | null {
 
 function canEditRoom(role: RoomRole): boolean {
   return role === 'ADMIN' || role === 'RACE_OFFICER';
+}
+
+// --- Wrong-PIN limiter: room PINs are short, so cap guesses per client and room ---
+const PIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const PIN_MAX_FAILURES = 10;
+const pinFailures = new Map<string, { count: number; firstAt: number }>();
+
+export function clientAddress(headers: http.IncomingHttpHeaders, socketAddress?: string): string {
+  const forwarded = headers['x-forwarded-for'];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded || '').split(',')[0].trim();
+  return first || socketAddress || 'unknown';
+}
+
+export function isPinLocked(client: string, roomCode: string): boolean {
+  const entry = pinFailures.get(`${client}|${roomCode}`);
+  if (!entry) return false;
+  if (Date.now() - entry.firstAt > PIN_FAILURE_WINDOW_MS) {
+    pinFailures.delete(`${client}|${roomCode}`);
+    return false;
+  }
+  return entry.count >= PIN_MAX_FAILURES;
+}
+
+/**
+ * Returns the PIN to evaluate for this room, or '' when the client is locked out.
+ * Records whether a non-empty PIN matched either of the room's PINs.
+ */
+export function checkedPin(client: string, room: ActiveRoomState, pin?: string): string {
+  const cleanPin = (pin || '').trim();
+  if (!cleanPin) return '';
+  if (isPinLocked(client, room.code)) return '';
+  const key = `${client}|${room.code}`;
+  if (cleanPin === room.adminPin || cleanPin === room.participantPin) {
+    pinFailures.delete(key);
+  } else {
+    const entry = pinFailures.get(key);
+    if (!entry || Date.now() - entry.firstAt > PIN_FAILURE_WINDOW_MS) {
+      pinFailures.set(key, { count: 1, firstAt: Date.now() });
+    } else {
+      entry.count++;
+      if (entry.count === PIN_MAX_FAILURES) {
+        console.warn(`[PIN] ${PIN_MAX_FAILURES} wrong PINs for room ${room.code} from ${client}; ignoring PINs for 15 minutes`);
+      }
+    }
+  }
+  return cleanPin;
 }
 
 async function startServer() {
@@ -406,9 +454,11 @@ async function startServer() {
     // Unknown codes fall back to LOBBY instead of spawning an unsaved room with the default PIN
     const room = getOrLoadRoom(initialRoomCode, false) || getOrLoadRoom('LOBBY', true)!;
     const roleUser = roomRoleUserFromRow(authUser);
-    const roomRole = resolveRoomRole(roleUser, room, initialPin);
+    const clientKey = clientAddress(req.headers, req.socket.remoteAddress);
+    const roomRole = resolveRoomRole(roleUser, room, checkedPin(clientKey, room, initialPin));
 
     (ws as any).id = 'sock-' + crypto.randomBytes(4).toString('hex');
+    (ws as any).clientKey = clientKey;
     (ws as any).roomCode = room.code;
     (ws as any).roleUser = roleUser;
     (ws as any).userId = authUser?.id || null;
@@ -468,7 +518,8 @@ async function startServer() {
               (ws as any).roomCode = newCode;
 
               // Re-derive the role for the new room; never carry admin over from the previous room
-              const newRole = resolveRoomRole((ws as any).roleUser || null, newRoom, typeof payload.pin === 'string' ? payload.pin : '');
+              const joinPin = checkedPin((ws as any).clientKey, newRoom, typeof payload.pin === 'string' ? payload.pin : '');
+              const newRole = resolveRoomRole((ws as any).roleUser || null, newRoom, joinPin);
               const isNowAdmin = newRole === 'ADMIN';
 
               (ws as any).isAdmin = isNowAdmin;
@@ -503,9 +554,9 @@ async function startServer() {
           }
 
           case 'VERIFY_PIN': {
-            const pinAttempt = payload?.pin || '';
-            const isValidAdmin = currentRoom.adminPin === pinAttempt;
-            const isValidParticipant = currentRoom.participantPin === pinAttempt;
+            const pinAttempt = checkedPin((ws as any).clientKey, currentRoom, typeof payload?.pin === 'string' ? payload.pin : '');
+            const isValidAdmin = !!pinAttempt && currentRoom.adminPin === pinAttempt;
+            const isValidParticipant = !!pinAttempt && currentRoom.participantPin === pinAttempt;
 
             if (isValidAdmin) {
               (ws as any).isAdmin = true;
@@ -817,7 +868,7 @@ async function startServer() {
 
   function requestRoomRole(req: express.Request, room: ActiveRoomState): RoomRole {
     const pin = (req.headers['x-admin-pin'] as string) || (typeof req.body?.pin === 'string' ? req.body.pin : '');
-    return resolveRoomRole(roomRoleUserFromGate(req), room, pin);
+    return resolveRoomRole(roomRoleUserFromGate(req), room, checkedPin(clientAddress(req.headers, req.socket.remoteAddress), room, pin));
   }
 
   // ==========================================
@@ -901,6 +952,8 @@ async function startServer() {
 
       // Seed initial event for this new club
       const defaultEventCode = slug.substring(0, 6).toUpperCase();
+      const defaultAdminPin = generateAdminPin();
+      const defaultParticipantPin = generateParticipantPin();
       const eventId = 'event-' + crypto.randomBytes(6).toString('hex');
       const eventTitle = `${orgName} Championship`;
 
@@ -916,8 +969,8 @@ async function startServer() {
         defaultEventCode,
         eventTitle,
         sailingClub || 'Club Waters',
-        '2026',
-        '1234',
+        defaultAdminPin,
+        defaultParticipantPin,
         1,
         userId,
         'PRE_START',
@@ -967,6 +1020,8 @@ async function startServer() {
           createdAt: now,
         },
         defaultEventCode,
+        // Only the new club admin ever sees these; there are no shared default PINs any more
+        defaultRoomPins: { adminPin: defaultAdminPin, participantPin: defaultParticipantPin },
         token,
       });
     } catch (e: any) {
@@ -979,7 +1034,9 @@ async function startServer() {
    * Flow: Participant registration (Skipper, Crew, Officer joining an organization or event)
    */
   app.post('/api/auth/register', (req, res) => {
-    const { email, username, password, fullName, sailingClub, sailNumber, handicapRating, role, participantType, tenantId } = req.body || {};
+    // role and tenant are never trusted from the client: personal sign-up can't make admins or pick a club.
+    // Admins come from club sign-up (/api/auth/register-tenant) or a Super Admin edit.
+    const { email, username, password, fullName, sailingClub, sailNumber, handicapRating, role, participantType } = req.body || {};
     if (!email || !username || !password || !fullName) {
       return res.status(400).json({ error: 'Please provide email, username, password, and full name.' });
     }
@@ -993,17 +1050,13 @@ async function startServer() {
       return res.status(400).json({ error: 'An account with this email or username already exists.' });
     }
 
-    // Determine tenant: either specified or fall back to default organization
-    let assignedTenantId = tenantId;
-    if (!assignedTenantId) {
-      const defaultTenant = (db.prepare('SELECT id FROM tenants LIMIT 1').get() as any);
-      assignedTenantId = defaultTenant?.id || 'tenant-rlyc-default';
-    }
+    const defaultTenant = (db.prepare('SELECT id FROM tenants LIMIT 1').get() as any);
+    const assignedTenantId = defaultTenant?.id || 'tenant-rlyc-default';
 
     const userId = 'user-' + crypto.randomBytes(6).toString('hex');
     const token = generateToken();
     const now = Date.now();
-    const assignedRole = cleanEmail === 'irsyadismail@gmail.com' ? 'ADMIN' : (role === 'ADMIN' ? 'ADMIN' : (role === 'SPECTATOR' ? 'SPECTATOR' : 'PARTICIPANT'));
+    const assignedRole = role === 'SPECTATOR' ? 'SPECTATOR' : 'PARTICIPANT';
     const assignedPartType = participantType || (role === 'RACE_OFFICER' ? 'RACE_OFFICER' : 'SKIPPER');
 
     try {
@@ -1443,7 +1496,7 @@ async function startServer() {
     }
 
     // Check if code exists
-    const existing = db.prepare('SELECT id, tenant_id FROM events WHERE code = ?').get(cleanCode) as any;
+    const existing = db.prepare('SELECT id, tenant_id, admin_pin, participant_pin FROM events WHERE code = ?').get(cleanCode) as any;
     if (existing) {
       if (existing.tenant_id !== tenant.id) {
         return res.status(400).json({ error: `Event code #${cleanCode} is already in use by another organization.` });
@@ -1464,8 +1517,8 @@ async function startServer() {
         `).run(
           title || `${cleanCode} Regatta`,
           locationName || 'Coastal Waters',
-          adminPin || '2026',
-          participantPin || '1234',
+          adminPin || existing.admin_pin || generateAdminPin(),
+          participantPin || existing.participant_pin || generateParticipantPin(),
           isPublic ?? 1,
           JSON.stringify(raceState),
           now,
@@ -1484,8 +1537,8 @@ async function startServer() {
           cleanCode,
           title || `${cleanCode} Regatta`,
           locationName || 'Coastal Waters',
-          adminPin || '2026',
-          participantPin || '1234',
+          adminPin || generateAdminPin(),
+          participantPin || generateParticipantPin(),
           isPublic ?? 1,
           user.id,
           'PRE_START',
@@ -1628,7 +1681,11 @@ async function startServer() {
     }
 
     const pin = typeof req.body?.pin === 'string' ? req.body.pin.trim() : '';
-    const role = resolveRoomRole(roomRoleUserFromGate(req), room, pin);
+    const client = clientAddress(req.headers, req.socket.remoteAddress);
+    if (pin && isPinLocked(client, room.code)) {
+      return res.status(429).json({ success: false, valid: false, error: 'Too many wrong PINs for this room. Try again in 15 minutes.' });
+    }
+    const role = resolveRoomRole(roomRoleUserFromGate(req), room, checkedPin(client, room, pin));
     const isAdmin = role === 'ADMIN';
     const isParticipant = role !== 'SPECTATOR';
 
@@ -1639,6 +1696,27 @@ async function startServer() {
       isAdmin,
       isParticipant,
       isOwner: false,
+    });
+  });
+
+  /**
+   * Room PINs for people who may edit the room: Race Officers print boat QR cards with the
+   * participant PIN; only room admins also get the admin PIN back.
+   */
+  app.get('/api/rooms/:code/pins', (req, res) => {
+    const room = getOrLoadRoom(req.params.code.trim().toUpperCase(), false);
+    if (!room) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    const role = requestRoomRole(req, room);
+    if (!canEditRoom(role)) {
+      return res.status(403).json({ error: 'Only Race Officers and room admins can see room PINs.' });
+    }
+    res.json({
+      success: true,
+      roomCode: room.code,
+      participantPin: room.participantPin || '',
+      ...(role === 'ADMIN' ? { adminPin: room.adminPin } : {}),
     });
   });
 
@@ -2289,8 +2367,9 @@ async function startServer() {
 
       const newTitle = title !== undefined ? String(title).trim() : existing.title;
       const newCode = code !== undefined ? String(code).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '') : existing.code;
-      const newAdminPin = adminPin !== undefined ? String(adminPin).trim() : existing.admin_pin;
-      const newParticipantPin = participantPin !== undefined ? String(participantPin).trim() : existing.participant_pin;
+      // A blank PIN field keeps the current PIN rather than clearing it
+      const newAdminPin = adminPin !== undefined && String(adminPin).trim() ? String(adminPin).trim() : existing.admin_pin;
+      const newParticipantPin = participantPin !== undefined && String(participantPin).trim() ? String(participantPin).trim() : existing.participant_pin;
       const newLocation = locationName !== undefined ? String(locationName).trim() : existing.location_name;
       const newStatus = status !== undefined ? String(status).trim() : existing.status;
       const newIsPublic = isPublic !== undefined ? (isPublic ? 1 : 0) : existing.is_public;
@@ -2319,6 +2398,8 @@ async function startServer() {
           memRoom.code = newCode;
           memRoom.title = newTitle;
           memRoom.locationName = newLocation;
+          memRoom.adminPin = newAdminPin;
+          memRoom.participantPin = newParticipantPin;
           if (memRoom.raceState) {
             memRoom.raceState.name = newTitle;
             memRoom.raceState.locationName = newLocation;
@@ -2331,6 +2412,9 @@ async function startServer() {
         if (memRoom) {
           memRoom.title = newTitle;
           memRoom.locationName = newLocation;
+          // Keep the live room in step, or its next save would write the old PINs back
+          memRoom.adminPin = newAdminPin;
+          memRoom.participantPin = newParticipantPin;
           if (memRoom.raceState) {
             memRoom.raceState.name = newTitle;
             memRoom.raceState.locationName = newLocation;

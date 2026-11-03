@@ -49,6 +49,8 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set after club sign-up: the first room's random PINs are shown once before continuing
+  const [createdRoom, setCreatedRoom] = useState<{ code: string; adminPin: string; participantPin: string; user: UserAccount } | null>(null);
 
   if (!isOpen) return null;
 
@@ -104,12 +106,74 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     });
     setLoading(false);
     if (res.success && res.user) {
+      if (res.defaultEventCode && res.defaultRoomPins) {
+        setCreatedRoom({ code: res.defaultEventCode, ...res.defaultRoomPins, user: res.user });
+        return;
+      }
       onSuccess?.(res.user);
       onClose();
     } else {
       setError(res.error || 'Failed to create organization. Please verify details.');
     }
   };
+
+  const finishClubSetup = () => {
+    if (createdRoom) onSuccess?.(createdRoom.user);
+    setCreatedRoom(null);
+    onClose();
+  };
+
+  if (createdRoom) {
+    return (
+      <div
+        id="user-auth-modal-backdrop"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto"
+      >
+        <div
+          id="club-created-pins"
+          className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto flex flex-col text-slate-100"
+        >
+          <div className="p-4 sm:p-6 border-b border-slate-700/80 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">Club created</h2>
+              <p className="text-xs text-slate-400">Your first regatta room is ready. Note these PINs now.</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-4 text-sm">
+            <div className="grid grid-cols-3 gap-3 font-mono">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">Room code</div>
+                <div className="text-lg font-bold text-cyan-300">{createdRoom.code}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">Race Officer PIN</div>
+                <div className="text-lg font-bold text-emerald-300">{createdRoom.adminPin}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">Skipper PIN</div>
+                <div className="text-lg font-bold text-amber-300">{createdRoom.participantPin}</div>
+              </div>
+            </div>
+            <ul className="text-xs text-slate-400 space-y-1.5 list-disc pl-4">
+              <li>Give the Race Officer PIN only to people who run the race. It unlocks the RC Console.</li>
+              <li>The Skipper PIN is built into the boat check-in QR cards, so skippers never type it.</li>
+              <li>You can edit this room from your club account without a PIN.</li>
+            </ul>
+            <button
+              type="button"
+              onClick={finishClubSetup}
+              className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold flex items-center justify-center gap-2 cursor-pointer"
+            >
+              I've noted the PINs <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

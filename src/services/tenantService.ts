@@ -1,5 +1,6 @@
 import { Tenant, PlanTier, AuditLogEntry, UserAccount } from '../types/regatta';
 import { authService } from './authService';
+import { roomService } from './roomService';
 
 export type TenantChangeListener = (tenant: Tenant | null) => void;
 
@@ -79,7 +80,14 @@ class TenantService {
     password: string;
     fullName: string;
     sailingClub?: string;
-  }): Promise<{ success: boolean; error?: string; tenant?: Tenant; user?: UserAccount; defaultEventCode?: string }> {
+  }): Promise<{
+    success: boolean;
+    error?: string;
+    tenant?: Tenant;
+    user?: UserAccount;
+    defaultEventCode?: string;
+    defaultRoomPins?: { adminPin: string; participantPin: string };
+  }> {
     try {
       const res = await fetch('/api/auth/register-tenant', {
         method: 'POST',
@@ -91,8 +99,17 @@ class TenantService {
         this.currentTenant = data.tenant;
         localStorage.setItem('tmtrac_active_tenant', JSON.stringify(data.tenant));
         authService.handleDirectLogin(data.user, data.token);
+        if (data.defaultEventCode && data.defaultRoomPins?.adminPin) {
+          roomService.rememberAdminPin(data.defaultEventCode, data.defaultRoomPins.adminPin);
+        }
         this.notify();
-        return { success: true, tenant: data.tenant, user: data.user, defaultEventCode: data.defaultEventCode };
+        return {
+          success: true,
+          tenant: data.tenant,
+          user: data.user,
+          defaultEventCode: data.defaultEventCode,
+          defaultRoomPins: data.defaultRoomPins,
+        };
       }
       return { success: false, error: data.error || 'Failed to create organization.' };
     } catch (e: any) {

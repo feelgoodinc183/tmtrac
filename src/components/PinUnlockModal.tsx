@@ -28,8 +28,8 @@ export const PinUnlockModal: React.FC<PinUnlockModalProps> = ({
     setIsVerifying(true);
     setError(null);
     try {
-      const valid = await roomService.verifyPin(pin.trim(), roomCode);
-      if (valid) {
+      const result = await roomService.verifyPin(pin.trim(), roomCode);
+      if (result.isAdmin) {
         onSuccess();
         onClose();
       } else {
@@ -74,7 +74,7 @@ export const PinUnlockModal: React.FC<PinUnlockModalProps> = ({
               maxLength={8}
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="e.g. 2026"
+              placeholder="4-digit PIN"
               className="w-full bg-[#0A0F1E] border border-[#1E293B] focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-center text-xl tracking-widest font-mono font-bold text-amber-300 placeholder:text-slate-600 focus:outline-none"
             />
           </div>

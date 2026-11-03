@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Boat } from '../types/regatta';
+import { roomService } from '../services/roomService';
 
 interface BoatCheckInQrModalProps {
   isOpen: boolean;
@@ -60,6 +61,23 @@ export const BoatCheckInQrModal: React.FC<BoatCheckInQrModalProps> = ({
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  // The room's participant PIN goes into the link so a scanning phone may send its boat's GPS.
+  // Only people who can edit the room get it back from the server.
+  const [participantPin, setParticipantPin] = useState<string>('');
+
+  useEffect(() => {
+    if (!isOpen || !isAdmin || !activeRoomCode) {
+      setParticipantPin('');
+      return;
+    }
+    let cancelled = false;
+    roomService.fetchRoomPins(activeRoomCode).then((pins) => {
+      if (!cancelled) setParticipantPin(pins?.participantPin || '');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isAdmin, activeRoomCode]);
 
   // Sync selected boat if initialBoatId or displayBoats change
   useEffect(() => {
@@ -86,8 +104,11 @@ export const BoatCheckInQrModal: React.FC<BoatCheckInQrModalProps> = ({
     if (selectedBoat.sailNumber) {
       params.set('sail', selectedBoat.sailNumber);
     }
+    if (participantPin) {
+      params.set('pin', participantPin);
+    }
     return `${origin}/?${params.toString()}`;
-  }, [selectedBoat, activeRoomCode]);
+  }, [selectedBoat, activeRoomCode, participantPin]);
 
   // Generate real scannable QR Code
   useEffect(() => {

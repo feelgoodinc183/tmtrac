@@ -70,6 +70,28 @@ class RoomService {
     return this.activeRoomPin;
   }
 
+  // Remember an admin PIN on this device so the room unlocks without retyping it
+  public rememberAdminPin(roomCode: string, pin: string) {
+    try {
+      localStorage.setItem(ROOM_PINS_KEY_PREFIX + roomCode, pin);
+    } catch (e) {}
+  }
+
+  // PINs for the active room, for people who may edit it (used to print boat check-in QR cards)
+  public async fetchRoomPins(roomCode = this.activeRoomCode): Promise<{ adminPin?: string; participantPin?: string } | null> {
+    try {
+      const headers = authService.getAuthHeaders();
+      const pin = roomCode === this.activeRoomCode ? this.activeRoomPin : localStorage.getItem(ROOM_PINS_KEY_PREFIX + roomCode) || '';
+      if (pin) headers['x-admin-pin'] = pin;
+      const res = await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/pins`, { headers });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return { adminPin: data.adminPin, participantPin: data.participantPin };
+    } catch (e) {
+      return null;
+    }
+  }
+
   public getIsOrganizer(): boolean {
     return this.isOrganizerRole;
   }

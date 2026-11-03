@@ -1398,8 +1398,8 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                                 id: ev.id || ev.code,
                                 code: ev.code,
                                 title: ev.title,
-                                adminPin: ev.adminPin || '2026',
-                                participantPin: ev.participantPin || '1234',
+                                adminPin: ev.adminPin || '',
+                                participantPin: ev.participantPin || '',
                                 locationName: ev.locationName || '',
                                 status: ev.status || 'PRE_START',
                                 isPublic: ev.isPublic !== false,
@@ -2467,7 +2467,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                       type="text"
                       value={editingEvent.adminPin || ''}
                       onChange={(e) => setEditingEvent({ ...editingEvent, adminPin: e.target.value })}
-                      placeholder="e.g. 2026"
+                      placeholder="4-digit PIN"
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-amber-300 font-mono focus:outline-none focus:border-amber-500"
                       required
                     />

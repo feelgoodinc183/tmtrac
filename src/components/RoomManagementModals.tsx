@@ -137,7 +137,7 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
               required
               value={newPin}
               onChange={(e) => setNewPin(e.target.value)}
-              placeholder="e.g. 2026 or secretPIN"
+              placeholder="New PIN (4+ characters)"
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
             />
             <p className="text-[11px] text-slate-400 mt-1">

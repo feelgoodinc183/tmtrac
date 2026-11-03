@@ -316,8 +316,8 @@ function createFallbackDatabase() {
         code: 'LOBBY',
         title: 'TMTRAC General Regatta Lobby & Staging',
         location_name: 'Fleet Staging Area (Universal)',
-        admin_pin: '2026',
-        participant_pin: '1234',
+        admin_pin: generateAdminPin(),
+        participant_pin: generateParticipantPin(),
         is_public: 1,
         owner_id: 'user-admin-0',
         status: 'PRE_START',
@@ -357,8 +357,8 @@ function createFallbackDatabase() {
         code: 'RLIR26',
         title: 'Royal Langkawi International Regatta 2026',
         location_name: 'Kuah Bay, Langkawi (RLYC)',
-        admin_pin: '2026',
-        participant_pin: '1234',
+        admin_pin: generateAdminPin(),
+        participant_pin: generateParticipantPin(),
         is_public: 1,
         owner_id: 'user-admin-0',
         status: 'PRE_START',
@@ -1011,6 +1011,16 @@ export function initialSuperAdminPasswordHash(): string {
   return hashPassword(fromEnv || crypto.randomBytes(24).toString('base64url'));
 }
 
+// Room PINs: admin PINs are 4 digits because Race Officers type them; participant PINs travel inside
+// boat QR links, so they are 6 digits (harder to guess, and never equal to the admin PIN).
+export function generateAdminPin(): string {
+  return String(crypto.randomInt(0, 10000)).padStart(4, '0');
+}
+
+export function generateParticipantPin(): string {
+  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+}
+
 export function generateToken(): string {
   return 'tmtrac_tk_' + crypto.randomBytes(24).toString('hex');
 }
@@ -1066,7 +1076,7 @@ export function initDatabase() {
       title TEXT NOT NULL,
       location_name TEXT NOT NULL,
       admin_pin TEXT NOT NULL,
-      participant_pin TEXT NOT NULL DEFAULT '1234',
+      participant_pin TEXT NOT NULL DEFAULT '',
       is_public INTEGER DEFAULT 1,
       owner_id TEXT NOT NULL,
       status TEXT DEFAULT 'PRE_START',
@@ -1385,8 +1395,8 @@ export function initDatabase() {
         'RLIR26',
         'Royal Langkawi International Regatta 2026',
         'Kuah Bay, Langkawi (RLYC)',
-        '2026',
-        '1234',
+        generateAdminPin(),
+        generateParticipantPin(),
         1,
         defaultTenant.owner_id || 'user-admin-0',
         'PRE_START',
@@ -1441,8 +1451,8 @@ export function initDatabase() {
         'LOBBY',
         'TMTRAC General Regatta Lobby & Staging',
         'Fleet Staging Area (Universal)',
-        '2026',
-        '1234',
+        generateAdminPin(),
+        generateParticipantPin(),
         1,
         defaultTenant.owner_id || 'user-admin-0',
         'PRE_START',
@@ -2219,8 +2229,8 @@ export function repairDatabase(): {
           'LOBBY',
           'TMTRAC General Regatta Lobby & Staging',
           'Fleet Staging Area (Universal)',
-          '2026',
-          '1234',
+          generateAdminPin(),
+          generateParticipantPin(),
           1,
           'user-admin-0',
           'PRE_START',
