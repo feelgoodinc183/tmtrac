@@ -4,15 +4,82 @@ const AUTH_TOKEN_KEY = 'tmtrac_auth_token_v1';
 const AUTH_USER_KEY = 'tmtrac_auth_user_v1';
 
 export type AuthListener = (user: UserAccount | null) => void;
+export type SessionEndedListener = (ended: boolean) => void;
+
+// A 401 from these means "wrong password", not "your session ended".
+const CREDENTIAL_ENDPOINTS = ['/api/auth/login', '/api/auth/register'];
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+function requestCarriesToken(input: RequestInfo | URL, init: RequestInit | undefined, token: string): boolean {
+  const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+  const values = [headers.get('Authorization'), headers.get('x-auth-token'), headers.get('x-super-admin-token')];
+  if (values.some((v) => v && v.includes(token))) return true;
+  return requestUrl(input).includes(token);
+}
 
 class AuthService {
   private currentUser: UserAccount | null = null;
   private token: string | null = null;
   private listeners: AuthListener[] = [];
   private isInitialized = false;
+  private sessionEnded = false;
+  private sessionEndedListeners: SessionEndedListener[] = [];
 
   constructor() {
     this.restoreSession();
+    this.installSessionGuard();
+  }
+
+  /**
+   * Watch every API call: if a request sent with the current login comes back 401, the session
+   * has ended on the server (expired, password changed, signed out elsewhere). Flag it once so
+   * the app can ask the user to sign in again instead of carrying on as if signed in.
+   */
+  private installSessionGuard() {
+    if (typeof window === 'undefined' || (window as any).__tmtracSessionGuard) return;
+    (window as any).__tmtracSessionGuard = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const tokenAtSend = this.token;
+      const res = await originalFetch(input, init);
+      if (res.status === 401 && tokenAtSend && tokenAtSend === this.token) {
+        let pathname = '';
+        try {
+          pathname = new URL(requestUrl(input), window.location.origin).pathname;
+        } catch {}
+        if (
+          pathname.startsWith('/api/') &&
+          !CREDENTIAL_ENDPOINTS.includes(pathname) &&
+          requestCarriesToken(input, init, tokenAtSend)
+        ) {
+          this.setSessionEnded(true);
+        }
+      }
+      return res;
+    };
+  }
+
+  private setSessionEnded(ended: boolean) {
+    if (this.sessionEnded === ended) return;
+    this.sessionEnded = ended;
+    this.sessionEndedListeners.forEach((cb) => cb(ended));
+  }
+
+  public isSessionEnded(): boolean {
+    return this.sessionEnded;
+  }
+
+  public onSessionEndedChange(callback: SessionEndedListener): () => void {
+    this.sessionEndedListeners.push(callback);
+    callback(this.sessionEnded);
+    return () => {
+      this.sessionEndedListeners = this.sessionEndedListeners.filter((cb) => cb !== callback);
+    };
   }
 
   private restoreSession() {
@@ -51,9 +118,8 @@ class AuthService {
           this.notify();
           return this.currentUser;
         }
-      } else if (res.status === 401) {
-        this.clearSession();
       }
+      // A 401 here is picked up by the session guard, which asks the user to sign in again.
     } catch (e) {
       console.warn('Failed to verify token with server:', e);
     }
@@ -73,7 +139,7 @@ class AuthService {
   }
 
   public isSuperAdmin(): boolean {
-    return !!(this.currentUser?.isSuperAdmin || this.currentUser?.email?.toLowerCase().trim() === 'irsyadismail@gmail.com');
+    return !!this.currentUser?.isSuperAdmin;
   }
 
 
@@ -110,6 +176,7 @@ class AuthService {
       localStorage.setItem(AUTH_TOKEN_KEY, token);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
     }
+    this.setSessionEnded(false);
     this.notify();
   }
 
@@ -126,6 +193,7 @@ class AuthService {
         this.currentUser = data.user;
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+        this.setSessionEnded(false);
         this.notify();
         return { success: true, user: data.user };
       }
@@ -157,6 +225,7 @@ class AuthService {
         this.currentUser = data.user;
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+        this.setSessionEnded(false);
         this.notify();
         return { success: true, user: data.user };
       }
@@ -167,7 +236,7 @@ class AuthService {
   }
 
   public isUniversalAdmin(): boolean {
-    return this.currentUser?.email?.toLowerCase().trim() === 'irsyadismail@gmail.com';
+    return !!this.currentUser?.isSuperAdmin;
   }
 
   public isAdmin(): boolean {
@@ -328,6 +397,7 @@ class AuthService {
   private clearSession() {
     this.token = null;
     this.currentUser = null;
+    this.setSessionEnded(false);
     if (typeof window !== 'undefined') {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);

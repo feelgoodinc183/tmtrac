@@ -78,7 +78,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   if (!isOpen || !user) return null;
 
-  const isUniversalAdmin = user.email?.toLowerCase().trim() === 'irsyadismail@gmail.com';
+  const isUniversalAdmin = !!user.isSuperAdmin;
   // Club admins manage their own club's members; the server limits what each admin can see and change
   const canManageUsers = isUniversalAdmin || !!user.isSuperAdmin || user.role === 'ADMIN';
 
