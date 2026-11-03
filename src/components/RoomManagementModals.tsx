@@ -56,25 +56,25 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
   return (
     <div
       id="room-pin-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-lb-slate-950/80 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="room-pin-modal-card"
-        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-100 p-5 sm:p-6"
+        className="bg-lb-slate-900 border border-ll-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-lt-slate-100 p-5 sm:p-6"
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-xl bg-lb-amber-500/20 border border-ll-amber-400/30 flex items-center justify-center text-lt-amber-400">
               <KeyRound className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-white">
+              <h3 className="text-base sm:text-lg font-bold text-lt-white">
                 Edit Room PIN
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-lt-slate-400">
                 {roomTitle || `Room #${roomCode}`}
               </p>
             </div>
@@ -82,28 +82,28 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
           <button
             id="close-pin-modal-btn"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+            className="text-lt-slate-400 hover:text-lt-white p-1 rounded-lg hover:bg-lb-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {isOwner && (
-          <div className="mb-4 p-2.5 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+          <div className="mb-4 p-2.5 bg-lb-emerald-950/40 border border-ll-emerald-800/40 rounded-xl text-xs text-lt-emerald-300 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-lt-emerald-400" />
             <span>You are authenticated as the organizer/owner of this room.</span>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-2.5 bg-red-950/60 border border-red-800/60 text-red-300 text-xs rounded-xl flex items-center gap-2">
+          <div className="mb-4 p-2.5 bg-lb-red-950/60 border border-ll-red-800/60 text-lt-red-300 text-xs rounded-xl flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-2.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs rounded-xl flex items-center gap-2">
+          <div className="mb-4 p-2.5 bg-lb-emerald-950/60 border border-ll-emerald-800/60 text-lt-emerald-300 text-xs rounded-xl flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{success}</span>
           </div>
@@ -112,7 +112,7 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isOwner && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
                 Current Admin PIN
               </label>
               <input
@@ -122,13 +122,13 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
                 value={currentPin}
                 onChange={(e) => setCurrentPin(e.target.value)}
                 placeholder="Enter current room PIN"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                className="w-full bg-lb-slate-950 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white placeholder-lt-slate-500 focus:outline-none focus:border-ll-amber-400"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
               New Admin PIN
             </label>
             <input
@@ -138,9 +138,9 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
               value={newPin}
               onChange={(e) => setNewPin(e.target.value)}
               placeholder="New PIN (4+ characters)"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+              className="w-full bg-lb-slate-950 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white placeholder-lt-slate-500 focus:outline-none focus:border-ll-amber-400"
             />
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-xs text-lt-slate-400 mt-1">
               Race Committee members will use this PIN to access organizer controls.
             </p>
           </div>
@@ -150,7 +150,7 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
               id="cancel-pin-btn"
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 rounded-xl"
+              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-lt-slate-400 hover:text-lt-white bg-lb-slate-800 hover:bg-slate-750 rounded-xl"
             >
               Cancel
             </button>
@@ -158,7 +158,7 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
               id="save-new-pin-btn"
               type="submit"
               disabled={loading}
-              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-slate-900 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 rounded-xl transition-all shadow"
+              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-lt-slate-900 bg-lb-amber-400 hover:bg-lb-amber-300 disabled:opacity-50 rounded-xl transition-all shadow"
             >
               {loading ? 'Updating...' : 'Save New PIN'}
             </button>
@@ -211,25 +211,25 @@ export const RoomDeleteModal: React.FC<RoomDeleteModalProps> = ({
   return (
     <div
       id="room-delete-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-lb-slate-950/80 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="room-delete-modal-card"
-        className="bg-slate-900 border border-red-900/60 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-100 p-5 sm:p-6"
+        className="bg-lb-slate-900 border border-ll-red-900/60 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-lt-slate-100 p-5 sm:p-6"
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-400/30 flex items-center justify-center text-red-400">
+            <div className="w-10 h-10 rounded-xl bg-lb-red-500/20 border border-ll-red-400/30 flex items-center justify-center text-lt-red-400">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-white">
+              <h3 className="text-base sm:text-lg font-bold text-lt-white">
                 Delete Regatta Room
               </h3>
-              <p className="text-xs text-red-300">
+              <p className="text-xs text-lt-red-300">
                 Permanent action: Room #{roomCode}
               </p>
             </div>
@@ -237,21 +237,21 @@ export const RoomDeleteModal: React.FC<RoomDeleteModalProps> = ({
           <button
             id="close-delete-modal-btn"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+            className="text-lt-slate-400 hover:text-lt-white p-1 rounded-lg hover:bg-lb-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-3 bg-red-950/30 border border-red-900/40 rounded-xl mb-4 text-xs text-red-200">
+        <div className="p-3 bg-lb-red-950/30 border border-ll-red-900/40 rounded-xl mb-4 text-xs text-lt-red-200">
           <p className="font-semibold mb-1">Warning: Regatta data will be terminated.</p>
-          <p className="text-slate-300">
+          <p className="text-lt-slate-300">
             Deleting <strong>{roomTitle || `Room #${roomCode}`}</strong> will immediately disconnect any active race participants and discard all in-progress courses, tracker telemetry, and broadcasts.
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-2.5 bg-red-950/60 border border-red-800/60 text-red-300 text-xs rounded-xl flex items-center gap-2">
+          <div className="mb-4 p-2.5 bg-lb-red-950/60 border border-ll-red-800/60 text-lt-red-300 text-xs rounded-xl flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -260,7 +260,7 @@ export const RoomDeleteModal: React.FC<RoomDeleteModalProps> = ({
         <form onSubmit={handleDelete} className="space-y-4">
           {!isOwner && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-lt-slate-300 mb-1.5">
                 Admin PIN Confirmation
               </label>
               <input
@@ -270,7 +270,7 @@ export const RoomDeleteModal: React.FC<RoomDeleteModalProps> = ({
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 placeholder="Enter room Admin PIN to authorize"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                className="w-full bg-lb-slate-950 border border-ll-slate-700 rounded-xl px-3 py-2 text-sm text-lt-white placeholder-lt-slate-500 focus:outline-none focus:border-ll-red-500"
               />
             </div>
           )}
@@ -280,7 +280,7 @@ export const RoomDeleteModal: React.FC<RoomDeleteModalProps> = ({
               id="cancel-delete-btn"
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 rounded-xl"
+              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-lt-slate-400 hover:text-lt-white bg-lb-slate-800 hover:bg-slate-750 rounded-xl"
             >
               Cancel
             </button>
@@ -288,7 +288,7 @@ export const RoomDeleteModal: React.FC<RoomDeleteModalProps> = ({
               id="confirm-delete-room-btn"
               type="submit"
               disabled={loading}
-              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-xl transition-all shadow flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 text-xs sm:text-sm font-semibold text-lt-white bg-lb-red-600 hover:bg-lb-red-500 disabled:opacity-50 rounded-xl transition-all shadow flex items-center justify-center gap-1.5"
             >
               <Trash2 className="w-4 h-4" />
               {loading ? 'Deleting...' : 'Confirm Delete'}

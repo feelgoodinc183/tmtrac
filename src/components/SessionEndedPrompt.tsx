@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { LogIn } from 'lucide-react';
 import { authService } from '../services/authService';
+import { Dialog } from './ui/Dialog';
+import { Button } from './ui/Button';
 
 /**
  * Shown when the server stops accepting this device's login (expired, password changed, or the
@@ -21,7 +23,6 @@ export const SessionEndedPrompt: React.FC = () => {
     }
   }, [ended]);
 
-  if (!ended) return null;
   const email = authService.getCurrentUser()?.email;
 
   const signIn = async (e: React.FormEvent) => {
@@ -35,71 +36,51 @@ export const SessionEndedPrompt: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 p-4">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="session-ended-title"
-        aria-describedby="session-ended-body"
-        className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 text-slate-100 shadow-2xl"
-      >
-        <h2 id="session-ended-title" className="text-base font-bold text-white">
-          You've been signed out
-        </h2>
-        <p id="session-ended-body" className="mt-2 text-sm leading-relaxed text-slate-300">
-          Your session on this device has ended. It may have expired, or the password was changed. Anything you were
-          editing is still open behind this message.
-        </p>
-
-        {email ? (
-          <form onSubmit={signIn} className="mt-4 space-y-2">
-            <label htmlFor="session-ended-password" className="block text-sm text-slate-300">
-              Password for {email}
-            </label>
-            <input
-              id="session-ended-password"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full min-h-[44px] rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"
-            />
-            {error && (
-              <p role="alert" className="text-sm text-rose-300">
-                {error}
-              </p>
-            )}
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => authService.logout()}
-                className="min-h-[44px] rounded-lg bg-slate-700 px-4 text-sm font-semibold text-white hover:bg-slate-600"
-              >
-                Continue signed out
-              </button>
-              <button
-                type="submit"
-                disabled={busy || !password}
-                className="min-h-[44px] rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50 flex items-center gap-2"
-              >
-                <LogIn className="h-4 w-4" aria-hidden="true" />
-                {busy ? 'Signing in…' : 'Sign in again'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={() => authService.logout()}
-              className="min-h-[44px] rounded-lg bg-slate-700 px-4 text-sm font-semibold text-white hover:bg-slate-600"
+    <Dialog
+      open={ended}
+      role="alertdialog"
+      layer="system"
+      dismissible={false}
+      onClose={() => {}}
+      title="You've been signed out"
+      description="Your session on this device has ended. It may have expired, or the password was changed. Anything you were editing is still open behind this message."
+      error={error}
+      footer={
+        email ? (
+          <>
+            <Button onClick={() => authService.logout()}>Continue signed out</Button>
+            <Button
+              variant="primary"
+              type="submit"
+              form="session-ended-form"
+              icon={<LogIn />}
+              disabled={!password}
+              loading={busy}
+              loadingLabel="Signing in…"
             >
-              OK
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+              Sign in again
+            </Button>
+          </>
+        ) : (
+          <Button onClick={() => authService.logout()}>OK</Button>
+        )
+      }
+    >
+      {email && (
+        <form id="session-ended-form" onSubmit={signIn} className="space-y-2">
+          <label htmlFor="session-ended-password" className="block text-sm text-ink-muted">
+            Password for {email}
+          </label>
+          <input
+            id="session-ended-password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full min-h-11 rounded-control border border-line bg-canvas px-3 text-ink"
+          />
+        </form>
+      )}
+    </Dialog>
   );
 };

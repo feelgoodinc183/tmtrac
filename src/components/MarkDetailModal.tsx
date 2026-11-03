@@ -75,26 +75,26 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200 font-google">
-      <div className="bg-[#0A0F1E]/95 backdrop-blur-md border border-[#334155]/80 rounded-3xl landscape:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 text-[#E0E6ED]">
+    <div className="fixed inset-0 z-50 bg-lb-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200 font-google">
+      <div className="bg-lb-0a0f1e/95 backdrop-blur-md border border-ll-334155/80 rounded-3xl landscape:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 text-lt-e0e6ed">
         {/* Header */}
-        <div className="px-5 py-4 landscape:py-2.5 border-b border-[#1E293B] bg-[#060B16]/90 flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 landscape:py-2.5 border-b border-ll-1e293b bg-lb-060b16/90 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className={`w-9 h-9 rounded-2xl shrink-0 flex items-center justify-center font-mono font-bold text-xs ${
-              isStart ? 'bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/40' :
-              isFinish ? 'bg-[#00FF9D]/20 text-[#00FF9D] border border-[#00FF9D]/40' :
-              'bg-[#FBBC04]/20 text-[#FBBC04] border border-[#FBBC04]/40'
+              isStart ? 'bg-lb-ff4d4d/20 text-lt-ff4d4d border border-ll-ff4d4d/40' :
+              isFinish ? 'bg-lb-00ff9d/20 text-lt-00ff9d border border-ll-00ff9d/40' :
+              'bg-lb-fbbc04/20 text-lt-fbbc04 border border-ll-fbbc04/40'
             }`}>
               {mark.shortName || (isStart ? 'START' : isFinish ? 'FINISH' : `#${mark.orderIndex}`)}
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 truncate">
+              <h3 className="text-sm font-bold text-lt-white flex items-center gap-2 truncate">
                 {isSequential ? `Course Mark #${mark.orderIndex}` : isStart ? 'Start Line Mark' : 'Finish Line Mark'}
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#1E293B] text-[#94A3B8]">
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-lb-1e293b text-lt-94a3b8">
                   {mark.type}
                 </span>
               </h3>
-              <p className="text-[11px] text-[#64748B] font-mono truncate">
+              <p className="text-xs text-lt-64748b font-mono truncate">
                 Lat: {safeFixed(mark.lat, 5)}° • Lng: {safeFixed(mark.lng, 5)}°
               </p>
             </div>
@@ -102,33 +102,33 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/80 transition-colors"
+            className="p-2 rounded-xl text-lt-94a3b8 hover:text-lt-white hover:bg-lb-1e293b/80 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="p-4 sm:p-5 space-y-4 text-xs font-mono text-[#E2E8F0] overflow-y-auto custom-scrollbar overscroll-contain flex-1 min-h-0">
+        <form onSubmit={handleSave} className="p-4 sm:p-5 space-y-4 text-xs font-mono text-lt-e2e8f0 overflow-y-auto custom-scrollbar overscroll-contain flex-1 min-h-0">
           {/* Mark Name */}
           <div>
-            <label className="text-[11px] text-[#94A3B8] block mb-1">Mark Label / Name</label>
+            <label className="text-xs text-lt-94a3b8 block mb-1">Mark Label / Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-[#060B16] border border-[#1E293B] rounded-xl px-3 py-2 text-white focus:border-[#00D4FF] focus:outline-none"
+              className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl px-3 py-2 text-lt-white focus:border-ll-00d4ff focus:outline-none"
               placeholder="e.g. Mark 1 (Windward Top)"
             />
           </div>
 
           {/* Mark Type / Role */}
           <div>
-            <label className="text-[11px] text-[#94A3B8] block mb-1">Mark Role</label>
+            <label className="text-xs text-lt-94a3b8 block mb-1">Mark Role</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as any)}
-              className="w-full bg-[#060B16] border border-[#1E293B] rounded-xl px-3 py-2 text-white focus:border-[#00D4FF] focus:outline-none"
+              className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl px-3 py-2 text-lt-white focus:border-ll-00d4ff focus:outline-none"
             >
               <option value="WINDWARD">Windward Mark (Top Buoy)</option>
               <option value="WING">Wing / Jibe Mark</option>
@@ -144,16 +144,16 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
           </div>
 
           {/* GPS Coordinates */}
-          <div className="bg-[#060B16] p-3.5 rounded-xl border border-[#1E293B] space-y-2.5">
+          <div className="bg-lb-060b16 p-3.5 rounded-xl border border-ll-1e293b space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#00D4FF] flex items-center gap-1.5">
+              <span className="text-xs font-bold text-lt-00d4ff flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" /> GPS Coordinates
               </span>
               {deviceGps?.active && deviceGps.lat && (
                 <button
                   type="button"
                   onClick={handleSetToGps}
-                  className="text-[10px] text-[#00FF9D] hover:underline flex items-center gap-1"
+                  className="text-xs text-lt-00ff9d hover:underline flex items-center gap-1"
                 >
                   <Navigation className="w-3 h-3" /> Set to My GPS
                 </button>
@@ -162,23 +162,23 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="text-[10px] text-[#64748B] block mb-0.5">Latitude (deg)</span>
+                <span className="text-xs text-lt-64748b block mb-0.5">Latitude (deg)</span>
                 <input
                   type="number"
                   step="any"
                   value={lat}
                   onChange={(e) => setLat(e.target.value)}
-                  className="w-full bg-[#0A0F1E] border border-[#1E293B] rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:border-[#00D4FF] focus:outline-none"
+                  className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg px-2.5 py-1.5 text-lt-white font-mono text-xs focus:border-ll-00d4ff focus:outline-none"
                 />
               </div>
               <div>
-                <span className="text-[10px] text-[#64748B] block mb-0.5">Longitude (deg)</span>
+                <span className="text-xs text-lt-64748b block mb-0.5">Longitude (deg)</span>
                 <input
                   type="number"
                   step="any"
                   value={lng}
                   onChange={(e) => setLng(e.target.value)}
-                  className="w-full bg-[#0A0F1E] border border-[#1E293B] rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:border-[#00D4FF] focus:outline-none"
+                  className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg px-2.5 py-1.5 text-lt-white font-mono text-xs focus:border-ll-00d4ff focus:outline-none"
                 />
               </div>
             </div>
@@ -187,15 +187,15 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
           {/* Rounding Direction & Geofence Radius */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] text-[#94A3B8] block mb-1">Required Rounding</label>
+              <label className="text-xs text-lt-94a3b8 block mb-1">Required Rounding</label>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setRequiredRounding('PORT')}
-                  className={`py-1.5 rounded-lg border text-center font-bold text-[11px] transition-all ${
+                  className={`py-1.5 rounded-lg border text-center font-bold text-xs transition-all ${
                     requiredRounding === 'PORT'
-                      ? 'bg-[#FF4D4D]/20 border-[#FF4D4D] text-[#FF4D4D]'
-                      : 'bg-[#060B16] border-[#1E293B] text-[#94A3B8]'
+                      ? 'bg-lb-ff4d4d/20 border-ll-ff4d4d text-lt-ff4d4d'
+                      : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8'
                   }`}
                 >
                   🔴 Port
@@ -203,10 +203,10 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setRequiredRounding('STARBOARD')}
-                  className={`py-1.5 rounded-lg border text-center font-bold text-[11px] transition-all ${
+                  className={`py-1.5 rounded-lg border text-center font-bold text-xs transition-all ${
                     requiredRounding === 'STARBOARD'
-                      ? 'bg-[#00FF9D]/20 border-[#00FF9D] text-[#00FF9D]'
-                      : 'bg-[#060B16] border-[#1E293B] text-[#94A3B8]'
+                      ? 'bg-lb-00ff9d/20 border-ll-00ff9d text-lt-00ff9d'
+                      : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8'
                   }`}
                 >
                   🟢 Stbd
@@ -216,8 +216,8 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-[11px] text-[#94A3B8]">Rounding Radius</label>
-                <span className="text-[#00D4FF] font-bold">{radiusMeters}m</span>
+                <label className="text-xs text-lt-94a3b8">Rounding Radius</label>
+                <span className="text-lt-00d4ff font-bold">{radiusMeters}m</span>
               </div>
               <input
                 type="range"
@@ -226,24 +226,24 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
                 step="5"
                 value={radiusMeters}
                 onChange={(e) => setRadiusMeters(parseInt(e.target.value))}
-                className="w-full accent-[#00D4FF]"
+                className="w-full accent-ll-00d4ff"
               />
             </div>
           </div>
 
           {/* Reordering Controls (for Sequential Marks) */}
           {isSequential && (
-            <div className="bg-[#060B16] p-3 rounded-xl border border-[#1E293B] flex items-center justify-between">
+            <div className="bg-lb-060b16 p-3 rounded-xl border border-ll-1e293b flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold text-white block">Course Rounding Sequence</span>
-                <span className="text-[10px] text-[#64748B]">Position in course routing: #{mark.orderIndex} of {totalSequentialMarks}</span>
+                <span className="text-xs font-bold text-lt-white block">Course Rounding Sequence</span>
+                <span className="text-xs text-lt-64748b">Position in course routing: #{mark.orderIndex} of {totalSequentialMarks}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => onMoveOrder(mark.id, 'UP')}
                   disabled={mark.orderIndex === 1}
-                  className="p-1.5 rounded-lg bg-[#1E293B] hover:bg-slate-700 disabled:opacity-30 text-[#00D4FF]"
+                  className="p-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-slate-700 disabled:opacity-30 text-lt-00d4ff"
                   title="Move Up in sequence"
                 >
                   <ArrowUp className="w-4 h-4" />
@@ -252,7 +252,7 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
                   type="button"
                   onClick={() => onMoveOrder(mark.id, 'DOWN')}
                   disabled={mark.orderIndex === totalSequentialMarks}
-                  className="p-1.5 rounded-lg bg-[#1E293B] hover:bg-slate-700 disabled:opacity-30 text-[#00D4FF]"
+                  className="p-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-slate-700 disabled:opacity-30 text-lt-00d4ff"
                   title="Move Down in sequence"
                 >
                   <ArrowDown className="w-4 h-4" />
@@ -262,14 +262,14 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
           )}
 
           {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-between gap-3 border-t border-[#1E293B]">
+          <div className="pt-2 flex items-center justify-between gap-3 border-t border-ll-1e293b">
             <button
               type="button"
               onClick={() => {
                 onDeleteMark(mark.id);
                 onClose();
               }}
-              className="px-3 py-2 bg-[#FF4D4D]/10 hover:bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/30 rounded-xl flex items-center gap-1.5 transition-all text-xs font-bold font-google"
+              className="px-3 py-2 bg-lb-ff4d4d/10 hover:bg-lb-ff4d4d/20 text-lt-ff4d4d border border-ll-ff4d4d/30 rounded-xl flex items-center gap-1.5 transition-all text-xs font-bold font-google"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Delete Mark
@@ -279,13 +279,13 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 rounded-xl bg-[#1E293B] hover:bg-slate-700 text-[#94A3B8] hover:text-white transition-colors text-xs font-bold font-google"
+                className="px-3.5 py-2 rounded-xl bg-lb-1e293b hover:bg-lb-slate-700 text-lt-94a3b8 hover:text-lt-white transition-colors text-xs font-bold font-google"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-[#00D4FF] hover:bg-cyan-300 text-[#020408] font-bold text-xs font-google transition-all shadow-[0_0_12px_rgba(0,212,255,0.4)] flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-lb-00d4ff hover:bg-lb-cyan-300 text-lt-020408 font-bold text-xs font-google transition-all shadow-[0_0_12px_rgba(0,212,255,0.4)] flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 Save Changes

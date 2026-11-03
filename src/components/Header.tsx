@@ -113,9 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header
       id="main-app-header"
       className={`h-12 sm:h-14 border-b flex items-center justify-between px-2 sm:px-4 shrink-0 select-none z-30 font-google w-full relative ${
-        directSunlightMode
-          ? 'bg-black text-white border-white'
-          : 'bg-[#0E131F] text-[#E8EAED] border-[#1E293B]'
+        'bg-lb-0e131f text-lt-e8eaed border-ll-1e293b'
       }`}
     >
       {/* Left: Brand + Realtime Sync + Room Selector */}
@@ -126,12 +124,12 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
           title="Return to Front Landing Page"
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#00D4FF]/20 border border-[#00D4FF]/50 text-[#00D4FF] flex items-center justify-center font-bold shadow-sm shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-lb-00d4ff/20 border border-ll-00d4ff/50 text-lt-00d4ff flex items-center justify-center font-bold shadow-sm shrink-0">
             <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5 fill-current">
               <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
             </svg>
           </div>
-          <span className="text-sm sm:text-base font-bold tracking-tight text-white font-google">
+          <span className="text-sm sm:text-base font-bold tracking-tight text-lt-white font-google">
             TMTRAC
           </span>
         </div>
@@ -139,11 +137,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenLandingPage && (
           <button
             onClick={onOpenLandingPage}
-            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition-colors"
+            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-lb-slate-800/80 hover:bg-lb-slate-700 text-lt-slate-300 hover:text-lt-white text-xs font-medium border border-ll-slate-700 transition-colors"
             title="Return to Front Landing Page"
           >
-            <Home className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px]">Home</span>
+            <Home className="w-3.5 h-3.5 text-lt-cyan-400" />
+            <span className="text-xs">Home</span>
           </button>
         )}
 
@@ -152,14 +150,14 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-live-peer-badge"
           onClick={onOpenQrModal}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
             connectedPeerCount > 1
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/25'
-              : 'bg-[#1E293B] text-slate-300 border border-slate-700 hover:text-white'
+              ? 'bg-lb-emerald-500/15 text-lt-emerald-300 border border-ll-emerald-500/40 hover:bg-lb-emerald-500/25'
+              : 'bg-lb-1e293b text-lt-slate-300 border border-ll-slate-700 hover:text-lt-white'
           }`}
           title={`${connectedPeerCount} device(s) live. Tap to share regatta QR link.`}
         >
-          <Zap className="w-2.5 h-2.5 text-emerald-400 animate-pulse shrink-0" />
+          <Zap className="w-2.5 h-2.5 text-lt-emerald-400 animate-pulse shrink-0" />
           <span className="tracking-wider">{connectedPeerCount}</span>
           <span className="hidden sm:inline">LIVE</span>
         </button>
@@ -168,12 +166,12 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-room-selector"
           onClick={onOpenLobby}
-          className="flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-lg bg-[#121826] hover:bg-[#1E293B] border border-[#00D4FF]/30 hover:border-[#00D4FF] text-[#00D4FF] text-[10px] sm:text-xs font-mono transition-all cursor-pointer shadow-xs"
+          className="flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-lg bg-lb-121826 hover:bg-lb-1e293b border border-ll-00d4ff/30 hover:border-ll-00d4ff text-lt-00d4ff text-xs sm:text-xs font-mono transition-all cursor-pointer shadow-xs"
           title="Switch Regatta Room or Host Session"
         >
-          <Radio className="w-3 h-3 text-[#00D4FF] shrink-0" />
+          <Radio className="w-3 h-3 text-lt-00d4ff shrink-0" />
           <span className="font-bold tracking-wider max-w-[65px] sm:max-w-[100px] truncate">#{activeRoomCode}</span>
-          <ChevronDown className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+          <ChevronDown className="w-2.5 h-2.5 text-lt-slate-400 shrink-0" />
         </button>
 
 
@@ -182,10 +180,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-mode-unlock-btn"
             onClick={onOpenPinUnlock}
-            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono text-[10px] transition-colors cursor-pointer"
+            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-lb-amber-500/15 hover:bg-lb-amber-500/25 border border-ll-amber-500/40 text-lt-amber-300 font-mono text-xs transition-colors cursor-pointer"
             title="Spectator Mode (Read-only). Tap to enter PIN and unlock Race Officer Console."
           >
-            <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+            <Lock className="w-2.5 h-2.5 text-lt-amber-400 shrink-0" />
             <span className="hidden md:inline font-bold">SPECTATOR</span>
             <span className="md:hidden font-bold">SPEC</span>
           </button>
@@ -193,10 +191,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-mode-spectator-btn"
             onClick={() => setViewMode?.('SPECTATOR')}
-            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] transition-colors cursor-pointer"
+            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-lb-emerald-500/15 hover:bg-lb-emerald-500/25 border border-ll-emerald-500/40 text-lt-emerald-300 font-mono text-xs transition-colors cursor-pointer"
             title="Race Officer Console Active. Tap to preview Spectator view."
           >
-            <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+            <ShieldCheck className="w-2.5 h-2.5 text-lt-emerald-400 shrink-0" />
             <span className="hidden md:inline font-bold">RC ADMIN</span>
             <span className="md:hidden font-bold">RC</span>
           </button>
@@ -222,32 +220,32 @@ export const Header: React.FC<HeaderProps> = ({
           return (
             <div
               onClick={() => handleOpenHub('RACE')}
-              className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#121826] border border-[#1E293B] text-xs font-mono shadow-xs cursor-pointer hover:border-slate-600 transition-colors"
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-lb-121826 border border-ll-1e293b text-xs font-mono shadow-xs cursor-pointer hover:border-ll-slate-600 transition-colors"
               title="Click to open Race & Course Console"
             >
               <span
                 className={`w-2 h-2 rounded-full ${
                   displayStatus === 'RACING'
-                    ? 'bg-emerald-400 animate-pulse'
+                    ? 'bg-lb-emerald-400 animate-pulse'
                     : displayStatus === 'FINISHED'
-                    ? 'bg-purple-400'
+                    ? 'bg-lb-purple-400'
                     : isCountdown
-                    ? 'bg-amber-400 animate-pulse'
-                    : 'bg-slate-400'
+                    ? 'bg-lb-amber-400 animate-pulse'
+                    : 'bg-lb-slate-400'
                 }`}
               />
-              <span className="text-slate-400 font-bold">CLASS:</span>
-              <span className="text-white font-bold">{raceState.activeClass}</span>
-              <span className="text-slate-600">·</span>
+              <span className="text-lt-slate-400 font-bold">CLASS:</span>
+              <span className="text-lt-white font-bold">{raceState.activeClass}</span>
+              <span className="text-lt-slate-600">·</span>
               <span
                 className={`font-bold ${
                   displayStatus === 'RACING'
-                    ? 'text-emerald-400'
+                    ? 'text-lt-emerald-400'
                     : displayStatus === 'FINISHED'
-                    ? 'text-purple-300'
+                    ? 'text-lt-purple-300'
                     : isCountdown
-                    ? 'text-amber-400'
-                    : 'text-slate-300'
+                    ? 'text-lt-amber-400'
+                    : 'text-lt-slate-300'
                 }`}
               >
                 {displayStatus === 'RACING'
@@ -270,7 +268,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-skipper-checkin-btn"
             onClick={onOpenSkipperCheckIn}
-            className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-[#00D4FF]/70 bg-[#00D4FF]/20 hover:bg-[#00D4FF]/35 text-[#00D4FF] font-mono font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,212,255,0.25)] cursor-pointer active:scale-95 shrink-0"
+            className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-ll-00d4ff/70 bg-lb-00d4ff/20 hover:bg-lb-00d4ff/35 text-lt-00d4ff font-mono font-bold text-xs sm:text-xs transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,212,255,0.25)] cursor-pointer active:scale-95 shrink-0"
             title="Skipper 1-Tap Check-In: Auto-bind your vessel & start live fleet GPS tracking"
           >
             <Navigation className="w-3.5 h-3.5 animate-pulse" />
@@ -284,11 +282,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-superadmin-btn"
             onClick={onOpenSuperAdmin}
-            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-purple-500/70 bg-purple-950/70 hover:bg-purple-900/90 text-purple-200 transition-all flex items-center gap-1.5 shadow-sm shadow-purple-950/60 cursor-pointer shrink-0"
+            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-ll-purple-500/70 bg-lb-purple-950/70 hover:bg-lb-purple-900/90 text-lt-purple-200 transition-all flex items-center gap-1.5 shadow-sm shadow-ll-purple-950/60 cursor-pointer shrink-0"
             title="Open Super Admin Master Panel"
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-            <span className="text-xs font-mono font-bold hidden sm:inline text-purple-300">
+            <ShieldAlert className="w-3.5 h-3.5 text-lt-purple-400 shrink-0" />
+            <span className="text-xs font-mono font-bold hidden sm:inline text-lt-purple-300">
               SUPER ADMIN
             </span>
           </button>
@@ -299,10 +297,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-user-dashboard-btn"
             onClick={onOpenDashboard}
-            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-ll-cyan-500/40 bg-lb-cyan-950/40 hover:bg-lb-cyan-900/60 text-lt-cyan-300 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
             title={`Signed in as ${currentUser.fullName}. Open Sailor Dashboard.`}
           >
-            <div className="w-5 h-5 rounded-full bg-cyan-500/30 text-cyan-200 text-[10px] font-bold flex items-center justify-center shrink-0">
+            <div className="w-5 h-5 rounded-full bg-lb-cyan-500/30 text-lt-cyan-200 text-xs font-bold flex items-center justify-center shrink-0">
               {currentUser.fullName.charAt(0) || 'U'}
             </div>
             <span className="text-xs font-mono font-bold max-w-[80px] truncate hidden sm:inline">
@@ -313,10 +311,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-login-btn"
             onClick={() => onOpenAuth?.('login')}
-            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-[#1E293B] bg-[#121826] hover:bg-[#1E293B] text-slate-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-ll-1e293b bg-lb-121826 hover:bg-lb-1e293b text-lt-slate-300 hover:text-lt-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             title="Sign in or register account"
           >
-            <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <User className="w-3.5 h-3.5 text-lt-cyan-400 shrink-0" />
             <span className="text-xs font-mono font-bold hidden sm:inline">
               SIGN IN
             </span>

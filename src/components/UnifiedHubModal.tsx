@@ -176,30 +176,28 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   return (
     <div
       id="unified-hub-backdrop"
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-50 bg-lb-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
         id="unified-hub-card"
         className={`w-full max-w-4xl h-[92vh] max-h-[820px] rounded-2xl flex flex-col overflow-hidden border shadow-2xl transition-all ${
-          directSunlightMode
-            ? 'bg-black text-white border-white'
-            : 'bg-[#0E131F] text-[#E8EAED] border-[#1E293B]'
+          'bg-lb-0e131f text-lt-e8eaed border-ll-1e293b'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-[#1E293B] shrink-0 bg-[#0A0F1A]/80 gap-2">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-ll-1e293b shrink-0 bg-lb-0a0f1a/80 gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#00D4FF]/15 border border-[#00D4FF]/40 text-[#00D4FF] flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-lb-00d4ff/15 border border-ll-00d4ff/40 text-lt-00d4ff flex items-center justify-center shrink-0">
               <Compass className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap min-w-0">
-                <h2 className="text-sm sm:text-base font-bold font-google tracking-tight text-white break-words leading-tight">
+                <h2 className="text-sm sm:text-base font-bold font-google tracking-tight text-lt-white break-words leading-tight">
                   Control Hub
                 </h2>
-                <span className="text-[10px] font-mono font-bold text-[#00D4FF] bg-[#00D4FF]/10 px-2 py-0.5 rounded border border-[#00D4FF]/30 shrink-0">
+                <span className="text-xs font-mono font-bold text-lt-00d4ff bg-lb-00d4ff/10 px-2 py-0.5 rounded border border-ll-00d4ff/30 shrink-0">
                   #{activeRoomCode}
                 </span>
               </div>
@@ -207,8 +205,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1E293B]/70 text-slate-300 text-xs font-mono shrink-0">
-              <Zap className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-lb-1e293b/70 text-lt-slate-300 text-xs font-mono shrink-0">
+              <Zap className="w-3.5 h-3.5 text-lt-emerald-400 animate-pulse" />
               <span>{connectedPeerCount} Live Devices</span>
             </div>
             <button
@@ -218,7 +216,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 e.stopPropagation();
                 onClose();
               }}
-              className="group p-1.5 sm:p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1E293B] active:scale-95 transition-all cursor-pointer shrink-0"
+              className="group p-1.5 sm:p-2 rounded-lg text-lt-slate-400 hover:text-lt-white hover:bg-lb-1e293b active:scale-95 transition-all cursor-pointer shrink-0"
               title="Close Hub (Esc)"
               aria-label="Close Hub"
             >
@@ -228,21 +226,21 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
         </div>
 
         {/* 4 Primary Segmented Hub Tabs */}
-        <div className="flex items-center px-3 sm:px-6 py-2 border-b border-[#1E293B] bg-[#0A0F1A]/50 gap-1 sm:gap-2 shrink-0 overflow-x-auto custom-scrollbar">
+        <div className="flex items-center px-3 sm:px-6 py-2 border-b border-ll-1e293b bg-lb-0a0f1a/50 gap-1 sm:gap-2 shrink-0 overflow-x-auto custom-scrollbar">
           <button
             id="hub-tab-fleet"
             onClick={() => setActiveTab('FLEET')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'FLEET'
-                ? 'bg-[#00D4FF] text-black shadow-[0_0_12px_rgba(0,212,255,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-lb-00d4ff text-lt-black shadow-[0_0_12px_rgba(0,212,255,0.35)]'
+                : 'bg-lb-1e293b/60 text-lt-slate-300 hover:text-lt-white hover:bg-lb-1e293b'
             }`}
           >
             <Navigation className="w-3.5 h-3.5" />
             <span>Fleet & Tracking</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                activeTab === 'FLEET' ? 'bg-black/20 text-black' : 'bg-[#00D4FF]/20 text-[#00D4FF]'
+              className={`text-xs px-1.5 py-0.2 rounded font-bold ${
+                activeTab === 'FLEET' ? 'bg-lb-black/20 text-lt-black' : 'bg-lb-00d4ff/20 text-lt-00d4ff'
               }`}
             >
               {boats.length}
@@ -254,8 +252,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             onClick={() => setActiveTab('RACE')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'RACE'
-                ? 'bg-[#FBBC04] text-black shadow-[0_0_12px_rgba(251,188,4,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-lb-fbbc04 text-lt-black shadow-[0_0_12px_rgba(251,188,4,0.35)]'
+                : 'bg-lb-1e293b/60 text-lt-slate-300 hover:text-lt-white hover:bg-lb-1e293b'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -263,10 +261,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             <span
               className={`w-2 h-2 rounded-full ${
                 raceState.status === 'RACING'
-                  ? 'bg-emerald-400 animate-pulse'
+                  ? 'bg-lb-emerald-400 animate-pulse'
                   : raceState.startSequenceActive
-                  ? 'bg-amber-400 animate-pulse'
-                  : 'bg-slate-400'
+                  ? 'bg-lb-amber-400 animate-pulse'
+                  : 'bg-lb-slate-400'
               }`}
             />
           </button>
@@ -276,16 +274,16 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             onClick={() => setActiveTab('RESULTS')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'RESULTS'
-                ? 'bg-[#FFB800] text-black shadow-[0_0_12px_rgba(255,184,0,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-lb-ffb800 text-lt-black shadow-[0_0_12px_rgba(255,184,0,0.35)]'
+                : 'bg-lb-1e293b/60 text-lt-slate-300 hover:text-lt-white hover:bg-lb-1e293b'
             }`}
           >
             <Trophy className="w-3.5 h-3.5" />
             <span>Results & Scoring</span>
             {seriesRaces.length > 0 && (
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                  activeTab === 'RESULTS' ? 'bg-black/20 text-black' : 'bg-[#FFB800]/20 text-[#FFB800]'
+                className={`text-xs px-1.5 py-0.2 rounded font-bold ${
+                  activeTab === 'RESULTS' ? 'bg-lb-black/20 text-lt-black' : 'bg-lb-ffb800/20 text-lt-ffb800'
                 }`}
               >
                 {seriesRaces.length}R
@@ -298,8 +296,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             onClick={() => setActiveTab('SYSTEM')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'SYSTEM'
-                ? 'bg-cyan-500 text-black shadow-[0_0_12px_rgba(6,182,212,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-lb-cyan-500 text-lt-black shadow-[0_0_12px_rgba(6,182,212,0.35)]'
+                : 'bg-lb-1e293b/60 text-lt-slate-300 hover:text-lt-white hover:bg-lb-1e293b'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
@@ -317,16 +315,16 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
               {/* Top Quick Action Banner */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                 {/* 1. Track My Boat (Auto-bind GPS) */}
-                <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-[#00D4FF]/15 to-[#00D4FF]/5 border border-[#00D4FF]/40 flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-lb-00d4ff/15 to-lb-00d4ff/5 border border-ll-00d4ff/40 flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#00D4FF] font-bold">
+                      <span className="text-xs font-mono uppercase tracking-wider text-lt-00d4ff font-bold">
                         Skipper GPS
                       </span>
-                      <div className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-lb-00d4ff animate-pulse" />
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">Track Boat</h3>
-                    <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Track Boat</h3>
+                    <p className="text-xs text-lt-slate-300 mt-0.5 leading-snug">
                       1-Tap GPS auto-binding for skippers on water
                     </p>
                   </div>
@@ -335,7 +333,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenSkipperCheckIn?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#00D4FF] hover:bg-[#00D4FF]/90 text-black font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-00d4ff hover:bg-lb-00d4ff/90 text-lt-black font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
                   >
                     <Navigation className="w-3.5 h-3.5" />
                     <span>Open Skipper Check-In</span>
@@ -343,24 +341,24 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 2. Device GPS Broadcast */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 font-bold">
                         Phone / Tablet GPS
                       </span>
                       <span
-                        className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                        className={`text-xs font-mono font-bold px-1.5 py-0.2 rounded ${
                           deviceGps.active
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                            : 'bg-slate-800 text-slate-400'
+                            ? 'bg-lb-emerald-500/20 text-lt-emerald-400 border border-ll-emerald-500/40'
+                            : 'bg-lb-slate-800 text-lt-slate-400'
                         }`}
                       >
                         {deviceGps.active ? 'ACTIVE' : 'OFFLINE'}
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">Device Tracker</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Device Tracker</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       {deviceGps.active
                         ? `${safeFixed(deviceGps.speedKt, 1, '0.0')} kt · ${deviceGps.headingDeg ?? 0}°`
                         : `${hybridTrackerCount} hybrid devices live`}
@@ -370,8 +368,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     onClick={onToggleDeviceGps}
                     className={`w-full py-2 px-3 rounded-lg font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       deviceGps.active
-                        ? 'bg-rose-500/20 border border-rose-500/50 text-rose-300 hover:bg-rose-500/30'
-                        : 'bg-[#1E293B] hover:bg-[#334155] text-slate-200'
+                        ? 'bg-lb-rose-500/20 border border-ll-rose-500/50 text-lt-rose-300 hover:bg-lb-rose-500/30'
+                        : 'bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200'
                     }`}
                   >
                     <Navigation className="w-3.5 h-3.5" />
@@ -380,13 +378,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 3. Fleet QR Cards */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 font-bold">
                       Check-In Cards
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Boat QRs</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Boat QRs</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       Printable 1-tap QR cards for regatta registration
                     </p>
                   </div>
@@ -395,26 +393,26 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenBoatQr?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <QrCode className="w-3.5 h-3.5 text-lt-cyan-400" />
                     <span>Generate & Print QRs</span>
                   </button>
                 </div>
 
                 {/* 4. LoRa & BLE Hardware */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 font-bold">
                         Hardware Mesh
                       </span>
-                      <span className="text-[10px] font-mono text-[#00D4FF] font-bold">
+                      <span className="text-xs font-mono text-lt-00d4ff font-bold">
                         {nodes.length} Nodes
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">LoRa / BLE Mesh</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">LoRa / BLE Mesh</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       Meshtastic radio binding & Bluetooth scanner
                     </p>
                   </div>
@@ -424,10 +422,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenNodeBinding?.();
                       }}
-                      className="flex-1 py-2 px-2 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      className="flex-1 py-2 px-2 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
                       title="Bind Meshtastic nodes to boats"
                     >
-                      <Link2 className="w-3 h-3 text-[#00D4FF]" />
+                      <Link2 className="w-3 h-3 text-lt-00d4ff" />
                       <span>Bind</span>
                     </button>
                     <button
@@ -435,10 +433,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenHardwareScan?.();
                       }}
-                      className="flex-1 py-2 px-2 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      className="flex-1 py-2 px-2 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
                       title="Scan Bluetooth / USB ports"
                     >
-                      <Bluetooth className="w-3 h-3 text-cyan-400" />
+                      <Bluetooth className="w-3 h-3 text-lt-cyan-400" />
                       <span>BLE</span>
                     </button>
                   </div>
@@ -447,12 +445,12 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
 
               {/* Head-to-Head Comparison Button (if available) */}
               {onOpenHeadToHead && boats.length >= 2 && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[#121826] border border-[#1E293B]">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-lb-121826 border border-ll-1e293b">
                   <div className="flex items-center gap-2.5">
-                    <BarChart2 className="w-4 h-4 text-[#00D4FF]" />
+                    <BarChart2 className="w-4 h-4 text-lt-00d4ff" />
                     <div>
-                      <span className="text-xs font-bold text-white font-mono">Head-to-Head Telemetry Analysis</span>
-                      <p className="text-[11px] text-slate-400">Compare VMG, speeds, heading and tactical delta side-by-side</p>
+                      <span className="text-xs font-bold text-lt-white font-mono">Head-to-Head Telemetry Analysis</span>
+                      <p className="text-xs text-lt-slate-400">Compare VMG, speeds, heading and tactical delta side-by-side</p>
                     </div>
                   </div>
                   <button
@@ -460,7 +458,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenHeadToHead();
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-[#00D4FF]/20 hover:bg-[#00D4FF]/30 border border-[#00D4FF]/50 text-[#00D4FF] font-mono text-xs font-bold transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-lb-00d4ff/20 hover:bg-lb-00d4ff/30 border border-ll-00d4ff/50 text-lt-00d4ff font-mono text-xs font-bold transition-all cursor-pointer"
                   >
                     Compare Boats
                   </button>
@@ -468,10 +466,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
               )}
 
               {/* Active Fleet List Table */}
-              <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1A]/70 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E293B] bg-[#121826]/70">
+              <div className="rounded-xl border border-ll-1e293b bg-lb-0a0f1a/70 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-ll-1e293b bg-lb-121826/70">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
+                    <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-slate-200">
                       Fleet Registry ({boats.length} Vessels)
                     </span>
                   </div>
@@ -481,7 +479,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenBoatEditor();
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-[#00D4FF] hover:bg-[#00D4FF]/90 text-black text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-lb-00d4ff hover:bg-lb-00d4ff/90 text-lt-black text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer"
                     >
                       <span>+ Add Vessel</span>
                     </button>
@@ -489,13 +487,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {boats.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 font-mono text-xs">
+                  <div className="p-8 text-center text-lt-slate-400 font-mono text-xs">
                     No boats registered yet. Tap "Add Vessel" or use "Track Boat" to auto-join.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs font-mono">
-                      <thead className="bg-[#121826]/50 text-slate-400 border-b border-[#1E293B] text-[11px]">
+                      <thead className="bg-lb-121826/50 text-lt-slate-400 border-b border-ll-1e293b text-xs">
                         <tr>
                           <th className="px-3 py-2">Vessel</th>
                           <th className="px-3 py-2">Class</th>
@@ -505,11 +503,11 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                           <th className="px-3 py-2 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#1E293B]">
+                      <tbody className="divide-y divide-ll-1e293b">
                         {boats.map((boat) => {
                           const boundNode = nodes.find((n) => n.id === boat.nodeId);
                           return (
-                            <tr key={boat.id} className="hover:bg-[#1E293B]/40 transition-colors">
+                            <tr key={boat.id} className="hover:bg-lb-1e293b/40 transition-colors">
                               <td className="px-3 py-2.5">
                                 <div className="flex items-center gap-2">
                                   <div
@@ -517,42 +515,42 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                     style={{ backgroundColor: boat.color || '#00D4FF' }}
                                   />
                                   <div>
-                                    <div className="font-bold text-white flex items-center gap-1.5">
+                                    <div className="font-bold text-lt-white flex items-center gap-1.5">
                                       <span>{boat.name}</span>
-                                      <span className="text-slate-400 text-[10px]">#{boat.sailNumber}</span>
+                                      <span className="text-lt-slate-400 text-xs">#{boat.sailNumber}</span>
                                     </div>
-                                    <div className="text-[10px] text-slate-400">
+                                    <div className="text-xs text-lt-slate-400">
                                       {boat.skipper || 'Skipper Unassigned'}
                                     </div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-2.5 text-slate-300">
+                              <td className="px-3 py-2.5 text-lt-slate-300">
                                 {boat.raceClass || 'Class 1'}
                               </td>
                               <td className="px-3 py-2.5">
-                                <span className="font-bold text-[#00D4FF]">
+                                <span className="font-bold text-lt-00d4ff">
                                   {boat.handicapSystem || 'IRC'} {safeFixed(boat.handicapRating, 3, '1.000')}
                                 </span>
                               </td>
                               <td className="px-3 py-2.5">
-                                <span className="font-bold text-white">
+                                <span className="font-bold text-lt-white">
                                   {safeFixed(boat.speedKt ?? boat.sog, 1, '0.0')} kt
                                 </span>
-                                <span className="text-[10px] text-slate-400 ml-1">
+                                <span className="text-xs text-lt-slate-400 ml-1">
                                   {safeFixed(boat.headingDeg ?? boat.heading ?? boat.cog, 0, '0')}°
                                 </span>
                               </td>
                               <td className="px-3 py-2.5">
                                 {boundNode ? (
-                                  <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                  <span className="text-xs text-lt-emerald-400 flex items-center gap-1">
                                     <Signal className="w-3 h-3" />
                                     <span>LoRa {boundNode.snr != null ? `${safeFixed(boundNode.snr, 1)}dB` : 'Active'}</span>
                                   </span>
                                 ) : boat.nodeId ? (
-                                  <span className="text-[10px] text-cyan-300">GPS Mesh</span>
+                                  <span className="text-xs text-lt-cyan-300">GPS Mesh</span>
                                 ) : (
-                                  <span className="text-[10px] text-slate-500">Sim / Unbound</span>
+                                  <span className="text-xs text-lt-slate-500">Sim / Unbound</span>
                                 )}
                               </td>
                               <td className="px-3 py-2.5 text-right">
@@ -563,7 +561,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                         onClose();
                                         onSelectBoat(boat.id);
                                       }}
-                                      className="px-2 py-1 rounded bg-[#1E293B] hover:bg-[#334155] text-[#00D4FF] text-[10px] font-bold"
+                                      className="px-2 py-1 rounded bg-lb-1e293b hover:bg-lb-334155 text-lt-00d4ff text-xs font-bold"
                                     >
                                       Locate
                                     </button>
@@ -574,7 +572,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                         onClose();
                                         onOpenBoatEditor(boat);
                                       }}
-                                      className="px-2 py-1 rounded bg-[#1E293B] hover:bg-[#334155] text-slate-300 hover:text-white text-[10px] font-bold"
+                                      className="px-2 py-1 rounded bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-300 hover:text-lt-white text-xs font-bold"
                                     >
                                       Edit
                                     </button>
@@ -598,34 +596,34 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
           {activeTab === 'RACE' && (
             <div className="space-y-5 animate-fade-in">
               {/* Race Committee Live Status & Timer Bar */}
-              <div className="p-4 sm:p-5 rounded-xl bg-[#121826] border border-[#1E293B] space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1E293B]">
+              <div className="p-4 sm:p-5 rounded-xl bg-lb-121826 border border-ll-1e293b space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-ll-1e293b">
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-3.5 h-3.5 rounded-full shrink-0 ${
                         raceState.status === 'RACING'
-                          ? 'bg-emerald-400 animate-pulse'
+                          ? 'bg-lb-emerald-400 animate-pulse'
                           : raceState.startSequenceActive
-                          ? 'bg-amber-400 animate-pulse'
-                          : 'bg-slate-400'
+                          ? 'bg-lb-amber-400 animate-pulse'
+                          : 'bg-lb-slate-400'
                       }`}
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-xs font-mono font-bold uppercase tracking-wider text-lt-slate-400">
                           Active Class:
                         </span>
-                        <span className="text-sm font-bold text-white font-mono">
+                        <span className="text-sm font-bold text-lt-white font-mono">
                           {raceState.activeClass}
                         </span>
-                        <span className="text-slate-600">|</span>
+                        <span className="text-lt-slate-600">|</span>
                         <span
                           className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${
                             raceState.status === 'RACING'
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              ? 'bg-lb-emerald-500/20 text-lt-emerald-400 border border-ll-emerald-500/40'
                               : raceState.startSequenceActive
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                              : 'bg-slate-800 text-slate-300'
+                              ? 'bg-lb-amber-500/20 text-lt-amber-400 border border-ll-amber-500/40'
+                              : 'bg-lb-slate-800 text-lt-slate-300'
                           }`}
                         >
                           {raceState.startSequenceActive
@@ -637,7 +635,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                             : raceState.status}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      <p className="text-xs text-lt-slate-400 font-mono mt-0.5">
                         Wind: {safeFixed(raceState.windSpeedKt, 1, '12.0')} kt @ {raceState.windDirectionDeg || 210}°
                       </p>
                     </div>
@@ -650,14 +648,14 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         <>
                           <button
                             onClick={() => onStartSequence?.(5)}
-                            className="px-3 py-1.5 rounded-lg bg-[#00D4FF] hover:bg-[#00D4FF]/90 text-black font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            className="px-3 py-1.5 rounded-lg bg-lb-00d4ff hover:bg-lb-00d4ff/90 text-lt-black font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                           >
                             <Play className="w-3.5 h-3.5 fill-current" />
                             <span>Start 5m ISAF</span>
                           </button>
                           <button
                             onClick={() => onStartSequence?.(3)}
-                            className="px-2.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs transition-all cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs transition-all cursor-pointer"
                           >
                             3m
                           </button>
@@ -665,7 +663,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       ) : (
                         <button
                           onClick={onStopSequence}
-                          className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-lb-rose-500 hover:bg-lb-rose-600 text-lt-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                           <Square className="w-3.5 h-3.5 fill-current" />
                           <span>Stop Sequence</span>
@@ -674,14 +672,14 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
 
                       <button
                         onClick={onPostpone}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-amber-300 font-mono font-bold text-xs transition-all cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-amber-300 font-mono font-bold text-xs transition-all cursor-pointer"
                         title="Flag AP: Postpone Race"
                       >
                         AP Postpone
                       </button>
                       <button
                         onClick={onGeneralRecall}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-rose-300 font-mono font-bold text-xs transition-all cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-rose-300 font-mono font-bold text-xs transition-all cursor-pointer"
                         title="First Repeater: General Recall"
                       >
                         Recall
@@ -693,15 +691,15 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 {/* Class Quick Filter Selector */}
                 {raceClasses.length > 0 && (
                   <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pt-1">
-                    <span className="text-[11px] font-mono text-slate-400 shrink-0">Switch Class:</span>
+                    <span className="text-xs font-mono text-lt-slate-400 shrink-0">Switch Class:</span>
                     {raceClasses.map((cls) => (
                       <button
                         key={cls.id || cls.name}
                         onClick={() => onSelectClass?.(cls.name)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
                           raceState.activeClass === cls.name
-                            ? 'bg-[#00D4FF] text-black shadow-sm'
-                            : 'bg-[#1E293B] hover:bg-[#283548] text-slate-300'
+                            ? 'bg-lb-00d4ff text-lt-black shadow-sm'
+                            : 'bg-lb-1e293b hover:bg-lb-283548 text-lt-slate-300'
                         }`}
                       >
                         {cls.name}
@@ -714,13 +712,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
               {/* Race Tools Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* 1. Course Profiles & Mark Layouts */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-amber-400 font-bold">
                       Courses & Marks
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Course Profiles</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Course Profiles</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       Windward-leeward, Olympic triangles, gates & marks
                     </p>
                   </div>
@@ -729,7 +727,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenCourseProfiles?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-amber-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-amber-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Route className="w-3.5 h-3.5" />
                     <span>Manage Courses ({marks.length} Marks)</span>
@@ -737,13 +735,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 2. Race Classes & Handicaps */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#00D4FF] font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-00d4ff font-bold">
                       Fleet Divisions
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Classes & Rating</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Classes & Rating</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       IRC, ORC, PY & TCF handicap systems (1.000 Default)
                     </p>
                   </div>
@@ -752,7 +750,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenClassManager?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#00D4FF] font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-00d4ff font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Layers className="w-3.5 h-3.5" />
                     <span>Manage Classes ({raceClasses.length})</span>
@@ -760,13 +758,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 3. VHF Radio & Jury Protests */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400 font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-purple-400 font-bold">
                       Jury & Bulletins
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">VHF & Protests</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">VHF & Protests</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       VHF radio bulletins, jury notices & protest hearings
                     </p>
                   </div>
@@ -775,7 +773,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenVhfJuryModal?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-purple-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-purple-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>VHF / Jury Console</span>
@@ -783,13 +781,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 4. AI Race Tactician */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400 font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-blue-400 font-bold">
                       Tactical Intelligence
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">AI Tactician</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">AI Tactician</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       AI race strategist, wind oscillation & layline analysis
                     </p>
                   </div>
@@ -798,7 +796,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenChat?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-blue-600/20 hover:bg-lb-blue-600/30 border border-ll-blue-500/40 text-lt-blue-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Bot className="w-3.5 h-3.5" />
                     <span>Open AI Tactician</span>
@@ -815,13 +813,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             <div className="space-y-5 animate-fade-in">
               {/* Results Top Banner with Actions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-[#FFB800]/15 to-[#FFB800]/5 border border-[#FFB800]/40 flex flex-col justify-between gap-3">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-lb-ffb800/15 to-lb-ffb800/5 border border-ll-ffb800/40 flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#FFB800] font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-ffb800 font-bold">
                       Scoring & Series Standings
                     </span>
-                    <h3 className="text-base font-bold text-white mt-1">Official Regatta Results</h3>
-                    <p className="text-xs text-slate-300 mt-0.5 leading-snug">
+                    <h3 className="text-base font-bold text-lt-white mt-1">Official Regatta Results</h3>
+                    <p className="text-xs text-lt-slate-300 mt-0.5 leading-snug">
                       Complete multi-race series leaderboard, IRC/ORC corrected times, Sailwave CSV & World Sailing XML export.
                     </p>
                   </div>
@@ -830,29 +828,29 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenResults?.();
                     }}
-                    className="w-full py-2.5 px-4 rounded-lg bg-[#FFB800] hover:bg-[#FFB800]/90 text-black font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                    className="w-full py-2.5 px-4 rounded-lg bg-lb-ffb800 hover:bg-lb-ffb800/90 text-lt-black font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
                   >
                     <Trophy className="w-4 h-4" />
                     <span>Launch Full Results & Export Manager</span>
                   </button>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 font-bold">
                         Historical Scrubber
                       </span>
                       <span
-                        className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                          showReplayBar ? 'bg-[#FFB800]/20 text-[#FFB800]' : 'bg-slate-800 text-slate-400'
+                        className={`text-xs font-mono font-bold px-1.5 py-0.2 rounded ${
+                          showReplayBar ? 'bg-lb-ffb800/20 text-lt-ffb800' : 'bg-lb-slate-800 text-lt-slate-400'
                         }`}
                       >
                         {showReplayBar ? 'REPLAY ACTIVE' : 'LIVE MODE'}
                       </span>
                     </div>
-                    <h3 className="text-base font-bold text-white mt-1">Race Track Replay</h3>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-base font-bold text-lt-white mt-1">Race Track Replay</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       Scrub through past races at 1x-10x speed, inspect tactical maneuvers and ghost boat comparisons.
                     </p>
                   </div>
@@ -863,8 +861,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     }}
                     className={`w-full py-2.5 px-4 rounded-lg font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       showReplayBar
-                        ? 'bg-rose-500/20 border border-rose-500/50 text-rose-300 hover:bg-rose-500/30'
-                        : 'bg-[#1E293B] hover:bg-[#334155] text-slate-200'
+                        ? 'bg-lb-rose-500/20 border border-ll-rose-500/50 text-lt-rose-300 hover:bg-lb-rose-500/30'
+                        : 'bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200'
                     }`}
                   >
                     <RotateCcw className="w-4 h-4" />
@@ -874,23 +872,23 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
               </div>
 
               {/* Quick Standings Preview */}
-              <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1A]/70 overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#1E293B] bg-[#121826]/70 flex items-center justify-between">
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
+              <div className="rounded-xl border border-ll-1e293b bg-lb-0a0f1a/70 overflow-hidden">
+                <div className="px-4 py-3 border-b border-ll-1e293b bg-lb-121826/70 flex items-center justify-between">
+                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-slate-200">
                     Live Leaderboard Preview ({boats.length} Competitors)
                   </span>
-                  <span className="text-[11px] font-mono text-[#00D4FF]">
+                  <span className="text-xs font-mono text-lt-00d4ff">
                     Handicap Base: 1.000
                   </span>
                 </div>
                 {boats.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 font-mono text-xs">
+                  <div className="p-8 text-center text-lt-slate-400 font-mono text-xs">
                     No active boats in current race.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs font-mono">
-                      <thead className="bg-[#121826]/50 text-slate-400 border-b border-[#1E293B] text-[11px]">
+                      <thead className="bg-lb-121826/50 text-lt-slate-400 border-b border-ll-1e293b text-xs">
                         <tr>
                           <th className="px-3 py-2">Rank</th>
                           <th className="px-3 py-2">Boat / Skipper</th>
@@ -899,30 +897,30 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                           <th className="px-3 py-2">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#1E293B]">
+                      <tbody className="divide-y divide-ll-1e293b">
                         {boats.map((b, idx) => (
-                          <tr key={b.id} className="hover:bg-[#1E293B]/40 transition-colors">
-                            <td className="px-3 py-2.5 font-bold text-white">
+                          <tr key={b.id} className="hover:bg-lb-1e293b/40 transition-colors">
+                            <td className="px-3 py-2.5 font-bold text-lt-white">
                               {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : `${idx + 1}`}
                             </td>
                             <td className="px-3 py-2.5">
-                              <span className="font-bold text-white">{b.name}</span>
-                              <span className="text-slate-400 text-[10px] ml-1.5">#{b.sailNumber}</span>
+                              <span className="font-bold text-lt-white">{b.name}</span>
+                              <span className="text-lt-slate-400 text-xs ml-1.5">#{b.sailNumber}</span>
                             </td>
-                            <td className="px-3 py-2.5 text-[#00D4FF]">
+                            <td className="px-3 py-2.5 text-lt-00d4ff">
                               {b.handicapSystem || 'IRC'} {safeFixed(b.handicapRating, 3, '1.000')}
                             </td>
-                            <td className="px-3 py-2.5 text-white">
+                            <td className="px-3 py-2.5 text-lt-white">
                               {safeFixed(b.speedKt ?? b.sog, 1, '0.0')} kt
                             </td>
                             <td className="px-3 py-2.5">
                               <span
-                                className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                className={`text-xs font-bold px-1.5 py-0.2 rounded ${
                                   b.status === 'FINISHED'
-                                    ? 'bg-purple-500/20 text-purple-300'
+                                    ? 'bg-lb-purple-500/20 text-lt-purple-300'
                                     : b.status === 'RACING'
-                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                    : 'bg-slate-800 text-slate-400'
+                                    ? 'bg-lb-emerald-500/20 text-lt-emerald-400'
+                                    : 'bg-lb-slate-800 text-lt-slate-400'
                                 }`}
                               >
                                 {b.status || 'PRE_START'}
@@ -945,24 +943,24 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             <div className="space-y-5 animate-fade-in">
               {/* Organization & Club Tenant Settings (Moved from Header into System Settings) */}
               {onOpenTenantDashboard && (
-                <div className="p-4 rounded-xl bg-[#121826] border border-cyan-500/30 hover:border-cyan-400/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="p-4 rounded-xl bg-lb-121826 border border-ll-cyan-500/30 hover:border-ll-cyan-400/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-lb-cyan-500/15 border border-ll-cyan-500/30 text-lt-cyan-400 flex items-center justify-center shrink-0">
                       <Building2 className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                        <span className="text-xs font-mono uppercase tracking-wider text-lt-cyan-400 font-bold">
                           Club / Organization Tenant
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 uppercase font-mono border border-cyan-500/30">
+                        <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-lb-cyan-500/20 text-lt-cyan-300 uppercase font-mono border border-ll-cyan-500/30">
                           {planTier || 'FREE'} PLAN
                         </span>
                       </div>
-                      <h3 className="text-sm font-bold text-white mt-0.5 truncate">
+                      <h3 className="text-sm font-bold text-lt-white mt-0.5 truncate">
                         {tenantName || 'Royal Langkawi Yacht Club (RLYC)'}
                       </h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-xs text-lt-slate-400 mt-0.5">
                         Manage club regattas, members, officer seats, audit logs & subscription tier
                       </p>
                     </div>
@@ -972,7 +970,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenTenantDashboard();
                     }}
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-cyan-600/20 shrink-0"
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-lb-cyan-600 hover:bg-lb-cyan-500 text-lt-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-ll-cyan-600/20 shrink-0"
                     title="Open Organization & Plan Manager"
                   >
                     <Building2 className="w-3.5 h-3.5" />
@@ -984,13 +982,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
               {/* Multi-Tenant & Sharing Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* 1. Rooms Lobby */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#00D4FF] font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-00d4ff font-bold">
                       Multi-Tenant Sessions
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Regatta Rooms</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Regatta Rooms</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       Current: #{activeRoomCode}. Switch room, join PIN, or create event.
                     </p>
                   </div>
@@ -999,7 +997,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenLobby?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#00D4FF]/20 hover:bg-[#00D4FF]/30 border border-[#00D4FF]/40 text-[#00D4FF] font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-00d4ff/20 hover:bg-lb-00d4ff/30 border border-ll-00d4ff/40 text-lt-00d4ff font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Radio className="w-3.5 h-3.5 animate-pulse" />
                     <span>Rooms Lobby</span>
@@ -1007,13 +1005,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 2. Spectator QR */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-cyan-400 font-bold">
                       Spectator Invite
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Spectator QR</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Spectator QR</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       QR code & shareable link for live regatta viewing
                     </p>
                   </div>
@@ -1022,21 +1020,21 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenSpectatorQr?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <QrCode className="w-3.5 h-3.5 text-lt-cyan-400" />
                     <span>Share QR Link</span>
                   </button>
                 </div>
 
                 {/* 3. Malaysia LoRa & NMEA */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                    <span className="text-xs font-mono uppercase tracking-wider text-lt-emerald-400 font-bold">
                       Marine Telemetry
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Malaysia LoRa & NMEA</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">Malaysia LoRa & NMEA</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       433/919 MHz presets, NMEA 0183/2000 gateway & MQTT
                     </p>
                   </div>
@@ -1045,26 +1043,26 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenNmeaMalaysiaModal?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                    <Globe className="w-3.5 h-3.5 text-lt-emerald-400" />
                     <span>NMEA & Mesh Setup</span>
                   </button>
                 </div>
 
                 {/* 4. SQLite Offline DB */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-lb-121826 border border-ll-1e293b flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs font-mono uppercase tracking-wider text-lt-slate-400 font-bold">
                         Offline Cache
                       </span>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                      <span className="text-xs font-mono text-lt-emerald-400 font-bold">
                         {raceState.syncProgress}%
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">SQLite Database</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-lt-white mt-1">SQLite Database</h3>
+                    <p className="text-xs text-lt-slate-400 mt-0.5 leading-snug">
                       Local SQLite caching & zero-loss cloud synchronization
                     </p>
                   </div>
@@ -1073,33 +1071,34 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenOfflineCache?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <Database className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <Database className="w-3.5 h-3.5 text-lt-00d4ff" />
                     <span>Cache & Buffer</span>
                   </button>
                 </div>
               </div>
 
               {/* Hardware Toggles & Settings Bar */}
-              <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] space-y-4">
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
+              <div className="p-4 rounded-xl bg-lb-121826 border border-ll-1e293b space-y-4">
+                <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-slate-200">
                   Quick System Toggles
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   {/* Sunlight mode */}
                   <button
                     onClick={onToggleSunlightMode}
+                    aria-pressed={directSunlightMode}
                     className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
                       directSunlightMode
-                        ? 'bg-white text-black border-white shadow-md'
-                        : 'bg-[#1E293B]/70 border-[#334155] text-slate-300 hover:text-white'
+                        ? 'bg-lb-white text-lt-black border-ll-white shadow-md'
+                        : 'bg-lb-1e293b/70 border-ll-334155 text-lt-slate-300 hover:text-lt-white'
                     }`}
                   >
-                    <Sun className="w-5 h-5 shrink-0 text-[#FBBC04]" />
+                    <Sun className="w-5 h-5 shrink-0 text-lt-fbbc04" />
                     <div className="text-left">
                       <div className="text-xs font-bold font-mono">Sunlight Mode</div>
-                      <div className="text-[10px] opacity-75">{directSunlightMode ? 'High Contrast ON' : 'Standard Dark'}</div>
+                      <div className="text-xs opacity-75">{directSunlightMode ? 'On: light, high contrast' : 'Off: dark theme'}</div>
                     </div>
                   </button>
 
@@ -1108,18 +1107,18 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     onClick={onToggleMute}
                     className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
                       isMuted
-                        ? 'bg-rose-500/15 border-rose-500/50 text-rose-300'
-                        : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                        ? 'bg-lb-rose-500/15 border-ll-rose-500/50 text-lt-rose-300'
+                        : 'bg-lb-emerald-500/15 border-ll-emerald-500/50 text-lt-emerald-300'
                     }`}
                   >
                     {isMuted ? (
-                      <VolumeX className="w-5 h-5 shrink-0 text-rose-400" />
+                      <VolumeX className="w-5 h-5 shrink-0 text-lt-rose-400" />
                     ) : (
-                      <Volume2 className="w-5 h-5 shrink-0 text-emerald-400" />
+                      <Volume2 className="w-5 h-5 shrink-0 text-lt-emerald-400" />
                     )}
                     <div className="text-left">
                       <div className="text-xs font-bold font-mono">Horn Sound</div>
-                      <div className="text-[10px] opacity-75">{isMuted ? 'Muted' : 'Audible (Active)'}</div>
+                      <div className="text-xs opacity-75">{isMuted ? 'Muted' : 'Audible (Active)'}</div>
                     </div>
                   </button>
 
@@ -1130,12 +1129,12 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenDashboard?.();
                       }}
-                      className="p-3 rounded-xl border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-200 flex items-center gap-3 transition-all cursor-pointer"
+                      className="p-3 rounded-xl border border-ll-cyan-500/40 bg-lb-cyan-950/40 hover:bg-lb-cyan-900/60 text-lt-cyan-200 flex items-center gap-3 transition-all cursor-pointer"
                     >
-                      <User className="w-5 h-5 shrink-0 text-cyan-400" />
+                      <User className="w-5 h-5 shrink-0 text-lt-cyan-400" />
                       <div className="text-left min-w-0">
                         <div className="text-xs font-bold font-mono truncate">{currentUser.fullName}</div>
-                        <div className="text-[10px] text-cyan-400">{currentUser.role === 'RACE_OFFICER' ? 'Race Officer' : 'Sailor Profile'}</div>
+                        <div className="text-xs text-lt-cyan-400">{currentUser.role === 'RACE_OFFICER' ? 'Race Officer' : 'Sailor Profile'}</div>
                       </div>
                     </button>
                   ) : (
@@ -1144,12 +1143,12 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenAuth?.('login');
                       }}
-                      className="p-3 rounded-xl border border-[#334155] bg-[#1E293B]/70 hover:bg-[#283548] text-slate-300 flex items-center gap-3 transition-all cursor-pointer"
+                      className="p-3 rounded-xl border border-ll-334155 bg-lb-1e293b/70 hover:bg-lb-283548 text-lt-slate-300 flex items-center gap-3 transition-all cursor-pointer"
                     >
-                      <LogIn className="w-5 h-5 shrink-0 text-[#00D4FF]" />
+                      <LogIn className="w-5 h-5 shrink-0 text-lt-00d4ff" />
                       <div className="text-left">
                         <div className="text-xs font-bold font-mono">Sign In / Register</div>
-                        <div className="text-[10px] text-slate-400">Save stats & PINs</div>
+                        <div className="text-xs text-lt-slate-400">Save stats & PINs</div>
                       </div>
                     </button>
                   )}
@@ -1160,12 +1159,12 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenAbout?.();
                     }}
-                    className="p-3 rounded-xl border border-[#334155] bg-[#1E293B]/70 hover:bg-[#283548] text-slate-300 hover:text-white flex items-center gap-3 transition-all cursor-pointer"
+                    className="p-3 rounded-xl border border-ll-334155 bg-lb-1e293b/70 hover:bg-lb-283548 text-lt-slate-300 hover:text-lt-white flex items-center gap-3 transition-all cursor-pointer"
                   >
-                    <Info className="w-5 h-5 shrink-0 text-[#00D4FF]" />
+                    <Info className="w-5 h-5 shrink-0 text-lt-00d4ff" />
                     <div className="text-left">
                       <div className="text-xs font-bold font-mono">About TMTRAC</div>
-                      <div className="text-[10px] text-slate-400">Tom Manas Technologies</div>
+                      <div className="text-xs text-lt-slate-400">Tom Manas Technologies</div>
                     </div>
                   </button>
                 </div>
@@ -1175,7 +1174,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="px-4 sm:px-6 py-2 border-t border-[#1E293B] bg-[#0A0F1A]/80 flex items-center justify-between text-[11px] font-mono text-slate-400 shrink-0">
+        <div className="px-4 sm:px-6 py-2 border-t border-ll-1e293b bg-lb-0a0f1a/80 flex items-center justify-between text-xs font-mono text-lt-slate-400 shrink-0">
           <div className="flex items-center gap-2">
             <span>TMTRAC v{APP_VERSION}</span>
             <span>·</span>
@@ -1183,7 +1182,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="px-3 py-1 rounded bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+            className="px-3 py-1 rounded bg-lb-1e293b hover:bg-lb-334155 text-lt-slate-200 text-xs font-bold transition-colors cursor-pointer"
           >
             Close
           </button>

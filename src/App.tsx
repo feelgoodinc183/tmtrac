@@ -289,8 +289,27 @@ export default function App() {
   };
   const [connectedPeerCount, setConnectedPeerCount] = useState<number>(1);
 
-  // Direct Sunlight Mode (High-contrast ultra monochrome mode)
-  const [directSunlightMode, setDirectSunlightMode] = useState<boolean>(false);
+  // Sunlight Mode: light, high-contrast theme for use outdoors. Remembered per device.
+  const [directSunlightMode, setDirectSunlightMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('tmtrac_sunlight_mode') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tmtrac_sunlight_mode', directSunlightMode ? '1' : '0');
+    } catch {}
+  }, [directSunlightMode]);
+
+  // The theme lives on <html> so every dialog picks it up; the marketing landing page stays as designed.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (directSunlightMode && !showLandingPage) root.dataset.theme = 'sunlight';
+    else delete root.dataset.theme;
+  }, [directSunlightMode, showLandingPage]);
 
   // Hybrid Multi-Device GPS State & Fleet Members
   const [fleetMembers, setFleetMembers] = useState<HybridFleetMember[]>([]);
@@ -2692,7 +2711,7 @@ export default function App() {
 
   if (showLandingPage) {
     return (
-      <div className="min-h-screen w-screen bg-white text-slate-900 font-sans">
+      <div className="min-h-screen w-screen bg-lb-white text-lt-slate-900 font-sans">
         <FrontLandingPage
           onLoginClick={() => {
             setAuthModalInitialMode('login');
@@ -2780,14 +2799,14 @@ export default function App() {
   return (
     <div
       className={`h-screen w-screen font-google flex flex-col overflow-hidden select-none ${
-        directSunlightMode ? 'bg-black text-white' : 'bg-[#0A0F1E] text-[#E8EAED]'
+        'bg-lb-0a0f1e text-lt-e8eaed'
       }`}
     >
       {saveRejection && (
         <div
           id="save-rejected-banner"
           role="alert"
-          className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] w-[min(92vw,560px)] p-3 rounded-xl bg-rose-950/95 border border-rose-500/50 text-rose-100 shadow-2xl flex items-start gap-3 text-sm"
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] w-[min(92vw,560px)] p-3 rounded-xl bg-lb-rose-950/95 border border-ll-rose-500/50 text-lt-rose-100 shadow-2xl flex items-start gap-3 text-sm"
         >
           <div className="flex-1 min-w-0">
             <p className="font-semibold">
@@ -2800,7 +2819,7 @@ export default function App() {
               } as Record<string, string>)[saveRejection.action] || 'Change'}{' '}
               not saved
             </p>
-            <p className="text-xs text-rose-200/90 mt-0.5">
+            <p className="text-xs text-lt-rose-200/90 mt-0.5">
               This device has no Race Officer rights in room #{saveRejection.roomCode}. Unlock with the Race Officer PIN, then make the change again.
             </p>
           </div>
@@ -2810,7 +2829,7 @@ export default function App() {
               setSaveRejection(null);
               setShowPinUnlockModal(true);
             }}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold cursor-pointer"
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-lb-rose-500 hover:bg-lb-rose-400 text-lt-white text-xs font-bold cursor-pointer"
           >
             Enter PIN
           </button>
@@ -2818,7 +2837,7 @@ export default function App() {
             type="button"
             aria-label="Dismiss"
             onClick={() => setSaveRejection(null)}
-            className="shrink-0 px-2 py-1.5 rounded-lg text-rose-200 hover:bg-rose-900 text-xs cursor-pointer"
+            className="shrink-0 px-2 py-1.5 rounded-lg text-lt-rose-200 hover:bg-lb-rose-900 text-xs cursor-pointer"
           >
             ✕
           </button>
@@ -3276,17 +3295,17 @@ export default function App() {
 
           {/* TAB 2: MOBILE LEADERBOARD */}
           {mobileTab === 'LEADERBOARD' && (
-            <div className="w-full h-full flex flex-col bg-[#060B16] text-white overflow-hidden">
-              <div className="p-3 bg-[#0A0F1E] border-b border-[#1E293B] flex items-center justify-between shrink-0">
+            <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-hidden">
+              <div className="p-3 bg-lb-0a0f1e border-b border-ll-1e293b flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-[#00D4FF]" />
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-white">
+                  <Trophy className="w-4 h-4 text-lt-00d4ff" />
+                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-white">
                     IRC Corrected Leaderboard
                   </span>
                 </div>
                 <button
                   onClick={() => setMobileTab('MAP')}
-                  className="px-2.5 py-1 bg-[#1E293B] text-[#00D4FF] hover:text-white rounded-lg text-xs font-mono font-bold flex items-center gap-1"
+                  className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff hover:text-lt-white rounded-lg text-xs font-mono font-bold flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   View Map
@@ -3332,34 +3351,34 @@ export default function App() {
 
           {/* TAB 3: MOBILE FLEET GPS */}
           {mobileTab === 'FLEET_GPS' && (
-            <div className="w-full h-full flex flex-col bg-[#060B16] text-white overflow-y-auto p-4 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1E293B]">
+            <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-y-auto p-4 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-ll-1e293b">
                 <div className="flex items-center gap-2">
-                  <Navigation className="w-5 h-5 text-[#00D4FF]" />
+                  <Navigation className="w-5 h-5 text-lt-00d4ff" />
                   <div>
-                    <h2 className="text-sm font-bold font-google text-white">
+                    <h2 className="text-sm font-bold font-google text-lt-white">
                       Hybrid Fleet GPS Tracker
                     </h2>
                   </div>
                 </div>
                 <button
                   onClick={() => setMobileTab('MAP')}
-                  className="px-2.5 py-1 bg-[#1E293B] text-[#00D4FF] rounded-lg text-xs font-mono font-bold"
+                  className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff rounded-lg text-xs font-mono font-bold"
                 >
                   Back to Map
                 </button>
               </div>
 
               {/* My Device GPS Card */}
-              <div className="p-4 rounded-2xl bg-[#0A0F1E] border border-[#1E293B] space-y-3">
+              <div className="p-4 rounded-2xl bg-lb-0a0f1e border border-ll-1e293b space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#00D4FF]/20 text-[#00D4FF] flex items-center justify-center font-bold">
+                    <div className="w-9 h-9 rounded-xl bg-lb-00d4ff/20 text-lt-00d4ff flex items-center justify-center font-bold">
                       <Navigation className={`w-5 h-5 ${deviceGps.active ? 'animate-pulse' : ''}`} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-white">This Device (My Phone)</h4>
-                      <p className="text-[10px] text-[#64748B] font-mono">
+                      <h4 className="text-xs font-bold text-lt-white">This Device (My Phone)</h4>
+                      <p className="text-xs text-lt-64748b font-mono">
                         {deviceGps.active ? 'Broadcasting live GPS coordinates' : 'Tracking inactive'}
                       </p>
                     </div>
@@ -3368,8 +3387,8 @@ export default function App() {
                     onClick={handleToggleDeviceGps}
                     className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
                       deviceGps.active
-                        ? 'bg-[#EA4335] text-white shadow-md'
-                        : 'bg-[#00D4FF] text-black shadow-md'
+                        ? 'bg-lb-ea4335 text-lt-white shadow-md'
+                        : 'bg-lb-00d4ff text-lt-black shadow-md'
                     }`}
                   >
                     {deviceGps.active ? 'Stop GPS' : 'Start GPS'}
@@ -3377,22 +3396,22 @@ export default function App() {
                 </div>
 
                 {deviceGps.active && (
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#1E293B] text-center font-mono">
-                    <div className="p-2 rounded-xl bg-[#060B16] border border-[#1E293B]">
-                      <span className="text-[9px] text-[#64748B] block">SOG Speed</span>
-                      <span className="text-xs font-bold text-[#00FF9D]">
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ll-1e293b text-center font-mono">
+                    <div className="p-2 rounded-xl bg-lb-060b16 border border-ll-1e293b">
+                      <span className="text-xs text-lt-64748b block">SOG Speed</span>
+                      <span className="text-xs font-bold text-lt-00ff9d">
                         {Number(deviceGps?.speedKt ?? 0).toFixed(1)} kt
                       </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-[#060B16] border border-[#1E293B]">
-                      <span className="text-[9px] text-[#64748B] block">COG Heading</span>
-                      <span className="text-xs font-bold text-[#00D4FF]">
+                    <div className="p-2 rounded-xl bg-lb-060b16 border border-ll-1e293b">
+                      <span className="text-xs text-lt-64748b block">COG Heading</span>
+                      <span className="text-xs font-bold text-lt-00d4ff">
                         {Math.round(deviceGps.headingDeg || 0)}°
                       </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-[#060B16] border border-[#1E293B]">
-                      <span className="text-[9px] text-[#64748B] block">Accuracy</span>
-                      <span className="text-xs font-bold text-white">
+                    <div className="p-2 rounded-xl bg-lb-060b16 border border-ll-1e293b">
+                      <span className="text-xs text-lt-64748b block">Accuracy</span>
+                      <span className="text-xs font-bold text-lt-white">
                         ±{Math.round(deviceGps.accuracy || 5)}m
                       </span>
                     </div>
@@ -3402,13 +3421,13 @@ export default function App() {
 
               {/* Connected Fleet Nodes */}
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider font-mono">
+                <h3 className="text-xs font-bold text-lt-94a3b8 uppercase tracking-wider font-mono">
                   Live Fleet Members ({fleetMembers.length + (deviceGps.active ? 1 : 0)})
                 </h3>
 
                 {fleetMembers.length === 0 && !deviceGps.active ? (
-                  <div className="p-4 rounded-xl bg-[#0A0F1E] border border-dashed border-[#1E293B] text-center">
-                    <p className="text-xs text-[#64748B] font-mono">
+                  <div className="p-4 rounded-xl bg-lb-0a0f1e border border-dashed border-ll-1e293b text-center">
+                    <p className="text-xs text-lt-64748b font-mono">
                       No other devices connected yet. Open this URL on other phones or tablets to view together in real-time.
                     </p>
                   </div>
@@ -3417,20 +3436,20 @@ export default function App() {
                     {fleetMembers.map((member) => (
                       <div
                         key={member.deviceId}
-                        className="p-3 rounded-xl bg-[#0A0F1E] border border-[#1E293B] flex items-center justify-between"
+                        className="p-3 rounded-xl bg-lb-0a0f1e border border-ll-1e293b flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
                           <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black text-xs"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lt-black text-xs"
                             style={{ backgroundColor: member.color || '#00D4FF' }}
                           >
                             {member.deviceType === 'PHONE' ? '📱' : member.deviceType === 'TABLET' ? '📟' : '💻'}
                           </div>
                           <div>
-                            <h5 className="text-xs font-bold text-white">
+                            <h5 className="text-xs font-bold text-lt-white">
                               {member.deviceName}
                             </h5>
-                            <p className="text-[9px] text-[#64748B] font-mono">
+                            <p className="text-xs text-lt-64748b font-mono">
                               Role: {member.role} • Battery: {member.battery ?? 85}%
                             </p>
                           </div>
@@ -3443,7 +3462,7 @@ export default function App() {
                               setMobileTab('MAP');
                             }
                           }}
-                          className="px-2.5 py-1 bg-[#1E293B] text-[#00D4FF] hover:text-white rounded-lg text-xs font-mono font-bold"
+                          className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff hover:text-lt-white rounded-lg text-xs font-mono font-bold"
                         >
                           Locate
                         </button>
@@ -3457,17 +3476,17 @@ export default function App() {
 
           {/* TAB 4: MOBILE RC RACE CONSOLE */}
           {mobileTab === 'RC_CONSOLE' && (
-            <div className="w-full h-full flex flex-col bg-[#060B16] text-white overflow-y-auto">
-              <div className="p-3 bg-[#0A0F1E] border-b border-[#1E293B] flex items-center justify-between shrink-0">
+            <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-y-auto">
+              <div className="p-3 bg-lb-0a0f1e border-b border-ll-1e293b flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-[#FBBC04]" />
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-white">
+                  <Compass className="w-4 h-4 text-lt-fbbc04" />
+                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-white">
                     Race Committee Console
                   </span>
                 </div>
                 <button
                   onClick={() => setMobileTab('MAP')}
-                  className="px-2.5 py-1 bg-[#1E293B] text-[#00D4FF] hover:text-white rounded-lg text-xs font-mono font-bold flex items-center gap-1"
+                  className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff hover:text-lt-white rounded-lg text-xs font-mono font-bold flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   View Map

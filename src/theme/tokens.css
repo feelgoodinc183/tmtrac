@@ -1,0 +1,61 @@
+/*
+ * Design tokens: the colours new and restyled UI should use. Every pairing below is checked for
+ * contrast in both themes (text 4.5:1 or better, lines and focus 3:1 or better).
+ *
+ * Dark is the default. Sunlight is a light, high-contrast theme for use outdoors; it is switched
+ * on by data-theme="sunlight" on <html> (see App.tsx).
+ *
+ *   canvas       page background
+ *   surface      panels, dialogs, cards
+ *   raised       controls and hover fills on a surface
+ *   line         borders of inputs and controls (3:1 against surface)
+ *   ink          primary text
+ *   ink-muted    secondary text
+ *   accent       the one accent colour (primary actions, links, selection)
+ *   on-accent    text on an accent fill
+ *   danger       fill for destructive actions; on-danger is its text
+ *   danger-ink   error text
+ *   warning-ink  warning text (flags, cautions)
+ *   success-ink  success text
+ *   focus        keyboard focus ring
+ *
+ * Type: Tailwind's scale, with text-xs (12px) as the smallest size used in the app.
+ */
+@theme {
+  --color-canvas: #0a0f1e;
+  --color-surface: #0f172a;
+  --color-raised: #1e293b;
+  --color-line: #64748b;
+  --color-ink: #e8eaed;
+  --color-ink-muted: #a3b1c2;
+  --color-accent: #00d4ff;
+  --color-on-accent: #020408;
+  --color-danger: #dc2626;
+  --color-on-danger: #ffffff;
+  --color-danger-ink: #fca5a5;
+  --color-warning-ink: #fbbc04;
+  --color-success-ink: #4ade80;
+  --color-focus: #ffffff;
+
+  /* Two radii: controls and containers. */
+  --radius-control: 0.5rem;
+  --radius-container: 1rem;
+}
+
+[data-theme='sunlight'] {
+  --color-canvas: #f4f7fa;
+  --color-surface: #ffffff;
+  --color-raised: #e7ecf2;
+  --color-line: #6b7a90;
+  --color-ink: #0b1220;
+  --color-ink-muted: #46546a;
+  --color-accent: #0e7490;
+  --color-on-accent: #ffffff;
+  --color-danger: #b91c1c;
+  --color-on-danger: #ffffff;
+  --color-danger-ink: #b91c1c;
+  --color-warning-ink: #92400e;
+  --color-success-ink: #166534;
+  --color-focus: #0b1220;
+  color-scheme: light;
+}

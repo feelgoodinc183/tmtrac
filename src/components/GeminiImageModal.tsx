@@ -72,29 +72,29 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020408]/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-[#0A0F1E] border border-[#1E293B] w-full max-w-2xl h-[650px] rounded-2xl shadow-2xl overflow-hidden flex flex-col text-[#E0E6ED]">
+    <div className="fixed inset-0 z-50 bg-lb-020408/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-lb-0a0f1e border border-ll-1e293b w-full max-w-2xl h-[650px] rounded-2xl shadow-2xl overflow-hidden flex flex-col text-lt-e0e6ed">
         {/* Header */}
-        <div className="p-4 bg-[#060B16] border-b border-[#1E293B] flex items-center justify-between shrink-0">
+        <div className="p-4 bg-lb-060b16 border-b border-ll-1e293b flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#00FF9D]/20 border border-[#00FF9D]/40 flex items-center justify-center text-[#00FF9D]">
+            <div className="w-8 h-8 rounded-lg bg-lb-00ff9d/20 border border-ll-00ff9d/40 flex items-center justify-center text-lt-00ff9d">
               <ImageIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+              <h2 className="text-sm font-bold tracking-tight text-lt-white flex items-center gap-2">
                 Gemini Vision Photo Intelligence
-                <span className="text-[10px] bg-[#00FF9D]/20 text-[#00FF9D] px-2 py-0.5 rounded font-mono border border-[#00FF9D]/30">
+                <span className="text-xs bg-lb-00ff9d/20 text-lt-00ff9d px-2 py-0.5 rounded font-mono border border-ll-00ff9d/30">
                   {selectedModel}
                 </span>
               </h2>
-              <p className="text-[10px] text-[#64748B] font-mono">
+              <p className="text-xs text-lt-64748b font-mono">
                 Multimodal Image Analysis for Hardware & Regattas
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-all"
+            className="p-1.5 rounded-lg text-lt-64748b hover:text-lt-white transition-all"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,7 +104,7 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
         <div className="flex-1 p-5 overflow-y-auto space-y-4 custom-scrollbar">
           {/* Sample selector & Upload button */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-widest text-[#64748B] block mb-2">
+            <label className="text-xs font-mono uppercase tracking-widest text-lt-64748b block mb-2">
               Select Sample Marine Image or Upload File
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -114,19 +114,19 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
                   onClick={() => handleSelectSample(sample)}
                   className={`p-2 rounded-lg border text-left text-xs font-mono transition-all flex flex-col items-center gap-1 ${
                     selectedImage === sample.preview
-                      ? 'bg-[#00D4FF]/20 border-[#00D4FF] text-white'
-                      : 'bg-[#060B16] border-[#1E293B] text-[#94A3B8] hover:text-white'
+                      ? 'bg-lb-00d4ff/20 border-ll-00d4ff text-lt-white'
+                      : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8 hover:text-lt-white'
                   }`}
                 >
                   <img src={sample.preview} alt={sample.name} className="w-full h-16 object-cover rounded" />
-                  <span className="text-[9px] font-bold text-center truncate w-full">{sample.name}</span>
+                  <span className="text-xs font-bold text-center truncate w-full">{sample.name}</span>
                 </button>
               ))}
             </div>
 
             <div className="mt-3">
-              <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-[#1E293B] hover:border-[#00D4FF] bg-[#060B16] rounded-xl cursor-pointer text-xs font-mono text-[#94A3B8] hover:text-white transition-all">
-                <Upload className="w-4 h-4 text-[#00D4FF]" />
+              <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-ll-1e293b hover:border-ll-00d4ff bg-lb-060b16 rounded-xl cursor-pointer text-xs font-mono text-lt-94a3b8 hover:text-lt-white transition-all">
+                <Upload className="w-4 h-4 text-lt-00d4ff" />
                 Upload Custom Boat Photo / Camera Frame
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
               </label>
@@ -136,13 +136,13 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
           {/* Model Selector & Prompt Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono uppercase tracking-widest text-[#64748B]">
+              <label className="text-xs font-mono uppercase tracking-widest text-lt-64748b">
                 Prompt & Model Selection
               </label>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="bg-[#060B16] border border-[#1E293B] rounded px-2 py-0.5 text-[10px] font-mono text-[#00FF9D]"
+                className="bg-lb-060b16 border border-ll-1e293b rounded px-2 py-0.5 text-xs font-mono text-lt-00ff9d"
               >
                 <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (High Reasoning)</option>
                 <option value="gemini-3.6-flash">gemini-3.6-flash (Fast)</option>
@@ -153,7 +153,7 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               rows={2}
-              className="w-full bg-[#060B16] border border-[#1E293B] rounded-xl p-3 text-xs text-white placeholder-[#64748B] focus:border-[#00FF9D] outline-none font-sans"
+              className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl p-3 text-xs text-lt-white placeholder-lt-64748b focus:border-ll-00ff9d outline-none font-sans"
               placeholder="Describe what you want Gemini to analyze in this photo..."
             />
           </div>
@@ -162,7 +162,7 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
           <button
             onClick={handleAnalyze}
             disabled={isLoading}
-            className="w-full py-3 bg-[#00FF9D] hover:bg-emerald-300 disabled:opacity-40 text-[#020408] font-bold text-xs rounded-xl transition-all shadow-[0_0_12px_#00FF9D] flex items-center justify-center gap-2"
+            className="w-full py-3 bg-lb-00ff9d hover:bg-lb-emerald-300 disabled:opacity-40 text-lt-020408 font-bold text-xs rounded-xl transition-all shadow-[0_0_12px_#00FF9D] flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -179,12 +179,12 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
 
           {/* Analysis Result Box */}
           {analysisResult && (
-            <div className="p-4 bg-[#060B16] border border-[#00FF9D]/40 rounded-xl space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#00FF9D]">
+            <div className="p-4 bg-lb-060b16 border border-ll-00ff9d/40 rounded-xl space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-lt-00ff9d">
                 <CheckCircle className="w-4 h-4" />
                 Gemini Vision Analysis
               </div>
-              <p className="text-xs text-[#E0E6ED] leading-relaxed whitespace-pre-wrap font-sans">
+              <p className="text-xs text-lt-e0e6ed leading-relaxed whitespace-pre-wrap font-sans">
                 {analysisResult}
               </p>
             </div>

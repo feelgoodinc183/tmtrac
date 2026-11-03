@@ -87,9 +87,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
       id="mobile-bottom-navigation-bar"
       aria-label="Mobile Navigation"
       className={`md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 border-t flex items-center justify-around px-1 select-none backdrop-blur-md transition-colors ${
-        directSunlightMode
-          ? 'bg-black text-white border-white'
-          : 'bg-[#0E131F]/95 text-[#E8EAED] border-[#1E293B]'
+        'bg-lb-0e131f/95 text-lt-e8eaed border-ll-1e293b'
       }`}
     >
       {/* 1. Map Tab */}
@@ -97,11 +95,11 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
         id="mobile-nav-map"
         onClick={() => onSelectTab('MAP')}
         className={`flex-1 flex flex-col items-center justify-center py-1 transition-colors cursor-pointer ${
-          isMapActive ? 'text-[#00D4FF]' : 'text-slate-400 hover:text-slate-200'
+          isMapActive ? 'text-lt-00d4ff' : 'text-lt-slate-400 hover:text-lt-slate-200'
         }`}
       >
         <MapIcon className={`w-4 h-4 ${isMapActive ? 'stroke-[2.5]' : ''}`} />
-        <span className="text-[10px] font-mono font-bold mt-0.5 tracking-tight">
+        <span className="text-xs font-mono font-bold mt-0.5 tracking-tight">
           Map
         </span>
       </button>
@@ -110,17 +108,17 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
       <button
         id="mobile-nav-fleet"
         onClick={() => handleTabClick('FLEET')}
-        className="flex-1 flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-200 transition-colors relative cursor-pointer"
+        className="flex-1 flex flex-col items-center justify-center py-1 text-lt-slate-400 hover:text-lt-slate-200 transition-colors relative cursor-pointer"
       >
         <div className="relative">
-          <Compass className="w-4 h-4 text-[#00D4FF]" />
+          <Compass className="w-4 h-4 text-lt-00d4ff" />
           {boatCount > 0 && (
-            <span className="absolute -top-1 -right-2 bg-[#00D4FF] text-black text-[8px] font-mono font-bold px-1 rounded-full leading-tight">
+            <span className="absolute -top-1 -right-2 bg-lb-00d4ff text-lt-black text-xs font-mono font-bold px-1 rounded-full leading-tight">
               {boatCount}
             </span>
           )}
         </div>
-        <span className="text-[10px] font-mono font-bold mt-0.5 tracking-tight">
+        <span className="text-xs font-mono font-bold mt-0.5 tracking-tight">
           Fleet
         </span>
       </button>
@@ -129,21 +127,21 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
       <button
         id="mobile-nav-race"
         onClick={() => handleTabClick('RACE')}
-        className="flex-1 flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-200 transition-colors relative cursor-pointer"
+        className="flex-1 flex flex-col items-center justify-center py-1 text-lt-slate-400 hover:text-lt-slate-200 transition-colors relative cursor-pointer"
       >
         <div className="relative">
-          <Clock className="w-4 h-4 text-[#FBBC04]" />
+          <Clock className="w-4 h-4 text-lt-fbbc04" />
           <span
             className={`absolute -top-0.5 -right-1 w-2 h-2 rounded-full ${
               raceState.status === 'RACING'
-                ? 'bg-emerald-400 animate-pulse'
+                ? 'bg-lb-emerald-400 animate-pulse'
                 : raceState.startSequenceActive
-                ? 'bg-amber-400 animate-pulse'
-                : 'bg-slate-400'
+                ? 'bg-lb-amber-400 animate-pulse'
+                : 'bg-lb-slate-400'
             }`}
           />
         </div>
-        <span className="text-[10px] font-mono font-bold mt-0.5 tracking-tight">
+        <span className="text-xs font-mono font-bold mt-0.5 tracking-tight">
           Race
         </span>
       </button>
@@ -152,10 +150,10 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
       <button
         id="mobile-nav-results"
         onClick={() => handleTabClick('RESULTS')}
-        className="flex-1 flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+        className="flex-1 flex flex-col items-center justify-center py-1 text-lt-slate-400 hover:text-lt-slate-200 transition-colors cursor-pointer"
       >
-        <Trophy className="w-4 h-4 text-[#FFB800]" />
-        <span className="text-[10px] font-mono font-bold mt-0.5 tracking-tight">
+        <Trophy className="w-4 h-4 text-lt-ffb800" />
+        <span className="text-xs font-mono font-bold mt-0.5 tracking-tight">
           Results
         </span>
       </button>
@@ -164,10 +162,10 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
       <button
         id="mobile-nav-system"
         onClick={() => handleTabClick('SYSTEM')}
-        className="flex-1 flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+        className="flex-1 flex flex-col items-center justify-center py-1 text-lt-slate-400 hover:text-lt-slate-200 transition-colors cursor-pointer"
       >
-        <Settings className="w-4 h-4 text-cyan-400" />
-        <span className="text-[10px] font-mono font-bold mt-0.5 tracking-tight">
+        <Settings className="w-4 h-4 text-lt-cyan-400" />
+        <span className="text-xs font-mono font-bold mt-0.5 tracking-tight">
           System
         </span>
       </button>
