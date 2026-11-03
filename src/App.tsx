@@ -349,9 +349,9 @@ export default function App() {
 
   const handleToggleDeviceGps = () => {
     if (deviceGps.active) {
-      deviceTrackerService.stopGpsTracking();
+      deviceTrackerService.stopSharingByUser();
     } else {
-      deviceTrackerService.startGpsTracking();
+      deviceTrackerService.startSharingByUser();
     }
   };
 
@@ -2299,7 +2299,7 @@ export default function App() {
   const handleSkipperCheckIn = (boatId: string, skipperName?: string) => {
     // 1. If GPS is not active, activate high-accuracy mobile GPS tracking
     if (!deviceGps.active) {
-      deviceTrackerService.startGpsTracking();
+      deviceTrackerService.startSharingByUser();
     }
     // 2. Set profile name
     if (skipperName) {
@@ -2399,7 +2399,8 @@ export default function App() {
 
       const initLat = isExplicitPos ? boatData.lat! : (resolved ? resolved.lat : (selectedLocation?.centerLat ?? 6.308));
       const initLng = isExplicitPos ? boatData.lng! : (resolved ? resolved.lng : (selectedLocation?.centerLng ?? 99.845));
-      const initSog = resolved ? resolved.sog : (isExplicitPos && typeof boatData.sog === 'number' ? boatData.sog : (boatData.nodeId ? 0 : 7.5));
+      // No tracker yet: 0 kt until one reports (it used to show a made-up 7.5 kt)
+      const initSog = resolved ? resolved.sog : (isExplicitPos && typeof boatData.sog === 'number' ? boatData.sog : 0);
       const initCog = resolved ? resolved.cog : (isExplicitPos && typeof boatData.cog === 'number' ? boatData.cog : 320);
 
       const localNode = deviceTrackerService.getLocalNode();

@@ -249,8 +249,9 @@ class HybridDeviceTrackerService {
       }
     });
 
-    // If on mobile / tablet, automatically request GPS permission & start tracking
-    if (typeof window !== 'undefined' && (this.profile.deviceType === 'PHONE' || this.profile.deviceType === 'TABLET')) {
+    // Location is only shared after the person turns tracking on (Track, or the Device Tracker
+    // toggle). If they did and the page reloads, e.g. a phone mid-race, sharing resumes.
+    if (typeof window !== 'undefined' && HybridDeviceTrackerService.hasGpsOptIn()) {
       setTimeout(() => {
         this.startGpsTracking().catch(() => {});
       }, 500);
@@ -1148,6 +1149,32 @@ class HybridDeviceTrackerService {
   }
 
   // Start watching native Geolocation & Magnetometer Compass
+  private static readonly GPS_OPT_IN_KEY = 'tmtrac_gps_sharing_opt_in';
+
+  private static hasGpsOptIn(): boolean {
+    try {
+      return localStorage.getItem(HybridDeviceTrackerService.GPS_OPT_IN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  /** The person chose to share this device's location. Remembered so a reload resumes it. */
+  public startSharingByUser(): Promise<boolean> {
+    try {
+      localStorage.setItem(HybridDeviceTrackerService.GPS_OPT_IN_KEY, '1');
+    } catch {}
+    return this.startGpsTracking();
+  }
+
+  /** The person stopped sharing this device's location. */
+  public stopSharingByUser() {
+    try {
+      localStorage.removeItem(HybridDeviceTrackerService.GPS_OPT_IN_KEY);
+    } catch {}
+    this.stopGpsTracking();
+  }
+
   public startGpsTracking(): Promise<boolean> {
     return new Promise((resolve) => {
       if (typeof window === 'undefined' || !('geolocation' in navigator)) {
