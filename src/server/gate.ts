@@ -1,5 +1,6 @@
 import express from 'express';
 import { db, insertAuditLog } from './db';
+import { findActiveUserByToken } from './sessions';
 import { Tenant, PlanTier, UserAccount } from '../types/regatta';
 
 export interface GateContext {
@@ -26,7 +27,8 @@ export function extractPlatform(req: express.Request): 'WEB' | 'ANDROID' {
   return 'WEB';
 }
 
-export function resolveGateContext(req: express.Request): GateContext {
+/** The session token sent with a request (Authorization header, ?token=, or legacy headers). */
+export function extractRequestToken(req: express.Request): string {
   const rawAuthHeader = (req.headers.authorization || req.headers.Authorization || (req.headers as any)['http_authorization'] || req.headers['x-forwarded-authorization'] || '') as string;
   let token = '';
   if (typeof rawAuthHeader === 'string' && rawAuthHeader.toLowerCase().startsWith('bearer ')) {
@@ -40,6 +42,11 @@ export function resolveGateContext(req: express.Request): GateContext {
   } else if (typeof req.headers['x-super-admin-token'] === 'string') {
     token = (req.headers['x-super-admin-token'] as string).trim();
   }
+  return token;
+}
+
+export function resolveGateContext(req: express.Request): GateContext {
+  const token = extractRequestToken(req);
 
   const platform = extractPlatform(req);
 
@@ -58,11 +65,8 @@ export function resolveGateContext(req: express.Request): GateContext {
     let userRow: any = null;
 
     try {
-      // Strictly resolve user by active cryptographic session token only
-      userRow = db.prepare(`
-        SELECT * FROM users
-        WHERE token = ? AND (status = 'ACTIVE' OR status IS NULL)
-      `).get(token) as any;
+      // One session per signed-in device (see sessions.ts)
+      userRow = findActiveUserByToken(token);
     } catch (err) {
       console.warn('[Gate] Notice: User query by token:', err);
     }
@@ -92,9 +96,9 @@ export function resolveGateContext(req: express.Request): GateContext {
       } catch (e) {}
     }
 
-    const userEmail = (userRow.email || '').toLowerCase().trim();
-    const isSuperAdmin = !!userRow.is_super_admin || (userEmail === 'irsyadismail@gmail.com' && userRow.role === 'ADMIN');
-    const isUniversalAdmin = isSuperAdmin && (userRow.role === 'ADMIN' || userEmail === 'irsyadismail@gmail.com');
+    // Super Admin access comes from the account's flag only; the owner's flag is re-applied at startup (db.ts).
+    const isSuperAdmin = !!userRow.is_super_admin;
+    const isUniversalAdmin = isSuperAdmin;
 
     let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 };
     let raceHistory = [];
@@ -116,7 +120,7 @@ export function resolveGateContext(req: express.Request): GateContext {
       role: userRow.role as any,
       participantType: userRow.participant_type as any,
       status: userRow.status as any,
-      token: userRow.token,
+      token,
       planTier: (tenantRow?.plan_tier || 'FREE') as PlanTier,
       createdAt: userRow.created_at,
       isSuperAdmin,
