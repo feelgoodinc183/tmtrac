@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { PlanTier, PlanLimits } from '../types/regatta';
+import { openNodeSqlite } from './nodeSqlite';
 
 // Lazy dynamic loader for better-sqlite3: Prevents top-level module evaluation crash
 // (ERR_DLOPEN_FAILED: GLIBC_2.29 not found) on Linux hosts with older glibc.
@@ -184,7 +185,7 @@ export interface DbDiagnosticCheck {
 }
 
 export const dbDiagnosticsState = {
-  driverName: 'better-sqlite3' as 'better-sqlite3' | 'fallback-store',
+  driverName: 'better-sqlite3' as 'node-sqlite' | 'better-sqlite3' | 'fallback-store',
   configuredPath: CONFIGURED_DB_PATH,
   effectivePath: EFFECTIVE_DB_PATH,
   fallbackStorePath: FALLBACK_STORE_PATH,
@@ -938,89 +939,197 @@ export function runSafeColumnMigrations(targetDb: any = db) {
   }
 }
 
-function initializeDbClient() {
-  let targetPath = DB_PATH;
+// Marker row set once the JSON fallback store has been imported (or found absent). Until then a
+// .db file on disk may be a stale copy shipped in old deploy zips and must not become live data.
+export const JSON_MIGRATION_MARKER = 'json_store_migrated';
+const MIGRATION_LOCK_PATH = path.join(DATA_DIR, '.db-migration.lock');
 
-  // Safely check if native better-sqlite3 driver is loadable without throwing fatal ERR_DLOPEN_FAILED
+function openRealDatabase(targetPath: string): { db: any; driver: 'node-sqlite' | 'better-sqlite3' } | null {
+  const forced = (process.env.TMTRAC_DB_DRIVER || '').trim().toLowerCase();
+  if (forced !== 'better-sqlite3') {
+    const nodeDb = openNodeSqlite(targetPath);
+    if (nodeDb) return { db: nodeDb, driver: 'node-sqlite' };
+    if (forced === 'node-sqlite') return null;
+  }
   const DatabaseClass = getDatabaseConstructor();
-  if (!DatabaseClass) {
+  if (!DatabaseClass) return null;
+  return { db: new DatabaseClass(targetPath), driver: 'better-sqlite3' };
+}
+
+function hasMigrationMarker(realDb: any): boolean {
+  try {
+    return !!realDb.prepare('SELECT value FROM app_meta WHERE key = ?').get(JSON_MIGRATION_MARKER);
+  } catch {
+    return false;
+  }
+}
+
+function databaseHasData(realDb: any): boolean {
+  try {
+    return !!realDb.prepare('SELECT 1 AS present FROM users LIMIT 1').get();
+  } catch {
+    return false;
+  }
+}
+
+/** Holds the migration lock if this process got it; another process starting at the same time skips migrating. */
+export function acquireMigrationLock(): boolean {
+  try {
+    if (fs.existsSync(MIGRATION_LOCK_PATH) && Date.now() - fs.statSync(MIGRATION_LOCK_PATH).mtimeMs > 5 * 60 * 1000) {
+      fs.unlinkSync(MIGRATION_LOCK_PATH);
+    }
+    fs.writeFileSync(MIGRATION_LOCK_PATH, String(process.pid), { flag: 'wx' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function releaseMigrationLock() {
+  try {
+    fs.unlinkSync(MIGRATION_LOCK_PATH);
+  } catch {}
+}
+
+function initializeDbClient() {
+  const forced = (process.env.TMTRAC_DB_DRIVER || '').trim().toLowerCase();
+  const useJsonStore = (reason: string) => {
     dbDiagnosticsState.driverName = 'fallback-store';
     dbDiagnosticsState.effectivePath = FALLBACK_STORE_PATH;
     dbDiagnosticsState.isNative = false;
-    dbDiagnosticsState.initError = 'Native better-sqlite3 driver not available on host runtime (GLIBC_2.29 compatibility). Operating in resilient persistent JSON store mode.';
-    console.warn('[SQLite DB] Operating with persistent JSON store fallback (zero native glibc dependencies).');
+    dbDiagnosticsState.initError = reason;
+    console.warn('[SQLite DB] Using the JSON store fallback:', reason);
     return createFallbackDatabase();
-  }
+  };
+  if (forced === 'json') return useJsonStore('TMTRAC_DB_DRIVER=json');
 
-  // Verify and ensure parent directory exists
+  let targetPath = DB_PATH;
   try {
     const parentDir = path.dirname(targetPath);
     if (!fs.existsSync(parentDir)) {
       fs.mkdirSync(parentDir, { recursive: true, mode: 0o755 });
     }
   } catch (dirErr: any) {
-    console.warn(`[SQLite DB] Notice: Unable to create configured directory for ${targetPath}. Falling back to ./data/tmtrac.db:`, dirErr.message);
+    console.warn(`[SQLite DB] Unable to create directory for ${targetPath}, using ./data/tmtrac.db:`, dirErr.message);
     targetPath = path.join(process.cwd(), 'data', 'tmtrac.db');
-    try {
-      const fallbackDir = path.dirname(targetPath);
-      if (!fs.existsSync(fallbackDir)) {
-        fs.mkdirSync(fallbackDir, { recursive: true, mode: 0o755 });
-      }
-    } catch (e) {}
   }
 
   try {
-    const realDb = new DatabaseClass(targetPath);
+    let opened = openRealDatabase(targetPath);
+    if (!opened) {
+      return useJsonStore('No SQLite driver on this Node version (needs Node 22.13+ for built-in SQLite, or a loadable better-sqlite3).');
+    }
+
+    // A .db file that predates the JSON store migration is stale (old deploy zips shipped one): keep it
+    // aside under a new name and start empty, so the JSON store's live data is what gets imported
+    if (!hasMigrationMarker(opened.db) && fs.existsSync(FALLBACK_STORE_PATH) && databaseHasData(opened.db) && acquireMigrationLock()) {
+      try {
+        opened.db.close?.();
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        for (const suffix of ['', '-wal', '-shm']) {
+          if (fs.existsSync(targetPath + suffix)) fs.renameSync(targetPath + suffix, `${targetPath}.pre-json-migration-${stamp}${suffix}`);
+        }
+        console.warn(`[SQLite DB] Set aside a stale ${path.basename(targetPath)} from before the JSON store migration`);
+      } finally {
+        releaseMigrationLock();
+      }
+      opened = openRealDatabase(targetPath)!;
+    }
+
+    const realDb = opened.db;
     realDb.pragma('journal_mode = WAL');
     realDb.pragma('synchronous = NORMAL');
     realDb.pragma('foreign_keys = ON');
+    realDb.pragma('busy_timeout = 5000');
     runSafeColumnMigrations(realDb);
 
-    dbDiagnosticsState.driverName = 'better-sqlite3';
+    dbDiagnosticsState.driverName = opened.driver;
     dbDiagnosticsState.effectivePath = targetPath;
     dbDiagnosticsState.isNative = true;
     dbDiagnosticsState.initError = null;
-
-    console.log('[SQLite DB] Successfully initialized SQLite at:', targetPath);
+    console.log(`[SQLite DB] Using ${opened.driver} at ${targetPath}`);
     return realDb;
   } catch (err: any) {
-    // If the path failed, try local fallback directory before reverting to JSON store
-    const localPath = path.join(process.cwd(), 'data', 'tmtrac.db');
-    if (targetPath !== localPath) {
-      try {
-        const localDir = path.dirname(localPath);
-        if (!fs.existsSync(localDir)) {
-          fs.mkdirSync(localDir, { recursive: true, mode: 0o755 });
-        }
-        const fallbackDb = new DatabaseClass(localPath);
-        fallbackDb.pragma('journal_mode = WAL');
-        fallbackDb.pragma('synchronous = NORMAL');
-        fallbackDb.pragma('foreign_keys = ON');
-        runSafeColumnMigrations(fallbackDb);
-
-        dbDiagnosticsState.driverName = 'better-sqlite3';
-        dbDiagnosticsState.effectivePath = localPath;
-        dbDiagnosticsState.isNative = true;
-        dbDiagnosticsState.initError = `Configured path failed (${err.message}), fell back to ${localPath}`;
-
-        console.log('[SQLite DB] Initialized SQLite at local fallback:', localPath);
-        return fallbackDb;
-      } catch (localErr: any) {
-        console.warn('[SQLite DB] Local fallback also failed:', localErr.message);
-      }
-    }
-
-    dbDiagnosticsState.driverName = 'fallback-store';
-    dbDiagnosticsState.effectivePath = FALLBACK_STORE_PATH;
-    dbDiagnosticsState.isNative = false;
-    dbDiagnosticsState.initError = err.message;
-
-    console.warn('[SQLite DB] Notice: better-sqlite3 driver not active. Using persistent JSON store fallback:', err.message);
-    return createFallbackDatabase();
+    return useJsonStore(err.message);
   }
 }
 
 export const db: any = initializeDbClient();
+
+/**
+ * One-time import of the JSON fallback store (what production ran on while SQLite could not load)
+ * into SQLite. Runs once per database, in one transaction; the JSON file is renamed afterwards and
+ * kept as a backup. Later writes of tmtrac_store.json (backup mirror) are never re-imported.
+ */
+export function migrateJsonStoreIfNeeded(): { imported: Record<string, number> } | null {
+  const markerRow = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(JSON_MIGRATION_MARKER);
+  if (markerRow) return null;
+
+  const setMarker = (value: string) =>
+    db.prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)').run(JSON_MIGRATION_MARKER, value);
+
+  if (!fs.existsSync(FALLBACK_STORE_PATH)) {
+    setMarker(JSON.stringify({ at: Date.now(), source: 'none' }));
+    return null;
+  }
+  if (!acquireMigrationLock()) {
+    console.warn('[SQLite DB] Another process is importing the JSON store; skipping here');
+    return null;
+  }
+
+  try {
+    const store = JSON.parse(fs.readFileSync(FALLBACK_STORE_PATH, 'utf-8'));
+    const rowsOf = (v: any): any[] => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []);
+    const tables = ['tenants', 'users', 'events', 'packages', 'event_trackers', 'audit_logs'];
+    const imported: Record<string, number> = {};
+
+    db.pragma('foreign_keys = OFF');
+    db.exec('BEGIN');
+    try {
+      for (const table of tables) {
+        const columns = (db.pragma(`table_info(${table})`) as any[]).map((c) => ({
+          name: c.name as string,
+          required: !!c.notnull && c.dflt_value === null && !c.pk,
+          numeric: /INT|REAL/i.test(c.type || ''),
+        }));
+        let count = 0;
+        for (const row of rowsOf(store[table])) {
+          if (!row || typeof row !== 'object') continue;
+          const present = columns.filter((c) => row[c.name] !== undefined || c.required);
+          if (present.length === 0) continue;
+          const values = present.map((c) => {
+            const v = row[c.name];
+            if (v === undefined || v === null) return c.required ? (c.numeric ? 0 : '') : null;
+            if (typeof v === 'boolean') return v ? 1 : 0;
+            if (typeof v === 'object') return JSON.stringify(v);
+            return v;
+          });
+          db.prepare(
+            `INSERT OR REPLACE INTO ${table} (${present.map((c) => c.name).join(', ')}) VALUES (${present.map(() => '?').join(', ')})`
+          ).run(...values);
+          count++;
+        }
+        imported[table] = count;
+      }
+      setMarker(JSON.stringify({ at: Date.now(), source: 'tmtrac_store.json', imported }));
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    } finally {
+      db.pragma('foreign_keys = ON');
+    }
+
+    const backupPath = `${FALLBACK_STORE_PATH}.migrated-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    try {
+      fs.renameSync(FALLBACK_STORE_PATH, backupPath);
+    } catch {}
+    console.log('[SQLite DB] Imported the JSON store into SQLite:', JSON.stringify(imported), '- backup kept at', path.basename(backupPath));
+    return { imported };
+  } finally {
+    releaseMigrationLock();
+  }
+}
 
 export function hashPassword(pwd: string): string {
   return crypto.createHash('sha256').update(pwd + 'salt_regatta_sea_2026').digest('hex');
@@ -1053,6 +1162,9 @@ export function generateToken(): string {
 }
 
 export function initDatabase() {
+  if (dbDiagnosticsState.isNative) {
+    db.exec('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT);');
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS tenants (
       id TEXT PRIMARY KEY,
@@ -1174,6 +1286,16 @@ export function initDatabase() {
 
   // Run comprehensive safe column migrations on any existing SQLite schema
   runSafeColumnMigrations(db);
+
+  // Bring the JSON store's live data into SQLite once, before any default data is seeded
+  if (dbDiagnosticsState.isNative) {
+    try {
+      migrateJsonStoreIfNeeded();
+    } catch (err: any) {
+      // Nothing was imported (one transaction); the next start tries again
+      console.error('[SQLite DB] JSON store import failed, will retry on next start:', err?.message);
+    }
+  }
 
   // Ensure default super admin account is marked as is_super_admin
   try {
@@ -1389,7 +1511,7 @@ export function initDatabase() {
   try {
     const rlirEvent = db.prepare('SELECT id FROM events WHERE code = ?').get('RLIR26');
     if (!rlirEvent) {
-      const defaultTenant = (db.prepare('SELECT id, owner_id FROM tenants LIMIT 1').get() as any) || { id: defaultTenantId, owner_id: 'user-admin-0' };
+      const defaultTenant = (db.prepare(`SELECT id, owner_id FROM tenants ORDER BY (id = 'tenant-rlyc-default') DESC, created_at ASC LIMIT 1`).get() as any) || { id: defaultTenantId, owner_id: 'user-admin-0' };
       const now = Date.now();
       const defaultRaceState = {
         name: 'RLIR 2026 Regatta',
@@ -1445,7 +1567,7 @@ export function initDatabase() {
   try {
     const lobbyEvent = db.prepare('SELECT id FROM events WHERE code = ?').get('LOBBY');
     if (!lobbyEvent) {
-      const defaultTenant = (db.prepare('SELECT id, owner_id FROM tenants LIMIT 1').get() as any) || { id: defaultTenantId, owner_id: 'user-admin-0' };
+      const defaultTenant = (db.prepare(`SELECT id, owner_id FROM tenants ORDER BY (id = 'tenant-rlyc-default') DESC, created_at ASC LIMIT 1`).get() as any) || { id: defaultTenantId, owner_id: 'user-admin-0' };
       const now = Date.now();
       const lobbyRaceState = {
         name: 'General Regatta Lobby & Staging',

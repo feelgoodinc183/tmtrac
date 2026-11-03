@@ -161,7 +161,7 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
   }
 
   // Ephemeral fallback (e.g. for initial testing if no DB match yet)
-  const fallbackTenant = (db.prepare('SELECT id, name FROM tenants LIMIT 1').get() as any) || { id: 'tenant-rlyc-default', name: 'Royal Langkawi Yacht Club (RLYC)' };
+  const fallbackTenant = (db.prepare(`SELECT id, name FROM tenants ORDER BY (id = 'tenant-rlyc-default') DESC, created_at ASC LIMIT 1`).get() as any) || { id: 'tenant-rlyc-default', name: 'Royal Langkawi Yacht Club (RLYC)' };
   room = {
     id: `event-${code.toLowerCase()}`,
     tenantId: fallbackTenant.id,
@@ -1071,7 +1071,7 @@ async function startServer() {
       return res.status(400).json({ error: 'An account with this email or username already exists.' });
     }
 
-    const defaultTenant = (db.prepare('SELECT id FROM tenants LIMIT 1').get() as any);
+    const defaultTenant = (db.prepare(`SELECT id FROM tenants ORDER BY (id = 'tenant-rlyc-default') DESC, created_at ASC LIMIT 1`).get() as any);
     const assignedTenantId = defaultTenant?.id || 'tenant-rlyc-default';
 
     const userId = 'user-' + crypto.randomBytes(6).toString('hex');

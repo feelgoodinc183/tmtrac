@@ -137,6 +137,21 @@ HTTPS is required by modern browsers for Web Bluetooth and Geolocation APIs:
 
 ---
 
+## 🗄️ Database: real SQLite on Node 22
+
+On Node 22.13 or later the app uses Node's built-in SQLite (`data/tmtrac.db`). On older Node it falls back to the JSON store (`data/tmtrac_store.json`), as before. The log line `[SQLite DB] Using node-sqlite at ...` confirms which one is active.
+
+**Switching an existing install to Node 22 (one time):**
+1. Back up the whole `data/` folder (download it).
+2. Deploy the latest update zip first, while still on the old Node version, and check the site works.
+3. In **Setup Node.js App**, change the Node version to 22, click **Run NPM Install**, then **Restart**.
+4. On first start the app imports `tmtrac_store.json` into SQLite in one step, renames the JSON file to `tmtrac_store.json.migrated-<date>` as a backup, and sets aside any old `tmtrac.db` as `tmtrac.db.pre-json-migration-<date>` (older deploy zips shipped a stale copy).
+5. Sign in and check your rooms, users and PINs. Then re-check the 403 list below: changing the Node version rewrites the Passenger lines in `.htaccess`.
+
+**Rolling back:** switch Node back to the old version, then rename `tmtrac_store.json.migrated-<date>` back to `tmtrac_store.json` and restart. Changes made while on SQLite are not in that file.
+
+---
+
 ## 🔒 Keep the app folder private
 
 The app folder is inside `public_html`, so LiteSpeed will serve any file in it unless `.htaccess` forbids it. The root `.htaccess` (from `deploy/root.htaccess`) blocks `data/`, `dist/`, `tmp/`, `node_modules/` and internal files such as `package.json`, `app.js`, logs and zips. After every install or update, check:

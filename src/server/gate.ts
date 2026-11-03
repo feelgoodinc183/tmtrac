@@ -88,7 +88,7 @@ export function resolveGateContext(req: express.Request): GateContext {
     }
     if (!tenantRow) {
       try {
-        tenantRow = db.prepare('SELECT * FROM tenants LIMIT 1').get() as any;
+        tenantRow = db.prepare(`SELECT * FROM tenants ORDER BY (id = 'tenant-rlyc-default') DESC, created_at ASC LIMIT 1`).get() as any;
       } catch (e) {}
     }
 
