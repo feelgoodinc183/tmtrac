@@ -28,14 +28,14 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({ activeTab, onS
   ];
 
   return (
-    <nav aria-label="Main" className="md:hidden h-16 shrink-0 border-t border-ll-1e293b bg-lb-0a0f1e flex items-stretch z-30">
+    <nav aria-label="Main" className="md:hidden h-16 shrink-0 border-t border-line bg-surface flex items-stretch z-30">
       {items.map((item) => (
         <button
           key={item.key}
           onClick={item.onClick}
           aria-current={item.active ? 'page' : undefined}
           className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors [&>svg]:h-5 [&>svg]:w-5 ${
-            item.active ? 'text-lt-00d4ff' : 'text-lt-94a3b8 hover:text-lt-white'
+            item.active ? 'text-accent' : 'text-ink-muted hover:text-ink'
           }`}
         >
           {item.icon}

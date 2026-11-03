@@ -53,32 +53,32 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
       {!isBarExpanded ? (
         <button
           onClick={() => setIsBarExpanded(true)}
-          className={`p-2 rounded-xl border text-xs font-mono font-bold transition-all shadow-xl flex items-center justify-center backdrop-blur-md group shrink-0 ${
-            'bg-lb-060b16/90 border-ll-1e293b hover:border-ll-00d4ff/70 text-lt-00d4ff hover:bg-lb-1e293b shadow-[0_0_12px_rgba(0,212,255,0.2)]'
+          className={`p-2 rounded-xl border text-xs  font-bold transition-all shadow-xl flex items-center justify-center backdrop-blur-md group shrink-0 ${
+            'bg-canvas/90 border-line hover:border-accent/70 text-accent hover:bg-raised '
           }`}
           title="Map & View Controls (Click to expand)"
           aria-label="Map & View Controls"
         >
-          <Layers className="w-4 h-4 text-lt-00d4ff group-hover:scale-110 transition-transform" />
+          <Layers className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
         </button>
       ) : (
         <div
           className={`border p-1 rounded-xl backdrop-blur-md shadow-2xl flex items-center gap-1 animate-in slide-in-from-right-2 fade-in duration-200 ${
-            'bg-lb-0a0f1e/90 border-ll-1e293b text-lt-e0e6ed'
+            'bg-surface/90 border-line text-ink'
           }`}
         >
           {/* Zoom In */}
           <button
             onClick={onZoomIn}
             disabled={zoomLevel >= 3}
-            className="p-1.5 sm:p-2 rounded-lg bg-lb-060b16 hover:bg-lb-00d4ff hover:text-lt-020408 text-lt-e0e6ed transition-all disabled:opacity-30"
+            className="p-1.5 sm:p-2 rounded-lg bg-canvas hover:brightness-110 hover:text-canvas text-ink transition-all disabled:opacity-30"
             title="Zoom In Map"
           >
             <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* Zoom Level Indicator */}
-          <span className="text-xs sm:text-xs font-mono font-bold text-lt-00d4ff px-1 select-none">
+          <span className="text-xs sm:text-xs font-bold text-accent px-1 select-none">
             {Math.round(zoomLevel * 100)}%
           </span>
 
@@ -86,22 +86,22 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
           <button
             onClick={onZoomOut}
             disabled={zoomLevel <= 0.6}
-            className="p-1.5 sm:p-2 rounded-lg bg-lb-060b16 hover:bg-lb-00d4ff hover:text-lt-020408 text-lt-e0e6ed transition-all disabled:opacity-30"
+            className="p-1.5 sm:p-2 rounded-lg bg-canvas hover:brightness-110 hover:text-canvas text-ink transition-all disabled:opacity-30"
             title="Zoom Out Map"
           >
             <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* "Fit all" on the map toolbar re-centres the fleet */}
-          <div className="w-[1px] h-4 bg-lb-1e293b mx-0.5" />
+          <div className="w-[1px] h-4 bg-raised mx-0.5" />
 
           {/* Map Size Toggles */}
           <button
             onClick={() => onChangeMapSize(mapSize === 'FULLSCREEN' ? 'STANDARD' : 'FULLSCREEN')}
-            className={`p-1.5 sm:p-2 rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center ${
+            className={`p-1.5 sm:p-2 rounded-lg  text-xs font-bold transition-all flex items-center justify-center ${
               mapSize === 'FULLSCREEN'
-                ? 'bg-lb-00ff9d text-lt-020408 shadow-[0_0_8px_#00FF9D]'
-                : 'bg-lb-060b16 hover:bg-lb-1e293b text-lt-00d4ff'
+                ? 'bg-success-ink text-canvas '
+                : 'bg-canvas hover:bg-raised text-accent'
             }`}
             title="Toggle Fullscreen Map Mode"
           >
@@ -115,10 +115,10 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
           {/* Map & Weather Layers Icon Toggle Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={`p-1.5 sm:p-2 rounded-lg border text-xs font-mono font-bold transition-all flex items-center justify-center ${
+            className={`p-1.5 sm:p-2 rounded-lg border text-xs  font-bold transition-all flex items-center justify-center ${
               isOpen
-                ? 'bg-lb-00d4ff text-lt-020408 border-ll-00d4ff shadow-[0_0_10px_#00D4FF]'
-                : 'bg-lb-060b16 border-ll-1e293b text-lt-00d4ff hover:border-ll-00d4ff hover:bg-lb-1e293b'
+                ? 'bg-accent text-on-accent border-accent '
+                : 'bg-canvas border-line text-accent hover:border-accent hover:bg-raised'
             }`}
             title="Map & Weather Layers"
           >
@@ -131,7 +131,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               setIsBarExpanded(false);
               setIsOpen(false);
             }}
-            className="p-1.5 sm:p-2 rounded-lg bg-lb-060b16 hover:bg-lb-1e293b text-lt-64748b hover:text-lt-white transition-all flex items-center justify-center ml-0.5"
+            className="p-1.5 sm:p-2 rounded-lg bg-canvas hover:bg-raised text-accent hover:text-ink transition-all flex items-center justify-center ml-0.5"
             title="Hide / Collapse Controls into Icon"
           >
             <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -141,15 +141,15 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
 
       {/* Expanded Map Layers Drawer / Dropdown Panel */}
       {isOpen && (
-        <div className="w-72 sm:w-80 max-h-[70vh] landscape:max-h-[94dvh] overflow-y-auto custom-scrollbar bg-lb-0a0f1e/95 border border-ll-1e293b rounded-2xl p-3.5 sm:p-4 landscape:p-2.5 shadow-2xl backdrop-blur-xl text-lt-e0e6ed space-y-3 landscape:space-y-2 font-sans animate-in fade-in slide-in-from-top-2 duration-200 z-30">
-          <div className="flex items-center justify-between border-b border-ll-1e293b pb-2 landscape:pb-1.5">
-            <span className="text-xs font-bold text-lt-white flex items-center gap-1.5">
-              <Map className="w-4 h-4 text-lt-00d4ff" />
+        <div className="w-72 sm:w-80 max-h-[70vh] landscape:max-h-[94dvh] overflow-y-auto custom-scrollbar bg-surface/95 border border-line rounded-2xl p-3.5 sm:p-4 landscape:p-2.5 shadow-2xl backdrop-blur-xl text-ink space-y-3 landscape:space-y-2 font-sans animate-in fade-in slide-in-from-top-2 duration-200 z-30">
+          <div className="flex items-center justify-between border-b border-line pb-2 landscape:pb-1.5">
+            <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+              <Map className="w-4 h-4 text-accent" />
               Maps & Weather Layers
             </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded hover:bg-lb-1e293b text-lt-64748b hover:text-lt-white"
+              className="p-1 rounded hover:bg-raised text-accent hover:text-ink"
             >
               <X className="w-4 h-4" />
             </button>
@@ -157,76 +157,76 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
 
           {/* SECTION 1: OPEN MAP BASELAYERS */}
           <div className="space-y-1.5">
-            <label className="text-xs sm:text-xs font-mono uppercase tracking-widest text-lt-64748b block">
+            <label className="text-xs sm:text-xs text-accent block">
               Open Maps Basemap
             </label>
 
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 onClick={() => onSelectBasemap('DARK_VECTOR')}
-                className={`p-2 rounded-xl border text-left text-xs font-mono transition-all flex flex-col gap-0.5 ${
+                className={`p-2 rounded-xl border text-left text-xs  transition-all flex flex-col gap-0.5 ${
                   basemap === 'DARK_VECTOR'
-                    ? 'bg-lb-00d4ff/15 border-ll-00d4ff text-lt-white shadow-[0_0_8px_rgba(0,212,255,0.2)]'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8 hover:text-lt-white'
+                    ? 'bg-accent/15 border-accent text-ink '
+                    : 'bg-canvas border-line text-ink-muted hover:text-ink'
                 }`}
               >
                 <span className="font-bold flex items-center gap-1 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-lb-00d4ff" />
+                  <span className="w-2 h-2 rounded-full bg-accent" />
                   Dark Vector
                 </span>
-                <span className="text-xs text-lt-64748b">Tactical grid</span>
+                <span className="text-xs text-accent">Tactical grid</span>
               </button>
 
               <button
                 onClick={() => onSelectBasemap('OPEN_SEA_MAP')}
-                className={`p-2 rounded-xl border text-left text-xs font-mono transition-all flex flex-col gap-0.5 ${
+                className={`p-2 rounded-xl border text-left text-xs  transition-all flex flex-col gap-0.5 ${
                   basemap === 'OPEN_SEA_MAP'
-                    ? 'bg-lb-00ff9d/15 border-ll-00ff9d text-lt-white shadow-[0_0_8px_rgba(0,255,157,0.2)]'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8 hover:text-lt-white'
+                    ? 'bg-success-ink/15 border-success-ink text-ink '
+                    : 'bg-canvas border-line text-ink-muted hover:text-ink'
                 }`}
               >
                 <span className="font-bold flex items-center gap-1 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-lb-00ff9d" />
+                  <span className="w-2 h-2 rounded-full bg-success-ink" />
                   OpenSeaMap
                 </span>
-                <span className="text-xs text-lt-64748b">Nautical soundings</span>
+                <span className="text-xs text-accent">Nautical soundings</span>
               </button>
 
               <button
                 onClick={() => onSelectBasemap('OPEN_STREET_MAP')}
-                className={`p-2 rounded-xl border text-left text-xs font-mono transition-all flex flex-col gap-0.5 ${
+                className={`p-2 rounded-xl border text-left text-xs  transition-all flex flex-col gap-0.5 ${
                   basemap === 'OPEN_STREET_MAP'
-                    ? 'bg-lb-ffb800/15 border-ll-ffb800 text-lt-white shadow-[0_0_8px_rgba(255,184,0,0.2)]'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8 hover:text-lt-white'
+                    ? 'bg-warning-ink/15 border-warning-ink text-ink '
+                    : 'bg-canvas border-line text-ink-muted hover:text-ink'
                 }`}
               >
                 <span className="font-bold flex items-center gap-1 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-lb-ffb800" />
+                  <span className="w-2 h-2 rounded-full bg-warning-ink" />
                   OpenStreetMap
                 </span>
-                <span className="text-xs text-lt-64748b">Topographic land</span>
+                <span className="text-xs text-accent">Topographic land</span>
               </button>
 
               <button
                 onClick={() => onSelectBasemap('OPEN_TOPO_BATHYMETRY')}
-                className={`p-2 rounded-xl border text-left text-xs font-mono transition-all flex flex-col gap-0.5 ${
+                className={`p-2 rounded-xl border text-left text-xs  transition-all flex flex-col gap-0.5 ${
                   basemap === 'OPEN_TOPO_BATHYMETRY'
-                    ? 'bg-lb-c084fc/15 border-ll-c084fc text-lt-white shadow-[0_0_8px_rgba(192,132,252,0.2)]'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8 hover:text-lt-white'
+                    ? 'bg-ink/15 border-line text-ink '
+                    : 'bg-canvas border-line text-ink-muted hover:text-ink'
                 }`}
               >
                 <span className="font-bold flex items-center gap-1 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-lb-c084fc" />
+                  <span className="w-2 h-2 rounded-full bg-ink" />
                   Bathymetry
                 </span>
-                <span className="text-xs text-lt-64748b">Depth contours</span>
+                <span className="text-xs text-accent">Depth contours</span>
               </button>
             </div>
           </div>
 
           {/* SECTION 2: WEATHER & WIND OVERLAY TOGGLES */}
           <div className="space-y-1.5">
-            <label className="text-xs sm:text-xs font-mono uppercase tracking-widest text-lt-64748b block">
+            <label className="text-xs sm:text-xs text-accent block">
               Weather Overlays
             </label>
 
@@ -234,17 +234,17 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               {/* Wind Particle Streamlines */}
               <button
                 onClick={() => onToggleOverlay('windParticles')}
-                className={`w-full p-2 rounded-xl border text-xs font-mono transition-all flex items-center justify-between ${
+                className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.windParticles
-                    ? 'bg-lb-00d4ff/10 border-ll-00d4ff text-lt-white'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-64748b'
+                    ? 'bg-accent/10 border-accent text-ink'
+                    : 'bg-canvas border-line text-accent'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
-                  <Wind className="w-3.5 h-3.5 text-lt-00d4ff" />
+                  <Wind className="w-3.5 h-3.5 text-accent" />
                   Wind Streamlines
                 </span>
-                <span className={`text-xs font-bold ${overlays.windParticles ? 'text-lt-00d4ff' : 'text-lt-64748b'}`}>
+                <span className={`text-xs font-bold ${overlays.windParticles ? 'text-accent' : 'text-accent'}`}>
                   {overlays.windParticles ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -252,17 +252,17 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               {/* Wind Barb Vectors */}
               <button
                 onClick={() => onToggleOverlay('windBarbs')}
-                className={`w-full p-2 rounded-xl border text-xs font-mono transition-all flex items-center justify-between ${
+                className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.windBarbs
-                    ? 'bg-lb-00ff9d/10 border-ll-00ff9d text-lt-white'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-64748b'
+                    ? 'bg-success-ink/10 border-success-ink text-ink'
+                    : 'bg-canvas border-line text-accent'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
-                  <Compass className="w-3.5 h-3.5 text-lt-00ff9d" />
+                  <Compass className="w-3.5 h-3.5 text-success-ink" />
                   Wind Direction Vectors
                 </span>
-                <span className={`text-xs font-bold ${overlays.windBarbs ? 'text-lt-00ff9d' : 'text-lt-64748b'}`}>
+                <span className={`text-xs font-bold ${overlays.windBarbs ? 'text-success-ink' : 'text-accent'}`}>
                   {overlays.windBarbs ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -270,17 +270,17 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               {/* Isobar Pressure Lines */}
               <button
                 onClick={() => onToggleOverlay('isobars')}
-                className={`w-full p-2 rounded-xl border text-xs font-mono transition-all flex items-center justify-between ${
+                className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.isobars
-                    ? 'bg-lb-ffb800/10 border-ll-ffb800 text-lt-white'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-64748b'
+                    ? 'bg-warning-ink/10 border-warning-ink text-ink'
+                    : 'bg-canvas border-line text-accent'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
-                  <CloudRain className="w-3.5 h-3.5 text-lt-ffb800" />
+                  <CloudRain className="w-3.5 h-3.5 text-warning-ink" />
                   Isobar Pressure (hPa)
                 </span>
-                <span className={`text-xs font-bold ${overlays.isobars ? 'text-lt-ffb800' : 'text-lt-64748b'}`}>
+                <span className={`text-xs font-bold ${overlays.isobars ? 'text-warning-ink' : 'text-accent'}`}>
                   {overlays.isobars ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -288,17 +288,17 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               {/* Tidal Ocean Currents */}
               <button
                 onClick={() => onToggleOverlay('oceanCurrents')}
-                className={`w-full p-2 rounded-xl border text-xs font-mono transition-all flex items-center justify-between ${
+                className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.oceanCurrents
-                    ? 'bg-lb-c084fc/10 border-ll-c084fc text-lt-white'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-64748b'
+                    ? 'bg-ink/10 border-line text-ink'
+                    : 'bg-canvas border-line text-accent'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
-                  <Waves className="w-3.5 h-3.5 text-lt-c084fc" />
+                  <Waves className="w-3.5 h-3.5 text-ink-muted" />
                   Ocean Currents
                 </span>
-                <span className={`text-xs font-bold ${overlays.oceanCurrents ? 'text-lt-c084fc' : 'text-lt-64748b'}`}>
+                <span className={`text-xs font-bold ${overlays.oceanCurrents ? 'text-ink-muted' : 'text-accent'}`}>
                   {overlays.oceanCurrents ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -306,17 +306,17 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               {/* Wave Height Heatmap */}
               <button
                 onClick={() => onToggleOverlay('waveHeatmap')}
-                className={`w-full p-2 rounded-xl border text-xs font-mono transition-all flex items-center justify-between ${
+                className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.waveHeatmap
-                    ? 'bg-lb-ff4d4d/10 border-ll-ff4d4d text-lt-white'
-                    : 'bg-lb-060b16 border-ll-1e293b text-lt-64748b'
+                    ? 'bg-danger/10 border-danger-ink text-ink'
+                    : 'bg-canvas border-line text-accent'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
-                  <Eye className="w-3.5 h-3.5 text-lt-ff4d4d" />
+                  <Eye className="w-3.5 h-3.5 text-danger-ink" />
                   Wave & Swell Height
                 </span>
-                <span className={`text-xs font-bold ${overlays.waveHeatmap ? 'text-lt-ff4d4d' : 'text-lt-64748b'}`}>
+                <span className={`text-xs font-bold ${overlays.waveHeatmap ? 'text-danger-ink' : 'text-accent'}`}>
                   {overlays.waveHeatmap ? 'ON' : 'OFF'}
                 </span>
               </button>

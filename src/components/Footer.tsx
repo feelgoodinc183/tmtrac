@@ -54,17 +54,17 @@ export const Footer: React.FC<FooterProps> = ({
   const meshNodes = nodes.filter(isMeshRadio);
   const now = Date.now();
   const heard = meshNodes.filter((n) => n.lastPingTime && now - n.lastPingTime < NODE_HEARD_WINDOW_MS).length;
-  const meshDot = meshNodes.length === 0 ? 'bg-lb-64748b' : heard > 0 ? 'bg-lb-00ff9d' : 'bg-lb-fbbc04';
+  const meshDot = meshNodes.length === 0 ? 'bg-accent' : heard > 0 ? 'bg-success-ink' : 'bg-warning-ink';
   const meshLabel = meshNodes.length === 0 ? 'Mesh: no nodes' : `Mesh: ${heard}/${meshNodes.length} heard`;
 
   return (
-    <footer className="h-12 bg-lb-020408 border-t border-ll-1e293b flex items-center justify-between gap-4 px-4 sm:px-6 shrink-0 text-lt-94a3b8 text-xs font-mono select-none z-20">
+    <footer className="h-12 bg-canvas border-t border-line flex items-center justify-between gap-4 px-4 sm:px-6 shrink-0 text-ink-muted text-xs select-none z-20">
       {/* Per-class race clock, from the shared race state */}
-      <div className="flex gap-4 sm:gap-6 text-xs text-lt-94a3b8 overflow-x-auto no-scrollbar min-w-0">
+      <div className="flex gap-4 sm:gap-6 text-xs text-ink-muted overflow-x-auto no-scrollbar min-w-0">
         {rows.map((r) => (
           <span key={r.name} className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className={r.name === raceState.activeClass ? 'text-lt-e0e6ed font-bold' : ''}>{r.name}:</span>
-            <strong className={r.live ? 'text-lt-00d4ff' : 'text-lt-94a3b8 font-normal'}>{r.text}</strong>
+            <span className={r.name === raceState.activeClass ? 'text-ink font-bold' : ''}>{r.name}:</span>
+            <strong className={r.live ? 'text-accent' : 'text-ink-muted font-normal'}>{r.text}</strong>
           </span>
         ))}
       </div>

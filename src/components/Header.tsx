@@ -114,8 +114,8 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       id="main-app-header"
-      className={`h-12 sm:h-14 border-b flex items-center justify-between px-2 sm:px-4 shrink-0 select-none z-30 font-google w-full relative ${
-        'bg-lb-0e131f text-lt-e8eaed border-ll-1e293b'
+      className={`h-12 sm:h-14 border-b flex items-center justify-between px-2 sm:px-4 shrink-0 select-none z-30 w-full relative ${
+        'bg-surface text-ink border-line'
       }`}
     >
       {/* Left: Brand + Realtime Sync + Room Selector */}
@@ -126,12 +126,12 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
           title="Return to Front Landing Page"
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-lb-00d4ff/20 border border-ll-00d4ff/50 text-lt-00d4ff flex items-center justify-center font-bold shadow-sm shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/20 border border-accent/50 text-accent flex items-center justify-center font-bold shadow-sm shrink-0">
             <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5 fill-current">
               <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
             </svg>
           </div>
-          <span className="max-[359px]:hidden text-sm sm:text-base font-bold tracking-tight text-lt-white font-google">
+          <span className="max-[359px]:hidden text-sm sm:text-base font-bold tracking-tight text-ink">
             TMTRAC
           </span>
         </div>
@@ -139,10 +139,10 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenLandingPage && (
           <button
             onClick={onOpenLandingPage}
-            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-lb-slate-800/80 hover:bg-lb-slate-700 text-lt-slate-300 hover:text-lt-white text-xs font-medium border border-ll-slate-700 transition-colors"
+            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-surface/80 hover:brightness-110 text-ink hover:text-ink text-xs font-medium border border-accent transition-colors"
             title="Return to Front Landing Page"
           >
-            <Home className="w-3.5 h-3.5 text-lt-cyan-400" />
+            <Home className="w-3.5 h-3.5 text-accent" />
             <span className="text-xs">Home</span>
           </button>
         )}
@@ -152,28 +152,28 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-live-peer-badge"
           onClick={onOpenQrModal}
-          className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
+          className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs  font-bold transition-all cursor-pointer ${
             connectedPeerCount > 1
-              ? 'bg-lb-emerald-500/15 text-lt-emerald-300 border border-ll-emerald-500/40 hover:bg-lb-emerald-500/25'
-              : 'bg-lb-1e293b text-lt-slate-300 border border-ll-slate-700 hover:text-lt-white'
+              ? 'bg-success-ink/15 text-success-ink border border-success-ink/40 hover:bg-success-ink/25'
+              : 'bg-raised text-ink border border-accent hover:text-ink'
           }`}
           title={`${connectedPeerCount} device(s) live. Tap to share regatta QR link.`}
         >
-          <Zap className="w-2.5 h-2.5 text-lt-emerald-400 animate-pulse shrink-0" />
-          <span className="tracking-wider">{connectedPeerCount}</span>
-          <span className="hidden sm:inline">LIVE</span>
+          <Zap className="w-2.5 h-2.5 text-success-ink shrink-0" />
+          <span className="">{connectedPeerCount}</span>
+          <span className="hidden sm:inline">live</span>
         </button>
 
         {/* Room Selector */}
         <button
           id="header-room-selector"
           onClick={onOpenLobby}
-          className="flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-lg bg-lb-121826 hover:bg-lb-1e293b border border-ll-00d4ff/30 hover:border-ll-00d4ff text-lt-00d4ff text-xs sm:text-xs font-mono transition-all cursor-pointer shadow-xs"
+          className="flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-lg bg-surface hover:bg-raised border border-accent/30 hover:border-accent text-accent text-xs sm:text-xs transition-all cursor-pointer shadow-xs"
           title="Switch Regatta Room or Host Session"
         >
-          <Radio className="w-3 h-3 text-lt-00d4ff shrink-0" />
-          <span className="font-bold tracking-wider max-w-[65px] sm:max-w-[100px] truncate">#{activeRoomCode}</span>
-          <ChevronDown className="w-2.5 h-2.5 text-lt-slate-400 shrink-0" />
+          <Radio className="w-3 h-3 text-accent shrink-0" />
+          <span className="font-bold max-w-[65px] sm:max-w-[100px] truncate">#{activeRoomCode}</span>
+          <ChevronDown className="w-2.5 h-2.5 text-accent shrink-0" />
         </button>
 
 
@@ -182,10 +182,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-mode-unlock-btn"
             onClick={onOpenPinUnlock}
-            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-lb-amber-500/15 hover:bg-lb-amber-500/25 border border-ll-amber-500/40 text-lt-amber-300 font-mono text-xs transition-colors cursor-pointer"
+            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning-ink/15 hover:bg-warning-ink/25 border border-warning-ink/40 text-warning-ink text-xs transition-colors cursor-pointer"
             title="Spectator Mode (Read-only). Tap to enter PIN and unlock Race Officer Console."
           >
-            <Lock className="w-2.5 h-2.5 text-lt-amber-400 shrink-0" />
+            <Lock className="w-2.5 h-2.5 text-warning-ink shrink-0" />
             <span className="hidden md:inline font-bold">SPECTATOR</span>
             <span className="md:hidden font-bold">SPEC</span>
           </button>
@@ -193,10 +193,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-mode-spectator-btn"
             onClick={() => setViewMode?.('SPECTATOR')}
-            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-lb-emerald-500/15 hover:bg-lb-emerald-500/25 border border-ll-emerald-500/40 text-lt-emerald-300 font-mono text-xs transition-colors cursor-pointer"
+            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-ink/15 hover:bg-success-ink/25 border border-success-ink/40 text-success-ink text-xs transition-colors cursor-pointer"
             title="Race Officer Console Active. Tap to preview Spectator view."
           >
-            <ShieldCheck className="w-2.5 h-2.5 text-lt-emerald-400 shrink-0" />
+            <ShieldCheck className="w-2.5 h-2.5 text-success-ink shrink-0" />
             <span className="hidden md:inline font-bold">RC ADMIN</span>
             <span className="md:hidden font-bold">RC</span>
           </button>
@@ -223,40 +223,40 @@ export const Header: React.FC<HeaderProps> = ({
             <div
               role="status"
               aria-label={`Active class ${raceState.activeClass}`}
-              className="flex items-center gap-2 px-3 py-1 rounded-full bg-lb-121826 border border-ll-1e293b text-xs font-mono shadow-xs"
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-line text-xs shadow-xs"
             >
               <span
                 className={`w-2 h-2 rounded-full ${
                   displayStatus === 'RACING'
-                    ? 'bg-lb-emerald-400 animate-pulse'
+                    ? 'bg-success-ink '
                     : displayStatus === 'FINISHED'
-                    ? 'bg-lb-purple-400'
+                    ? 'bg-ink'
                     : isCountdown
-                    ? 'bg-lb-amber-400 animate-pulse'
-                    : 'bg-lb-slate-400'
+                    ? 'bg-warning-ink '
+                    : 'bg-accent'
                 }`}
               />
-              <span className="text-lt-slate-400 font-bold">CLASS:</span>
-              <span className="text-lt-white font-bold">{raceState.activeClass}</span>
-              <span className="text-lt-slate-600">·</span>
+              <span className="text-ink-muted">Class</span>
+              <span className="text-ink font-bold">{raceState.activeClass}</span>
+              <span className="text-accent">·</span>
               <span
                 className={`font-bold ${
                   displayStatus === 'RACING'
-                    ? 'text-lt-emerald-400'
+                    ? 'text-success-ink'
                     : displayStatus === 'FINISHED'
-                    ? 'text-lt-purple-300'
+                    ? 'text-ink'
                     : isCountdown
-                    ? 'text-lt-amber-400'
-                    : 'text-lt-slate-300'
+                    ? 'text-warning-ink'
+                    : 'text-ink'
                 }`}
               >
                 {displayStatus === 'RACING'
-                  ? 'RACING'
+                  ? 'Racing'
                   : displayStatus === 'FINISHED'
-                  ? 'FINISHED'
+                  ? 'Finished'
                   : isCountdown
-                  ? `COUNTDOWN (${Math.floor(countdownSec / 60)}:${(countdownSec % 60).toString().padStart(2, '0')})`
-                  : displayStatus}
+                  ? `Start in ${Math.floor(countdownSec / 60)}:${(countdownSec % 60).toString().padStart(2, '0')}`
+                  : 'Pre-start'}
               </span>
             </div>
           );
@@ -273,8 +273,8 @@ export const Header: React.FC<HeaderProps> = ({
           aria-label="Sunlight mode"
           className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
             directSunlightMode
-              ? 'bg-lb-fbbc04 text-lt-black border-ll-fbbc04'
-              : 'bg-lb-1e293b/60 text-lt-slate-200 border-ll-334155 hover:text-lt-white'
+              ? 'bg-warning-ink text-canvas border-warning-ink'
+              : 'bg-raised/60 text-ink border-line hover:text-ink'
           }`}
         >
           <Sun className="w-3.5 h-3.5" aria-hidden="true" />
@@ -287,12 +287,11 @@ export const Header: React.FC<HeaderProps> = ({
             id="header-skipper-checkin-btn"
             onClick={onOpenSkipperCheckIn}
             aria-label="Track my boat"
-            className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-ll-00d4ff/70 bg-lb-00d4ff/20 hover:bg-lb-00d4ff/35 text-lt-00d4ff font-mono font-bold text-xs sm:text-xs transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,212,255,0.25)] cursor-pointer active:scale-95 shrink-0"
+            className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-accent/70 bg-accent/20 hover:bg-accent/35 text-accent font-bold text-xs sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
             title="Skipper 1-Tap Check-In: Auto-bind your vessel & start live fleet GPS tracking"
           >
-            <Navigation className="w-3.5 h-3.5 animate-pulse" />
-            <span className="hidden xs:inline">TRACK BOAT</span>
-            <span className="xs:hidden max-[359px]:hidden">TRACK</span>
+            <Navigation className="w-3.5 h-3.5" />
+                        <span className="max-[359px]:hidden">Track</span>
           </button>
         )}
 
@@ -301,12 +300,12 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-superadmin-btn"
             onClick={onOpenSuperAdmin}
-            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-ll-purple-500/70 bg-lb-purple-950/70 hover:bg-lb-purple-900/90 text-lt-purple-200 transition-all flex items-center gap-1.5 shadow-sm shadow-ll-purple-950/60 cursor-pointer shrink-0"
+            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-line/70 bg-raised/70 hover:bg-raised/90 text-ink transition-all flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
             title="Open Super Admin Master Panel"
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-lt-purple-400 shrink-0" />
-            <span className="text-xs font-mono font-bold hidden sm:inline text-lt-purple-300">
-              SUPER ADMIN
+            <ShieldAlert className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+            <span className="text-xs font-bold hidden sm:inline text-ink">
+              Super Admin
             </span>
           </button>
         )}
@@ -316,13 +315,13 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-user-dashboard-btn"
             onClick={onOpenDashboard}
-            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-ll-cyan-500/40 bg-lb-cyan-950/40 hover:bg-lb-cyan-900/60 text-lt-cyan-300 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-accent/40 bg-surface/40 hover:bg-accent/60 text-accent transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
             title={`Signed in as ${currentUser.fullName}. Open Sailor Dashboard.`}
           >
-            <div className="w-5 h-5 rounded-full bg-lb-cyan-500/30 text-lt-cyan-200 text-xs font-bold flex items-center justify-center shrink-0">
+            <div className="w-5 h-5 rounded-full bg-accent/30 text-accent text-xs font-bold flex items-center justify-center shrink-0">
               {currentUser.fullName.charAt(0) || 'U'}
             </div>
-            <span className="text-xs font-mono font-bold max-w-[80px] truncate hidden sm:inline">
+            <span className="text-xs font-bold max-w-[80px] truncate hidden sm:inline">
               {currentUser.fullName.split(' ')[0]}
             </span>
           </button>
@@ -330,11 +329,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-login-btn"
             onClick={() => onOpenAuth?.('login')}
-            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-ll-1e293b bg-lb-121826 hover:bg-lb-1e293b text-lt-slate-300 hover:text-lt-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-line bg-surface hover:bg-raised text-ink hover:text-ink transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             title="Sign in or register account"
           >
-            <User className="w-3.5 h-3.5 text-lt-cyan-400 shrink-0" />
-            <span className="text-xs font-mono font-bold hidden sm:inline">
+            <User className="w-3.5 h-3.5 text-accent shrink-0" />
+            <span className="text-xs font-bold hidden sm:inline">
               SIGN IN
             </span>
           </button>

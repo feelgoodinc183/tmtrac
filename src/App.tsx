@@ -2728,7 +2728,7 @@ export default function App() {
 
   if (showLandingPage) {
     return (
-      <div className="min-h-screen w-screen bg-lb-white text-lt-slate-900 font-sans">
+      <div className="min-h-screen w-screen bg-ink text-accent font-sans">
         <FrontLandingPage
           onLoginClick={() => {
             setAuthModalInitialMode('login');
@@ -2816,15 +2816,15 @@ export default function App() {
 
   return (
     <div
-      className={`h-screen w-screen font-google flex flex-col overflow-hidden select-none ${
-        'bg-lb-0a0f1e text-lt-e8eaed'
+      className={`h-screen w-screen flex flex-col overflow-hidden select-none ${
+        'bg-surface text-ink'
       }`}
     >
       {saveRejection && (
         <div
           id="save-rejected-banner"
           role="alert"
-          className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] w-[min(92vw,560px)] p-3 rounded-xl bg-lb-rose-950/95 border border-ll-rose-500/50 text-lt-rose-100 shadow-2xl flex items-start gap-3 text-sm"
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] w-[min(92vw,560px)] p-3 rounded-xl bg-surface/95 border border-danger-ink/50 text-ink shadow-2xl flex items-start gap-3 text-sm"
         >
           <div className="flex-1 min-w-0">
             <p className="font-semibold">
@@ -2837,7 +2837,7 @@ export default function App() {
               } as Record<string, string>)[saveRejection.action] || 'Change'}{' '}
               not saved
             </p>
-            <p className="text-xs text-lt-rose-200/90 mt-0.5">
+            <p className="text-xs text-danger-ink/90 mt-0.5">
               This device has no Race Officer rights in room #{saveRejection.roomCode}. Unlock with the Race Officer PIN, then make the change again.
             </p>
           </div>
@@ -2847,7 +2847,7 @@ export default function App() {
               setSaveRejection(null);
               setShowPinUnlockModal(true);
             }}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-lb-rose-500 hover:bg-lb-rose-400 text-lt-white text-xs font-bold cursor-pointer"
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-danger hover:brightness-110 text-on-danger text-xs font-bold cursor-pointer"
           >
             Enter PIN
           </button>
@@ -2855,7 +2855,7 @@ export default function App() {
             type="button"
             aria-label="Dismiss"
             onClick={() => setSaveRejection(null)}
-            className="shrink-0 px-2 py-1.5 rounded-lg text-lt-rose-200 hover:bg-lb-rose-900 text-xs cursor-pointer"
+            className="shrink-0 px-2 py-1.5 rounded-lg text-danger-ink hover:brightness-110 text-xs cursor-pointer"
           >
             ✕
           </button>
@@ -3297,11 +3297,11 @@ export default function App() {
 
           {/* TAB 2: MOBILE LEADERBOARD */}
           {mobileTab === 'LEADERBOARD' && (
-            <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-hidden">
-              <div className="p-3 bg-lb-0a0f1e border-b border-ll-1e293b flex items-center justify-between shrink-0">
+            <div className="w-full h-full flex flex-col bg-canvas text-ink overflow-hidden">
+              <div className="p-3 bg-surface border-b border-line flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-lt-00d4ff" />
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-lt-white">
+                  <Trophy className="w-4 h-4 text-accent" />
+                  <span className="text-xs font-bold text-ink">
                     IRC Corrected Leaderboard
                   </span>
                 </div>
@@ -3346,44 +3346,44 @@ export default function App() {
 
           {/* TAB 3: MOBILE FLEET GPS */}
           {mobileTab === 'FLEET_GPS' && (
-            <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-y-auto p-4 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-ll-1e293b">
+            <div className="w-full h-full flex flex-col bg-canvas text-ink overflow-y-auto p-4 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-line">
                 <div className="flex items-center gap-2">
-                  <Navigation className="w-5 h-5 text-lt-00d4ff" />
+                  <Navigation className="w-5 h-5 text-accent" />
                   <div>
-                    <h2 className="text-sm font-bold font-google text-lt-white">
+                    <h2 className="text-sm font-bold text-ink">
                       Hybrid Fleet GPS Tracker
                     </h2>
                   </div>
                 </div>
                 <button
                   onClick={() => setMobileTab('MAP')}
-                  className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff rounded-lg text-xs font-mono font-bold"
+                  className="px-2.5 py-1 bg-raised text-accent rounded-lg text-xs font-bold"
                 >
                   Back to Map
                 </button>
               </div>
 
               {/* My Device GPS Card */}
-              <div className="p-4 rounded-2xl bg-lb-0a0f1e border border-ll-1e293b space-y-3">
+              <div className="p-4 rounded-2xl bg-surface border border-line space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-lb-00d4ff/20 text-lt-00d4ff flex items-center justify-center font-bold">
-                      <Navigation className={`w-5 h-5 ${deviceGps.active ? 'animate-pulse' : ''}`} />
+                    <div className="w-9 h-9 rounded-xl bg-accent/20 text-accent flex items-center justify-center font-bold">
+                      <Navigation className={`w-5 h-5 ${deviceGps.active ? '' : ''}`} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-lt-white">This Device (My Phone)</h4>
-                      <p className="text-xs text-lt-64748b font-mono">
+                      <h4 className="text-xs font-bold text-ink">This Device (My Phone)</h4>
+                      <p className="text-xs text-accent">
                         {deviceGps.active ? 'Broadcasting live GPS coordinates' : 'Tracking inactive'}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={handleToggleDeviceGps}
-                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-xl  text-xs font-bold transition-all ${
                       deviceGps.active
-                        ? 'bg-lb-ea4335 text-lt-white shadow-md'
-                        : 'bg-lb-00d4ff text-lt-black shadow-md'
+                        ? 'bg-danger text-on-danger shadow-md'
+                        : 'bg-accent text-on-accent shadow-md'
                     }`}
                   >
                     {deviceGps.active ? 'Stop GPS' : 'Start GPS'}
@@ -3391,22 +3391,22 @@ export default function App() {
                 </div>
 
                 {deviceGps.active && (
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ll-1e293b text-center font-mono">
-                    <div className="p-2 rounded-xl bg-lb-060b16 border border-ll-1e293b">
-                      <span className="text-xs text-lt-64748b block">SOG Speed</span>
-                      <span className="text-xs font-bold text-lt-00ff9d">
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-line text-center">
+                    <div className="p-2 rounded-xl bg-canvas border border-line">
+                      <span className="text-xs text-accent block">SOG Speed</span>
+                      <span className="text-xs font-bold text-success-ink">
                         {Number(deviceGps?.speedKt ?? 0).toFixed(1)} kt
                       </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-lb-060b16 border border-ll-1e293b">
-                      <span className="text-xs text-lt-64748b block">COG Heading</span>
-                      <span className="text-xs font-bold text-lt-00d4ff">
+                    <div className="p-2 rounded-xl bg-canvas border border-line">
+                      <span className="text-xs text-accent block">COG Heading</span>
+                      <span className="text-xs font-bold text-accent">
                         {Math.round(deviceGps.headingDeg || 0)}°
                       </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-lb-060b16 border border-ll-1e293b">
-                      <span className="text-xs text-lt-64748b block">Accuracy</span>
-                      <span className="text-xs font-bold text-lt-white">
+                    <div className="p-2 rounded-xl bg-canvas border border-line">
+                      <span className="text-xs text-accent block">Accuracy</span>
+                      <span className="text-xs font-bold text-ink">
                         ±{Math.round(deviceGps.accuracy || 5)}m
                       </span>
                     </div>
@@ -3416,13 +3416,13 @@ export default function App() {
 
               {/* Connected Fleet Nodes */}
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-lt-94a3b8 uppercase tracking-wider font-mono">
+                <h3 className="text-xs font-bold text-ink-muted">
                   Live Fleet Members ({fleetMembers.length + (deviceGps.active ? 1 : 0)})
                 </h3>
 
                 {fleetMembers.length === 0 && !deviceGps.active ? (
-                  <div className="p-4 rounded-xl bg-lb-0a0f1e border border-dashed border-ll-1e293b text-center">
-                    <p className="text-xs text-lt-64748b font-mono">
+                  <div className="p-4 rounded-xl bg-surface border border-dashed border-line text-center">
+                    <p className="text-xs text-accent">
                       No other devices connected yet. Open this URL on other phones or tablets to view together in real-time.
                     </p>
                   </div>
@@ -3431,20 +3431,20 @@ export default function App() {
                     {fleetMembers.map((member) => (
                       <div
                         key={member.deviceId}
-                        className="p-3 rounded-xl bg-lb-0a0f1e border border-ll-1e293b flex items-center justify-between"
+                        className="p-3 rounded-xl bg-surface border border-line flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
                           <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lt-black text-xs"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-canvas text-xs"
                             style={{ backgroundColor: member.color || '#00D4FF' }}
                           >
                             {member.deviceType === 'PHONE' ? '📱' : member.deviceType === 'TABLET' ? '📟' : '💻'}
                           </div>
                           <div>
-                            <h5 className="text-xs font-bold text-lt-white">
+                            <h5 className="text-xs font-bold text-ink">
                               {member.deviceName}
                             </h5>
-                            <p className="text-xs text-lt-64748b font-mono">
+                            <p className="text-xs text-accent">
                               Role: {member.role} • Battery: {member.battery ?? 85}%
                             </p>
                           </div>
@@ -3457,7 +3457,7 @@ export default function App() {
                               setMobileTab('MAP');
                             }
                           }}
-                          className="px-2.5 py-1 bg-lb-1e293b text-lt-00d4ff hover:text-lt-white rounded-lg text-xs font-mono font-bold"
+                          className="px-2.5 py-1 bg-raised text-accent hover:text-ink rounded-lg text-xs font-bold"
                         >
                           Locate
                         </button>
@@ -3471,7 +3471,7 @@ export default function App() {
 
           {/* TAB 4: MOBILE RC RACE CONSOLE */}
           {mobileTab === 'RC_CONSOLE' && (
-            <div className="w-full h-full flex flex-col bg-lb-060b16 text-lt-white overflow-y-auto">
+            <div className="w-full h-full flex flex-col bg-canvas text-ink overflow-y-auto">
               <div className="flex-1">
                 <RcCommandConsolePanel
                   raceState={raceState}
