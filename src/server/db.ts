@@ -194,6 +194,32 @@ export const dbDiagnosticsState = {
   lastCheckTime: null as number | null,
 };
 
+/**
+ * Applies an SQL SET clause to a JSON-store row. Supports `col = ?`, `col = COALESCE(?, col)`,
+ * `col = NULL` and quoted/numeric literals; `?` placeholders consume params in order.
+ */
+function applySetClause(row: Record<string, any>, setPart: string, params: any[]) {
+  const assignment = /([a-z0-9_]+)\s*=\s*(COALESCE\(\s*\?\s*,\s*[a-z0-9_]+\s*\)|\?|NULL|'[^']*'|-?\d+(?:\.\d+)?)/gi;
+  let paramIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = assignment.exec(setPart)) !== null) {
+    const col = match[1].toLowerCase();
+    const expr = match[2];
+    if (expr === '?') {
+      row[col] = params[paramIndex++];
+    } else if (/^COALESCE/i.test(expr)) {
+      const value = params[paramIndex++];
+      if (value !== null && value !== undefined) row[col] = value;
+    } else if (/^NULL$/i.test(expr)) {
+      row[col] = null;
+    } else if (expr.startsWith("'")) {
+      row[col] = expr.slice(1, -1);
+    } else {
+      row[col] = Number(expr);
+    }
+  }
+}
+
 function createFallbackDatabase() {
   let store: {
     tenants: Record<string, any>;
@@ -570,6 +596,18 @@ function createFallbackDatabase() {
                 created_at: created_at || Date.now(),
               };
             }
+          } else if (/^UPDATE users SET .+ WHERE id = \?$/i.test(cleanSql)) {
+            // Any single-user update (profile, admin edits, password reset, login/logout token)
+            const id = params[params.length - 1];
+            const target = store.users[id];
+            if (target) {
+              const setPart = cleanSql.replace(/^UPDATE users SET /i, '').replace(/ WHERE id = \?$/i, '');
+              applySetClause(target, setPart, params);
+            }
+          } else if (cleanSql.includes('DELETE FROM users WHERE id = ?')) {
+            delete store.users[params[0]];
+          } else if (cleanSql.includes('DELETE FROM tenants WHERE id = ?')) {
+            delete store.tenants[params[0]];
           } else if (cleanSql.includes('UPDATE users SET is_super_admin')) {
             Object.values(store.users).forEach((u: any) => {
               if (u.id === 'user-admin-0' || u.email === 'irsyadismail@gmail.com' || u.username === 'irsyadismail') {
@@ -695,8 +733,10 @@ function createFallbackDatabase() {
               }
             }
 
-            // 2. Literal checks in query (e.g. diagnostics or internal startup assertions)
-            if (!u && (cleanSql.includes("'user-admin-0'") || cleanSql.includes("'irsyadismail@gmail.com'") || cleanSql.includes("'irsyadismail'"))) {
+            // 2. Literal checks in query (e.g. diagnostics or internal startup assertions). Only for
+            // parameterless queries: the login query also mentions 'user-admin-0', and matching it here
+            // resolved every login to the Super Admin row.
+            if (!u && params.length === 0 && (cleanSql.includes("'user-admin-0'") || cleanSql.includes("'irsyadismail@gmail.com'") || cleanSql.includes("'irsyadismail'"))) {
               u = store.users['user-admin-0'] || Object.values(store.users).find((user: any) =>
                 user.email === 'irsyadismail@gmail.com' || user.id === 'user-admin-0' || user.username === 'irsyadismail'
               );
