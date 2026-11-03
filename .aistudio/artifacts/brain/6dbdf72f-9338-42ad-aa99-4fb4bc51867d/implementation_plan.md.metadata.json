@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan to resolve the production database path mismatch between tmtrac.db and regatta.db on cPanel, enforce comprehensive string sanitization for SQLITE_DB_PATH, auto-archive legacy regatta.db files across all candidate directories, and add automatic Passenger restart trigger (tmp/restart.txt).",
+  "updatedAt":  "2026-11-01T19:00:13.481265915Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

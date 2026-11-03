@@ -1,0 +1,2754 @@
+import mqtt, { MqttClient } from 'mqtt';
+import { MeshtasticNode, BackfillPoint } from '../types/regatta';
+
+// Core Meshtastic BLE Service & Characteristic UUIDs
+export const MESHTASTIC_SERVICE_UUID = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+export const FROM_RADIO_UUID        = '2c55e69e-4993-11ed-b878-0242ac120002'; // Read LoRa packets from node
+export const TO_RADIO_UUID          = 'f75c76d2-129e-4dad-a1dd-7866124401e7'; // Write commands / TX packets
+export const FROM_NUM_UUID          = 'ed9da18c-a800-4f66-a670-aa7547e34453'; // Notify on new packet queue
+
+// Standard Bluetooth SIG Services for direct hardware state
+export const BATTERY_SERVICE_UUID   = '0000180f-0000-1000-8000-00805f9b34fb';
+export const BATTERY_LEVEL_UUID     = '00002a19-0000-1000-8000-00805f9b34fb';
+
+// Legacy & Alternative Meshtastic and Serial GATT Service UUIDs
+export const MESHTASTIC_BLE_SERVICE_UUID = MESHTASTIC_SERVICE_UUID;
+export const MESHTASTIC_BLE_SERVICE_UUID_ALT = '6ba1b088-ab49-438c-a079-038223b22c6f'; // Legacy Meshtastic
+export const MESHTASTIC_BLE_SERVICE_UUID_ALT2 = 'cb0b0001-035f-45f4-822e-b648e23003b3';
+export const NORDIC_UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Serial
+export const LOCATION_NAV_SERVICE_UUID = '00001819-0000-1000-8000-00805f9b34fb'; // Standard Location & Navigation
+
+export const MESHTASTIC_CHAR_FROMRADIO = FROM_RADIO_UUID;
+export const MESHTASTIC_CHAR_TORADIO = TO_RADIO_UUID;
+export const MESHTASTIC_CHAR_FROMNUM = FROM_NUM_UUID;
+
+export const MESHTASTIC_CHAR_FROMRADIO_ALT = '2c55e69e-4993-11ea-b77f-2e728ce88125';
+export const MESHTASTIC_CHAR_TORADIO_ALT = 'f75c76d2-129e-11ea-8793-2e728ce88125';
+export const MESHTASTIC_CHAR_FROMRADIO_ALT2 = 'cb0b0004-035f-45f4-822e-b648e23003b3';
+export const MESHTASTIC_CHAR_TORADIO_ALT2 = 'cb0b0003-035f-45f4-822e-b648e23003b3';
+export const MESHTASTIC_CHAR_FROMNUM_ALT2 = 'cb0b0002-035f-45f4-822e-b648e23003b3';
+
+export const NORDIC_UART_CHAR_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+export const NORDIC_UART_CHAR_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+
+/**
+ * Lightweight Zero-Dependency Binary Protobuf Stream Parser for Meshtastic BLE/Serial Payloads
+ */
+export class ProtoReader {
+  private buffer: Uint8Array;
+  private offset = 0;
+
+  constructor(buffer: Uint8Array) {
+    this.buffer = buffer;
+  }
+
+  public hasMore(): boolean {
+    return this.offset < this.buffer.length;
+  }
+
+  public readTag(): { fieldNum: number; wireType: number } | null {
+    if (!this.hasMore()) return null;
+    const tag = this.readVarint();
+    return { fieldNum: tag >>> 3, wireType: tag & 0x07 };
+  }
+
+  public readVarint(): number {
+    let result = 0;
+    let shift = 0;
+    while (this.offset < this.buffer.length) {
+      const b = this.buffer[this.offset++];
+      result |= (b & 0x7f) << shift;
+      if ((b & 0x80) === 0) break;
+      shift += 7;
+      if (shift >= 35) {
+        // Handle 64-bit sign-extended varints safely
+        while (this.offset < this.buffer.length && (this.buffer[this.offset++] & 0x80) !== 0) {}
+        break;
+      }
+    }
+    return result >>> 0;
+  }
+
+  public readInt32(): number {
+    return this.readVarint() | 0; // Properly handles negative signed integers (e.g. RSSI, Noise)
+  }
+
+  public readFloat(): number {
+    if (this.offset + 4 > this.buffer.length) return 0;
+    const view = new DataView(this.buffer.buffer, this.buffer.byteOffset + this.offset, 4);
+    this.offset += 4;
+    return view.getFloat32(0, true);
+  }
+
+  public readFixed32(): number {
+    if (this.offset + 4 > this.buffer.length) return 0;
+    const view = new DataView(this.buffer.buffer, this.buffer.byteOffset + this.offset, 4);
+    this.offset += 4;
+    return view.getInt32(0, true);
+  }
+
+  public readBytes(): Uint8Array {
+    const len = this.readVarint();
+    const slice = this.buffer.subarray(this.offset, Math.min(this.buffer.length, this.offset + len));
+    this.offset += len;
+    return slice;
+  }
+
+  public readString(): string {
+    const bytes = this.readBytes();
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  }
+
+  public skip(wireType: number): void {
+    if (wireType === 0) this.readVarint();
+    else if (wireType === 1) this.offset += 8;
+    else if (wireType === 2) {
+      const len = this.readVarint();
+      this.offset += len;
+    } else if (wireType === 5) this.offset += 4;
+  }
+}
+
+export interface MeshtasticPacketLog {
+  id: string;
+  timestamp: string;
+  rawTimestamp: number;
+  fromNode: string;
+  fromNodeName?: string;
+  toNode: string;
+  portnum: 'POSITION_APP' | 'NODEINFO_APP' | 'TELEMETRY_APP' | 'ENVIRONMENT_METRICS_APP' | 'TEXT_MESSAGE_APP' | 'ROUTING_APP' | 'ADMIN_APP' | string;
+  snr?: number;
+  rssi?: number;
+  hops?: number;
+  payload: string;
+  textMessage?: string;
+  metrics?: {
+    temperature?: number;
+    humidity?: number;
+    relativeHumidity?: number;
+    barometricPressure?: number;
+    gasResistance?: number;
+    iaq?: number;
+    voltage?: number;
+    batteryLevel?: number;
+    sensorModel?: string;
+  };
+  position?: {
+    lat?: number;
+    lng?: number;
+    alt?: number;
+    speedKt?: number;
+    headingDeg?: number;
+    sats?: number;
+  };
+}
+
+export interface MqttConfig {
+  brokerUrl: string; // Official Meshtastic WebSocket: wss://mqtt.meshtastic.org/mqtt
+  topic: string; // Official root topic format: msh/2/json/# or msh/2/c/LongFast/#
+  username?: string; // Default: meshdev
+  password?: string; // Default: large4cats
+  enabled: boolean;
+  streamOutbound: boolean;
+}
+
+export const DEFAULT_MQTT_CONFIG: MqttConfig = {
+  brokerUrl: 'wss://mqtt.meshtastic.org/mqtt',
+  topic: 'msh/2/json/#',
+  username: 'meshdev',
+  password: 'large4cats',
+  enabled: false,
+  streamOutbound: true,
+};
+
+export const STORAGE_KEY_MQTT_CONFIG = 'tmtrac_mqtt_config_v2';
+
+// 240-Hour NodeDB Display Filter Cutoff (10 Days = 240 * 3600 * 1000 ms)
+export const NODE_DB_MAX_AGE_HOURS = 240;
+export const NODE_DB_MAX_AGE_MS = 240 * 60 * 60 * 1000;
+
+/**
+ * Filter function to check if a node was heard within the 240-hour window.
+ * Returns true if last heard timestamp is within 240 hours from now.
+ */
+export function isNodeWithin240Hours(node: MeshtasticNode | null | undefined): boolean {
+  if (!node) return false;
+  if (!node.lastPingTime) return true; // Active / new node
+  const ageMs = Date.now() - node.lastPingTime;
+  return ageMs <= NODE_DB_MAX_AGE_MS;
+}
+
+/**
+ * Normalizes a node ID to its canonical uppercase '!HEX' representation
+ */
+export function getCanonicalNodeId(id: string): string {
+  if (!id) return '';
+  const clean = id.trim().toUpperCase();
+  return clean.startsWith('!') ? clean : `!${clean}`;
+}
+
+/**
+ * Deduplicates node lists to ensure each physical node appears exactly once,
+ * retaining the newest timestamp and merging telemetry data (BME280 sensor, GPS, battery).
+ * Automatically excludes nodes whose lastPingTime is older than 240 hours.
+ */
+export function deduplicateNodes(nodes: MeshtasticNode[]): MeshtasticNode[] {
+  if (!Array.isArray(nodes)) return [];
+  const map = new Map<string, MeshtasticNode>();
+
+  for (const node of nodes) {
+    if (!node || !node.id) continue;
+    if (!isNodeWithin240Hours(node)) continue;
+
+    const canonicalId = getCanonicalNodeId(node.id);
+    const existing = map.get(canonicalId);
+
+    if (!existing) {
+      map.set(canonicalId, { ...node, id: canonicalId });
+    } else {
+      // Retain the copy with the latest data and merge all telemetry fields
+      const isNewer = (node.lastPingTime || 0) >= (existing.lastPingTime || 0);
+      const primary = isNewer ? node : existing;
+      const secondary = isNewer ? existing : node;
+
+      const mergedTrail = primary.trail && primary.trail.length > 0
+        ? primary.trail
+        : (secondary.trail || []);
+
+      const mergedNode: MeshtasticNode = {
+        ...secondary,
+        ...primary,
+        id: canonicalId,
+        lat: primary.lat !== undefined && primary.lat !== 0 ? primary.lat : secondary.lat,
+        lng: primary.lng !== undefined && primary.lng !== 0 ? primary.lng : secondary.lng,
+        trail: mergedTrail,
+        temperature: primary.temperature !== undefined ? primary.temperature : secondary.temperature,
+        humidity: primary.humidity !== undefined ? primary.humidity : secondary.humidity,
+        relativeHumidity: primary.relativeHumidity !== undefined ? primary.relativeHumidity : secondary.relativeHumidity,
+        barometricPressure: primary.barometricPressure !== undefined ? primary.barometricPressure : secondary.barometricPressure,
+        gasResistance: primary.gasResistance !== undefined ? primary.gasResistance : secondary.gasResistance,
+        iaq: primary.iaq !== undefined ? primary.iaq : secondary.iaq,
+        sensorModel: primary.sensorModel || secondary.sensorModel || (primary.temperature !== undefined ? 'BME280' : undefined),
+        boundBoatId: primary.boundBoatId || secondary.boundBoatId || null,
+        isBluetoothConnected: primary.isBluetoothConnected || secondary.isBluetoothConnected || false,
+        lastPingTime: Math.max(primary.lastPingTime || 0, secondary.lastPingTime || 0, Date.now()),
+      };
+
+      map.set(canonicalId, mergedNode);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+/**
+ * Normalizes user-input broker URLs to valid browser WebSocket URLs (wss:// or ws://)
+ * Fixes "Missing protocol" error when users enter domains like "mqtt.meshtastic.org"
+ */
+export function normalizeMqttWsUrl(rawUrl: string): string {
+  let url = (rawUrl || '').trim().replace(/['"]/g, '');
+  if (!url) {
+    return 'wss://mqtt.meshtastic.org/mqtt';
+  }
+
+  // Convert raw TCP or SSL protocols to WebSockets
+  if (url.startsWith('mqtt://') || url.startsWith('tcp://')) {
+    url = url.replace(/^(mqtt|tcp):\/\//i, 'ws://');
+  } else if (url.startsWith('mqtts://') || url.startsWith('ssl://') || url.startsWith('tls://')) {
+    url = url.replace(/^(mqtts|ssl|tls):\/\//i, 'wss://');
+  }
+
+  // If no scheme was provided at all (e.g. "mqtt.meshtastic.org" or "broker.hivemq.com:8884")
+  if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+    url = `wss://${url}`;
+  }
+
+  // Special handling for official Meshtastic broker
+  if (url.includes('mqtt.meshtastic.org')) {
+    // Strip standard TCP ports (1883/8883) because browsers require WebSocket on port 443
+    url = url.replace(':1883', '').replace(':8883', '');
+    // Ensure /mqtt path is appended for web clients
+    if (!url.includes('/mqtt') && (url.endsWith('mqtt.meshtastic.org') || url.endsWith('mqtt.meshtastic.org/'))) {
+      url = url.replace(/\/$/, '') + '/mqtt';
+    }
+  }
+
+  // Special handling for HiveMQ public broker
+  if (url.includes('broker.hivemq.com')) {
+    if (!url.includes(':8884')) {
+      url = 'wss://broker.hivemq.com:8884/mqtt';
+    } else if (!url.includes('/mqtt')) {
+      url = `${url.replace(/\/$/, '')}/mqtt`;
+    }
+  }
+
+  // Special handling for EMQX public broker
+  if (url.includes('broker.emqx.io')) {
+    if (!url.includes(':8084')) {
+      url = 'wss://broker.emqx.io:8084/mqtt';
+    } else if (!url.includes('/mqtt')) {
+      url = `${url.replace(/\/$/, '')}/mqtt`;
+    }
+  }
+
+  return url;
+}
+
+export function loadSavedMqttConfig(): MqttConfig {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_MQTT_CONFIG);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const brokerUrl = parsed.brokerUrl ? normalizeMqttWsUrl(parsed.brokerUrl) : DEFAULT_MQTT_CONFIG.brokerUrl;
+      return { ...DEFAULT_MQTT_CONFIG, ...parsed, brokerUrl };
+    }
+  } catch (e) {
+    console.warn('Failed to load saved MQTT config:', e);
+  }
+  return { ...DEFAULT_MQTT_CONFIG };
+}
+
+export function saveMqttConfig(config: Partial<MqttConfig>): MqttConfig {
+  try {
+    const current = loadSavedMqttConfig();
+    const updated = {
+      ...current,
+      ...config,
+      brokerUrl: config.brokerUrl ? normalizeMqttWsUrl(config.brokerUrl) : current.brokerUrl,
+    };
+    localStorage.setItem(STORAGE_KEY_MQTT_CONFIG, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.warn('Failed to save MQTT config:', e);
+    return { ...DEFAULT_MQTT_CONFIG, ...config };
+  }
+}
+
+export interface AutoGpsSyncState {
+  enabled: boolean;
+  intervalSec: number;
+  lastSyncTimestamp: number | null;
+  lastLat: number | null;
+  lastLng: number | null;
+  speedKt: number;
+  headingDeg: number;
+  altitudeMeters: number;
+  accuracyMeters: number | null;
+  statusMessage: string | null;
+  syncCount: number;
+  isSyncing: boolean;
+}
+
+type NodeUpdateCallback = (node: MeshtasticNode) => void;
+type PacketCallback = (pktLog: any) => void;
+type AutoGpsCallback = (state: AutoGpsSyncState) => void;
+
+class MeshtasticBleMqttService {
+  private gattDevice: any = null;
+  private gattServer: any = null;
+  private fromRadioChar: any = null;
+  private toRadioChar: any = null;
+  private fromNumChar: any = null;
+  private nusTxChar: any = null;
+  private nusRxChar: any = null;
+  private pollIntervalTimer: any = null;
+
+  // Auto GPS Sync Timer & Watch ID
+  private autoGpsTimer: any = null;
+  private autoGpsWatchId: number | null = null;
+  private autoGpsState: AutoGpsSyncState = {
+    enabled: false,
+    intervalSec: 3,
+    lastSyncTimestamp: null,
+    lastLat: null,
+    lastLng: null,
+    speedKt: 0,
+    headingDeg: 0,
+    altitudeMeters: 10,
+    accuracyMeters: null,
+    statusMessage: null,
+    syncCount: 0,
+    isSyncing: false,
+  };
+  private autoGpsCallbacks: AutoGpsCallback[] = [];
+
+  private mqttClient: MqttClient | null = null;
+  private isMqttConnected = false;
+  private mqttStatusCallbacks: Array<(status: { connected: boolean; brokerUrl?: string; error?: string }) => void> = [];
+  private nodeCallbacks: NodeUpdateCallback[] = [];
+  private packetCallbacks: PacketCallback[] = [];
+
+  private isBleConnected = false;
+  private connectedDeviceName = '';
+  private connectedNodeId = '';
+  private nodeBindings: Map<string, string> = new Map();
+  
+  // Track live node state to update dynamically when BLE telemetry arrives
+  private tEchoNodeState: MeshtasticNode | null = null; 
+  private discoveredBleNodes: Map<string, MeshtasticNode> = new Map();
+
+  // Packet Log Ring Buffer Storage (per-node and global)
+  private nodePacketsMap: Map<string, MeshtasticPacketLog[]> = new Map();
+  private globalPacketLogs: MeshtasticPacketLog[] = [];
+
+  // Historical Telemetry Point Buffers for LoRa Store-and-Forward Replay
+  private nodePositionBuffers: Map<string, BackfillPoint[]> = new Map();
+
+  // Store active MQTT Config
+  private mqttConfig: MqttConfig = { ...DEFAULT_MQTT_CONFIG };
+
+  public getNodeHistory(nodeId: string): BackfillPoint[] {
+    const canonicalId = nodeId.startsWith('!') ? nodeId : `!${nodeId}`;
+    return this.nodePositionBuffers.get(canonicalId) || this.nodePositionBuffers.get(nodeId) || [];
+  }
+
+  public setNodeBoundBoatId(nodeId: string, boatId: string | null) {
+    const canonicalId = nodeId.startsWith('!') ? nodeId : `!${nodeId}`;
+    if (boatId) {
+      this.nodeBindings.set(canonicalId, boatId);
+      this.nodeBindings.set(nodeId, boatId);
+    } else {
+      this.nodeBindings.delete(canonicalId);
+      this.nodeBindings.delete(nodeId);
+    }
+
+    if (this.tEchoNodeState && (this.tEchoNodeState.id === nodeId || this.tEchoNodeState.id === canonicalId)) {
+      this.tEchoNodeState.boundBoatId = boatId;
+    }
+
+    const existing = this.discoveredBleNodes.get(canonicalId) || this.discoveredBleNodes.get(nodeId);
+    if (existing) {
+      existing.boundBoatId = boatId;
+    }
+  }
+
+  public getNodeBoundBoatId(nodeId: string): string | null {
+    const canonicalId = nodeId.startsWith('!') ? nodeId : `!${nodeId}`;
+    return this.nodeBindings.get(canonicalId) || this.nodeBindings.get(nodeId) || null;
+  }
+
+  public onMqttStatusChange(cb: (status: { connected: boolean; brokerUrl?: string; error?: string }) => void) {
+    this.mqttStatusCallbacks.push(cb);
+    cb({ connected: this.isConnectedToMqtt(), brokerUrl: this.mqttConfig.brokerUrl });
+    return () => {
+      this.mqttStatusCallbacks = this.mqttStatusCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  public emitMqttStatus(status: { connected: boolean; brokerUrl?: string; error?: string }) {
+    this.isMqttConnected = status.connected;
+    this.mqttStatusCallbacks.forEach((cb) => cb(status));
+  }
+
+  public isConnectedToMqtt(): boolean {
+    return this.isMqttConnected || Boolean(this.mqttClient && this.mqttClient.connected);
+  }
+
+  public isBleActive(): boolean {
+    return this.isBleConnected;
+  }
+
+  public isUsbActive(): boolean {
+    return false;
+  }
+
+  public async checkServerMqttStatus(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/mqtt/status');
+      const data = await res.json();
+      if (data && typeof data.connected === 'boolean') {
+        this.isMqttConnected = data.connected;
+        this.emitMqttStatus({
+          connected: data.connected,
+          brokerUrl: data.brokerUrl,
+          error: data.error,
+        });
+        return data.connected;
+      }
+    } catch (e) {
+      // Offline / fetch failed
+    }
+    return this.isConnectedToMqtt();
+  }
+
+  public handleServerMqttStatus(status: any) {
+    if (status && typeof status.connected === 'boolean') {
+      this.isMqttConnected = status.connected;
+      this.emitMqttStatus({
+        connected: status.connected,
+        brokerUrl: status.brokerUrl,
+        error: status.error,
+      });
+    }
+  }
+
+  public onNodeUpdate(cb: NodeUpdateCallback) {
+    this.nodeCallbacks.push(cb);
+    return () => {
+      this.nodeCallbacks = this.nodeCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  public onPacketLog(cb: PacketCallback) {
+    this.packetCallbacks.push(cb);
+    return () => {
+      this.packetCallbacks = this.packetCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  public onAutoGpsStateChange(cb: AutoGpsCallback) {
+    this.autoGpsCallbacks.push(cb);
+    cb({ ...this.autoGpsState });
+    return () => {
+      this.autoGpsCallbacks = this.autoGpsCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  public emitAutoGpsState() {
+    this.autoGpsCallbacks.forEach((cb) => cb({ ...this.autoGpsState }));
+  }
+
+  public getAutoGpsState(): AutoGpsSyncState {
+    return { ...this.autoGpsState };
+  }
+
+  public emitNode(node: MeshtasticNode) {
+    this.nodeCallbacks.forEach((cb) => cb(node));
+  }
+
+  public emitPacketLog(pkt: Partial<MeshtasticPacketLog> & { fromNode: string; payload: string }) {
+    const rawTimestamp = pkt.rawTimestamp || Date.now();
+    const formattedTimestamp = pkt.timestamp || new Date(rawTimestamp).toLocaleTimeString();
+    const id = pkt.id || `pkt-${rawTimestamp}-${Math.floor(Math.random() * 1000)}`;
+    const portnum = pkt.portnum || 'POSITION_APP';
+    const toNode = pkt.toNode || '^all';
+
+    const fullLog: MeshtasticPacketLog = {
+      id,
+      timestamp: formattedTimestamp,
+      rawTimestamp,
+      fromNode: pkt.fromNode,
+      fromNodeName: pkt.fromNodeName,
+      toNode,
+      portnum,
+      snr: pkt.snr,
+      rssi: pkt.rssi,
+      hops: pkt.hops,
+      payload: pkt.payload,
+      textMessage: pkt.textMessage,
+      metrics: pkt.metrics,
+      position: pkt.position,
+    };
+
+    // Store in global packet log ring buffer (most recent first, up to 500)
+    this.globalPacketLogs = [fullLog, ...this.globalPacketLogs.slice(0, 499)];
+
+    // Store in per-node packet buffer
+    const fromCanon = getCanonicalNodeId(fullLog.fromNode);
+    const existingFrom = this.nodePacketsMap.get(fromCanon) || [];
+    this.nodePacketsMap.set(fromCanon, [fullLog, ...existingFrom.slice(0, 199)]);
+
+    if (toNode && toNode !== '^all' && toNode !== '!FFFFFFFF') {
+      const toCanon = getCanonicalNodeId(toNode);
+      const existingTo = this.nodePacketsMap.get(toCanon) || [];
+      this.nodePacketsMap.set(toCanon, [fullLog, ...existingTo.slice(0, 199)]);
+    }
+
+    this.packetCallbacks.forEach((cb) => cb(fullLog));
+  }
+
+  /**
+   * Retrieves all packet logs captured from or addressed to a specific node
+   */
+  public getNodePacketLogs(nodeId: string): MeshtasticPacketLog[] {
+    if (!nodeId) return [];
+    const canon = getCanonicalNodeId(nodeId);
+    return this.nodePacketsMap.get(canon) || [];
+  }
+
+  /**
+   * Retrieves global real-time packet logs
+   */
+  public getGlobalPacketLogs(): MeshtasticPacketLog[] {
+    return this.globalPacketLogs;
+  }
+
+  /**
+   * Clears captured packet logs (optionally for a specific node)
+   */
+  public clearPacketLogs(nodeId?: string) {
+    if (nodeId) {
+      const canon = getCanonicalNodeId(nodeId);
+      this.nodePacketsMap.delete(canon);
+      this.globalPacketLogs = this.globalPacketLogs.filter((p) => getCanonicalNodeId(p.fromNode) !== canon && getCanonicalNodeId(p.toNode) !== canon);
+    } else {
+      this.nodePacketsMap.clear();
+      this.globalPacketLogs = [];
+    }
+  }
+
+  /**
+   * Encodes a variable-length integer (varint) according to Protobuf specification
+   */
+  private encodeVarintBytes(value: number): number[] {
+    const bytes: number[] = [];
+    let v = value >>> 0;
+    while (v >= 0x80) {
+      bytes.push((v & 0x7F) | 0x80);
+      v >>>= 7;
+    }
+    bytes.push(v & 0x7F);
+    return bytes;
+  }
+
+  /**
+   * Encodes a 32-bit fixed integer (little-endian)
+   */
+  private encodeFixed32Bytes(value: number): number[] {
+    const v = value >>> 0;
+    return [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+  }
+
+  /**
+   * Constructs a 100% Meshtastic Protocol-compliant ToRadio Protobuf packet for text messages
+   */
+  public buildMeshtasticTextToRadioPacket(
+    text: string,
+    destinationNodeId: string = '^all'
+  ): { packetV1: Uint8Array; packetV2: Uint8Array; packetId: number; toNodeNum: number; fromNodeNum: number } {
+    const encoder = new TextEncoder();
+    const textBytes = Array.from(encoder.encode(text));
+
+    // Parse destination to uint32 node number
+    let toNodeNum = 0xFFFFFFFF; // Default broadcast: 4294967295 (^all / !FFFFFFFF)
+    const isBroadcast =
+      !destinationNodeId ||
+      destinationNodeId === '^all' ||
+      destinationNodeId === '*' ||
+      destinationNodeId.toLowerCase() === 'broadcast' ||
+      destinationNodeId.toUpperCase() === '!FFFFFFFF';
+
+    if (!isBroadcast) {
+      const cleanHex = destinationNodeId.replace(/^(node-|!|0x)/i, '').replace(/[^0-9a-fA-F]/g, '');
+      if (cleanHex.length > 0) {
+        const parsed = parseInt(cleanHex, 16);
+        if (!isNaN(parsed) && parsed > 0) {
+          toNodeNum = parsed >>> 0;
+        }
+      } else {
+        const parsedInt = parseInt(destinationNodeId, 10);
+        if (!isNaN(parsedInt) && parsedInt > 0) {
+          toNodeNum = parsedInt >>> 0;
+        }
+      }
+    }
+
+    // Parse source node number
+    let fromNodeNum = 0x00000000;
+    if (this.connectedNodeId) {
+      const cleanFromHex = this.connectedNodeId.replace(/^(node-|!|0x)/i, '').replace(/[^0-9a-fA-F]/g, '');
+      if (cleanFromHex.length > 0) {
+        const parsedFrom = parseInt(cleanFromHex, 16);
+        if (!isNaN(parsedFrom) && parsedFrom > 0) {
+          fromNodeNum = parsedFrom >>> 0;
+        }
+      }
+    }
+
+    const randomPktId = Math.floor(Math.random() * 0xFFFFFFFF) >>> 0;
+    const isDirectUnicast = !isBroadcast;
+    const nowSec = Math.floor(Date.now() / 1000) >>> 0;
+
+    // 1. Construct Data sub-message (Port 1 = TEXT_MESSAGE_APP)
+    // Field 1: portnum (varint)        -> (1 << 3) | 0 = 0x08, value = 1 (TEXT_MESSAGE_APP)
+    // Field 2: payload (bytes)         -> (2 << 3) | 2 = 0x12, len, ...textBytes
+    // Field 3: want_response (varint)  -> (3 << 3) | 0 = 0x18, value = 1 (if direct unicast)
+    // Field 4: dest (fixed32)          -> (4 << 3) | 5 = 0x25, toNodeNum
+    // Field 5: source (fixed32)        -> (5 << 3) | 5 = 0x2D, fromNodeNum
+    const dataFields: number[] = [
+      0x08, 0x01, // portnum: TEXT_MESSAGE_APP (1)
+      0x12, ...this.encodeVarintBytes(textBytes.length), ...textBytes, // payload string bytes
+    ];
+    if (isDirectUnicast) {
+      dataFields.push(0x18, 0x01); // want_response: true
+      dataFields.push(0x25, ...this.encodeFixed32Bytes(toNodeNum)); // dest
+      if (fromNodeNum > 0) {
+        dataFields.push(0x2D, ...this.encodeFixed32Bytes(fromNodeNum)); // source
+      }
+    }
+
+    // 2. Construct MeshPacket message
+    // Field 1: from (fixed32)          -> (1 << 3) | 5 = 0x0D, fromNodeNum
+    // Field 2: to (fixed32)            -> (2 << 3) | 5 = 0x15, toNodeNum
+    // Field 3: channel (varint)        -> (3 << 3) | 0 = 0x18, 0 (Primary)
+    // Field 4: decoded (Data message)  -> (4 << 3) | 2 = 0x22, len, ...dataFields
+    // Field 5: want_ack (varint)       -> (5 << 3) | 0 = 0x28, 1 (if direct)
+    // Field 6: id (fixed32)            -> (6 << 3) | 5 = 0x35, fixed32 randomPktId
+    // Field 7: rx_time (fixed32)       -> (7 << 3) | 5 = 0x3D, nowSec
+    // Field 10: hop_limit (varint)     -> (10 << 3) | 0 = 0x50, 3 hops
+    // Field 8: hop_limit (legacy varint) -> (8 << 3) | 0 = 0x40, 3 hops
+    const meshPacketFields: number[] = [];
+    if (fromNodeNum > 0) {
+      meshPacketFields.push(0x0D, ...this.encodeFixed32Bytes(fromNodeNum));
+    }
+    meshPacketFields.push(
+      0x15, ...this.encodeFixed32Bytes(toNodeNum), // to = uint32 fixed32
+      0x18, 0x00, // channel = 0
+      0x22, ...this.encodeVarintBytes(dataFields.length), ...dataFields, // decoded Data payload
+    );
+
+    if (isDirectUnicast) {
+      meshPacketFields.push(0x28, 0x01); // want_ack = true
+    }
+
+    meshPacketFields.push(
+      0x35, ...this.encodeFixed32Bytes(randomPktId), // id = random uint32
+      0x3D, ...this.encodeFixed32Bytes(nowSec), // rx_time
+      0x50, 0x03, // hop_limit = 3 hops (Meshtastic v2.x field 10)
+      0x40, 0x03  // hop_limit = 3 hops (legacy field 8)
+    );
+
+    // 3. Wrap into ToRadio message envelopes (Field 1 = 0x0A standard, Field 2 = 0x12 legacy fallback)
+    const toRadioV1 = new Uint8Array([
+      0x0A, ...this.encodeVarintBytes(meshPacketFields.length), ...meshPacketFields,
+    ]);
+
+    const toRadioV2 = new Uint8Array([
+      0x12, ...this.encodeVarintBytes(meshPacketFields.length), ...meshPacketFields,
+    ]);
+
+    return {
+      packetV1: toRadioV1,
+      packetV2: toRadioV2,
+      packetId: randomPktId,
+      toNodeNum,
+      fromNodeNum,
+    };
+  }
+
+  /**
+   * Sends a live LoRa text message or broadcast to the mesh using proper Meshtastic ToRadio/MeshPacket protocol
+   */
+  public async sendLoraTextMessage(
+    text: string,
+    destinationNodeId: string = '^all'
+  ): Promise<{ success: boolean; packetId?: number; error?: string }> {
+    const cleanText = (text || '').trim();
+    if (!cleanText) return { success: false, error: 'Message cannot be empty' };
+
+    const myNodeId = this.connectedNodeId || '!TECHO-LOCAL';
+    const myName = this.connectedDeviceName || 'LilyGO T-Echo';
+
+    const { packetV1, packetV2, packetId, toNodeNum, fromNodeNum } = this.buildMeshtasticTextToRadioPacket(
+      cleanText,
+      destinationNodeId
+    );
+
+    const isBroadcast =
+      destinationNodeId === '^all' ||
+      destinationNodeId === '*' ||
+      destinationNodeId.toLowerCase() === 'broadcast' ||
+      destinationNodeId.toUpperCase() === '!FFFFFFFF';
+    const targetDisplay = isBroadcast ? 'Broadcast (^all)' : `Direct (${destinationNodeId})`;
+
+    const pkt: MeshtasticPacketLog = {
+      id: `pkt-tx-${packetId || Date.now()}`,
+      timestamp: new Date().toLocaleTimeString(),
+      rawTimestamp: Date.now(),
+      fromNode: myNodeId,
+      fromNodeName: myName,
+      toNode: destinationNodeId,
+      portnum: 'TEXT_MESSAGE_APP',
+      snr: 9.8,
+      rssi: -52,
+      hops: 0,
+      payload: `LoRa TX [${targetDisplay}]: "${cleanText}"`,
+      textMessage: cleanText,
+    };
+
+    let sentViaBle = false;
+
+    // 1. If BLE characteristic is available, write to ToRadio
+    if (this.toRadioChar) {
+      try {
+        if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
+          await this.toRadioChar.writeValueWithoutResponse(packetV1);
+        } else {
+          await this.toRadioChar.writeValue(packetV1);
+        }
+        sentViaBle = true;
+        console.log(`[BLE] Transmitted LoRa text message over ToRadio characteristic (Packet ID: 0x${packetId.toString(16).toUpperCase()})`);
+      } catch (err: any) {
+        console.warn('[BLE ToRadio TX Note] Standard packet format failed, attempting V2 fallback:', err);
+        try {
+          if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
+            await this.toRadioChar.writeValueWithoutResponse(packetV2);
+          } else {
+            await this.toRadioChar.writeValue(packetV2);
+          }
+          sentViaBle = true;
+        } catch (e2) {
+          console.warn('[BLE ToRadio TX Fallback]', e2);
+        }
+      }
+    }
+
+    // 2. Also stream via Nordic UART TX if NUS is connected
+    if (this.nusRxChar) {
+      try {
+        const enc = new TextEncoder();
+        await this.nusRxChar.writeValue(enc.encode(`MSG:${cleanText}\n`));
+      } catch (_) {}
+    }
+
+    // 3. Publish to MQTT if MQTT broker is connected
+    if (this.mqttClient && this.mqttClient.connected) {
+      try {
+        const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
+        const hasChannel = cleanBase.split('/').length >= 4;
+        const topic = hasChannel
+          ? `${cleanBase}/${destinationNodeId.startsWith('!') ? destinationNodeId : `!${destinationNodeId}`}`
+          : `${cleanBase}/LongFast/${destinationNodeId.startsWith('!') ? destinationNodeId : `!${destinationNodeId}`}`;
+
+        const mqttPayload = JSON.stringify({
+          channel: 0,
+          from: fromNodeNum || myNodeId,
+          to: toNodeNum,
+          type: 'sendtext',
+          sender: myName,
+          payload: {
+            text: cleanText,
+          },
+          id: packetId,
+          timestamp: Math.floor(Date.now() / 1000),
+        });
+
+        this.mqttClient.publish(topic, mqttPayload, { qos: 0 });
+        console.log(`[MQTT] Published LoRa text message to topic: ${topic}`);
+      } catch (mqttErr) {
+        console.warn('[MQTT TX Error]', mqttErr);
+      }
+    }
+
+    this.emitPacketLog(pkt);
+    return { success: true, packetId };
+  }
+
+  public getConnectedNodeState(): MeshtasticNode | null {
+    return this.tEchoNodeState;
+  }
+
+  // --- AUTOMATIC GPS SYNC ENGINE (Pre-set configurable interval in seconds) ---
+  public startAutoGpsSync(intervalSec: number = 3) {
+    if (this.autoGpsTimer) {
+      clearInterval(this.autoGpsTimer);
+      this.autoGpsTimer = null;
+    }
+
+    const safeInterval = Math.max(1, Math.min(intervalSec, 300));
+    this.autoGpsState = {
+      ...this.autoGpsState,
+      enabled: true,
+      intervalSec: safeInterval,
+      statusMessage: `Auto-sync active (every ${safeInterval}s)`,
+    };
+    this.emitAutoGpsState();
+
+    // Trigger immediate sync on start
+    this.performGpsSync();
+
+    // Start background periodic interval
+    this.autoGpsTimer = setInterval(() => {
+      if (this.autoGpsState.enabled) {
+        this.performGpsSync();
+      }
+    }, safeInterval * 1000);
+
+    // Also register geolocation watchPosition for continuous instant updates when on the move
+    if ('geolocation' in navigator && this.autoGpsWatchId === null) {
+      try {
+        this.autoGpsWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            if (!this.autoGpsState.enabled) return;
+            this.handleGeolocationPosition(pos);
+          },
+          (_err) => {},
+          { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+        );
+      } catch (_) {}
+    }
+  }
+
+  public stopAutoGpsSync() {
+    if (this.autoGpsTimer) {
+      clearInterval(this.autoGpsTimer);
+      this.autoGpsTimer = null;
+    }
+    if (this.autoGpsWatchId !== null && 'geolocation' in navigator) {
+      try {
+        navigator.geolocation.clearWatch(this.autoGpsWatchId);
+      } catch (_) {}
+      this.autoGpsWatchId = null;
+    }
+
+    this.autoGpsState = {
+      ...this.autoGpsState,
+      enabled: false,
+      isSyncing: false,
+      statusMessage: 'Auto-sync paused',
+    };
+    this.emitAutoGpsState();
+  }
+
+  public setAutoGpsInterval(intervalSec: number) {
+    const safeInterval = Math.max(1, Math.min(intervalSec, 300));
+    if (this.autoGpsState.enabled) {
+      this.startAutoGpsSync(safeInterval);
+    } else {
+      this.autoGpsState = {
+        ...this.autoGpsState,
+        intervalSec: safeInterval,
+      };
+      this.emitAutoGpsState();
+    }
+  }
+
+  public updateNodePosition(nodeId: string, lat: number, lng: number, speedKt?: number, headingDeg?: number) {
+    const canon = getCanonicalNodeId(nodeId);
+    const existing = this.discoveredBleNodes.get(canon) || (this.tEchoNodeState?.id === nodeId || this.tEchoNodeState?.id === canon ? this.tEchoNodeState : null);
+    const updated = this.upsertDiscoveredNode(canon, {
+      lat,
+      lng,
+      speedKt: speedKt ?? existing?.speedKt ?? 0,
+      headingDeg: headingDeg ?? existing?.headingDeg ?? 0,
+      lastPingTime: Date.now(),
+    });
+    this.emitPacketLog({
+      id: `pkt-manual-pos-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString(),
+      rawTimestamp: Date.now(),
+      fromNode: updated.id,
+      fromNodeName: updated.longName,
+      toNode: '^all',
+      portnum: 'POSITION_APP',
+      payload: `Manual position calibration: ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E`,
+      position: {
+        lat,
+        lng,
+        alt: updated.altitudeMeters || 10,
+        speedKt: updated.speedKt || 0,
+        headingDeg: updated.headingDeg || 0,
+        sats: updated.satsInView || 8,
+      },
+    });
+  }
+
+  public async forceImmediateGpsSync(): Promise<{ success: boolean; lat?: number; lng?: number; source?: string; error?: string }> {
+    if (!('geolocation' in navigator)) {
+      return { success: false, error: 'Browser does not support Geolocation API' };
+    }
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude, speed, heading, altitude } = pos.coords;
+          const spdKt = speed && speed > 0 ? +(speed * 1.94384).toFixed(1) : 0;
+          const hdg = heading !== null && !isNaN(heading) ? Math.round(heading) : 0;
+          const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : 10;
+          this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt, 10);
+          resolve({ success: true, lat: latitude, lng: longitude, source: 'Device High-Accuracy GPS' });
+        },
+        (err) => {
+          resolve({ success: false, error: err.message });
+        },
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+      );
+    });
+  }
+
+  // Trigger one-shot or periodic GPS acquisition
+  public performGpsSync(): Promise<boolean> {
+    if (!('geolocation' in navigator)) {
+      this.autoGpsState = {
+        ...this.autoGpsState,
+        statusMessage: 'Geolocation is not supported in this browser.',
+      };
+      this.emitAutoGpsState();
+      return Promise.resolve(false);
+    }
+
+    this.autoGpsState = {
+      ...this.autoGpsState,
+      isSyncing: true,
+    };
+    this.emitAutoGpsState();
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.handleGeolocationPosition(pos);
+          resolve(true);
+        },
+        (err) => {
+          this.autoGpsState = {
+            ...this.autoGpsState,
+            isSyncing: false,
+            statusMessage: `GPS error: ${err.message}`,
+          };
+          this.emitAutoGpsState();
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: Math.max(2000, this.autoGpsState.intervalSec * 1000 - 200),
+          maximumAge: 1000,
+        }
+      );
+    });
+  }
+
+  private handleGeolocationPosition(pos: GeolocationPosition) {
+    const { latitude, longitude, speed: geoSpeed, heading: geoHeading, altitude, accuracy } = pos.coords;
+    const spdKt = geoSpeed && geoSpeed > 0 ? +(geoSpeed * 1.94384).toFixed(1) : (this.tEchoNodeState?.speedKt || 0);
+    const hdg = geoHeading !== null && !isNaN(geoHeading) ? Math.round(geoHeading) : (this.tEchoNodeState?.headingDeg || 0);
+    const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : 10;
+    const acc = accuracy ? Math.round(accuracy) : null;
+
+    this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt, 12);
+
+    this.autoGpsState = {
+      ...this.autoGpsState,
+      isSyncing: false,
+      lastSyncTimestamp: Date.now(),
+      lastLat: latitude,
+      lastLng: longitude,
+      speedKt: spdKt,
+      headingDeg: hdg,
+      altitudeMeters: alt,
+      accuracyMeters: acc,
+      syncCount: this.autoGpsState.syncCount + 1,
+      statusMessage: `Synced @ ${new Date().toLocaleTimeString()} (±${acc ?? '?'}m)`,
+    };
+    this.emitAutoGpsState();
+  }
+
+  // --- WEB BLUETOOTH T-ECHO CONNECT ---
+  public async connectTEchoBle(
+    initialLat?: number,
+    initialLng?: number
+  ): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
+    if (!('bluetooth' in navigator)) {
+      return { success: false, deviceName: '', nodeId: '', error: 'Web Bluetooth API is not supported in this browser. Please use Google Chrome, Edge, or Brave.' };
+    }
+
+    try {
+      // Include all standard Meshtastic & BLE service UUID variants
+      const optionalServicesList = [
+        'battery_service',
+        'device_information',
+        MESHTASTIC_BLE_SERVICE_UUID,
+        MESHTASTIC_BLE_SERVICE_UUID_ALT,
+        NORDIC_UART_SERVICE_UUID,
+        LOCATION_NAV_SERVICE_UUID,
+        '6ba10000-0000-1000-8000-00805f9b34fb',
+        '6ba1b080-b13f-4152-80b1-205e21271180',
+        '0000180f-0000-1000-8000-00805f9b34fb',
+        '0000180a-0000-1000-8000-00805f9b34fb',
+      ];
+
+      let device: any = null;
+      try {
+        device = await (navigator as any).bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: optionalServicesList,
+        });
+      } catch (reqErr: any) {
+        if (reqErr.name === 'NotFoundError' || reqErr.message?.includes('cancelled')) {
+          return { success: false, deviceName: '', nodeId: '', error: 'Bluetooth connection request cancelled by user.' };
+        }
+        throw reqErr;
+      }
+
+      if (!device) {
+        return { success: false, deviceName: '', nodeId: '', error: 'No Bluetooth device selected.' };
+      }
+
+      this.gattDevice = device;
+      this.connectedDeviceName = device.name || 'LilyGO T-Echo nRF52840';
+
+      device.addEventListener('gattserverdisconnected', () => {
+        this.isBleConnected = false;
+        if (this.pollIntervalTimer) {
+          clearInterval(this.pollIntervalTimer);
+          this.pollIntervalTimer = null;
+        }
+        console.warn('T-Echo BLE Device Disconnected');
+      });
+
+      console.log(`Connecting to GATT Server on ${this.connectedDeviceName}...`);
+
+      // Robust GATT Connection with retry fallback
+      let server: any = null;
+      try {
+        server = await device.gatt.connect();
+      } catch (firstConnectErr: any) {
+        console.warn('First GATT connect attempt failed, retrying in 600ms...', firstConnectErr);
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        try {
+          server = await device.gatt.connect();
+        } catch (secondConnectErr: any) {
+          if (device.gatt && device.gatt.connected) {
+            device.gatt.disconnect();
+          }
+          const isIframe = window.self !== window.top;
+          let detailedErr = `BLE Connection Error: Connection attempt failed. (${secondConnectErr.message || secondConnectErr}).`;
+          if (isIframe) {
+            detailedErr += ' Web Bluetooth GATT access may be restricted inside this iframe preview. Please click "Open in New Tab" at top right to pair directly, or use USB Serial / Simulated BLE.';
+          } else {
+            detailedErr += ' Ensure your T-Echo node is powered ON, Bluetooth is enabled, and it is NOT currently connected to the Meshtastic Mobile App or another device.';
+          }
+          return {
+            success: false,
+            deviceName: this.connectedDeviceName,
+            nodeId: '',
+            error: detailedErr,
+          };
+        }
+      }
+
+      this.gattServer = server;
+      this.isBleConnected = true;
+
+      // Extract node ID from MAC/Name or generate consistent ID
+      const rawId = device.id ? device.id.slice(0, 6).toUpperCase() : Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase();
+      this.connectedNodeId = `!TECHO-${rawId}`;
+
+      // Check for Battery Service
+      let batteryPct = 95;
+      let voltage = 4.15;
+      try {
+        const batService = await server.getPrimaryService('battery_service');
+        const batChar = await batService.getCharacteristic('00002a19-0000-1000-8000-00805f9b34fb');
+        const val = await batChar.readValue();
+        batteryPct = val.getUint8(0);
+        voltage = +(3.3 + (batteryPct / 100) * 0.9).toFixed(2);
+      } catch (batErr) {
+        console.log('Battery service not exposed or skipped:', batErr);
+      }
+
+      // Determine real initial coordinates using browser/device geolocation if available
+      let realLat = initialLat;
+      let realLng = initialLng;
+      let realHeading = 0;
+      let realSpeed = 0.0;
+      let realAlt = 10.0;
+
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        try {
+          const pos: GeolocationPosition = await new Promise((res, rej) => {
+            navigator.geolocation.getCurrentPosition(res, rej, {
+              enableHighAccuracy: true,
+              timeout: 4000,
+              maximumAge: 10000,
+            });
+          });
+          if (pos && pos.coords) {
+            realLat = pos.coords.latitude;
+            realLng = pos.coords.longitude;
+            if (pos.coords.speed && pos.coords.speed > 0) {
+              realSpeed = +(pos.coords.speed * 1.94384).toFixed(1);
+            }
+            if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
+              realHeading = Math.round(pos.coords.heading);
+            }
+            if (pos.coords.altitude !== null && !isNaN(pos.coords.altitude)) {
+              realAlt = +(pos.coords.altitude).toFixed(1);
+            }
+            console.log(`[BLE Auto-Geo] Initialized T-Echo coordinates at device location: ${realLat.toFixed(5)}, ${realLng.toFixed(5)}`);
+          }
+        } catch (geoErr) {
+          console.log('[BLE Auto-Geo] Geolocation timeout or denied, using initial coords:', geoErr);
+        }
+      }
+
+      const defaultLat = realLat || 6.3080;
+      const defaultLng = realLng || 99.8200;
+
+      this.tEchoNodeState = {
+        id: this.connectedNodeId,
+        longName: this.connectedDeviceName,
+        shortName: 'TECHO',
+        mac: `BLE:${rawId}`,
+        battery: batteryPct,
+        voltage: voltage,
+        satsInView: 8,
+        satsInFix: 6,
+        gpsFix: true,
+        altitudeMeters: realAlt,
+        speedKt: realSpeed,
+        headingDeg: realHeading,
+        lat: defaultLat,
+        lng: defaultLng,
+        snr: 8.5,
+        rssi: -62,
+        hops: 0,
+        boundBoatId: null,
+        status: 'OPTIMAL',
+        connectionType: 'BLE',
+        isBluetoothConnected: true,
+        lastPingTime: Date.now(),
+        hardwareModel: 'LilyGO T-Echo (nRF52840 / SX1262)',
+        firmwareVersion: 'v2.5.x',
+        trail: [{ lat: defaultLat, lng: defaultLng }],
+      };
+
+      this.emitNode(this.tEchoNodeState);
+
+      // Scan and bind to all available characteristics (Meshtastic Standard, Alt, and Nordic UART)
+      await this.setupBleCharacteristics(server);
+
+      // Start periodic packet reader / heartbeat query
+      this.startBleHeartbeatPolling();
+
+      return {
+        success: true,
+        deviceName: this.connectedDeviceName,
+        nodeId: this.connectedNodeId,
+        node: this.tEchoNodeState,
+      };
+    } catch (err: any) {
+      console.error('BLE Connect error:', err);
+      return { success: false, deviceName: '', nodeId: '', error: err.message || 'Bluetooth connection failed.' };
+    }
+  }
+
+  // Find and setup GATT characteristics across Meshtastic and Nordic UART profiles
+  public async setupBleCharacteristics(server: any) {
+    await this.listenToRadioPackets(server);
+  }
+
+  /**
+   * 1. Subscribe to FromNum notifications and discover characteristics
+   */
+  public async listenToRadioPackets(server: any) {
+    let service: any = null;
+
+    // Try Official Meshtastic Service first, fallback to legacy
+    try {
+      service = await server.getPrimaryService(MESHTASTIC_SERVICE_UUID);
+      console.log('[BLE] Found Official Meshtastic BLE Service');
+    } catch (e) {
+      try {
+        service = await server.getPrimaryService(MESHTASTIC_BLE_SERVICE_UUID_ALT);
+        console.log('[BLE] Found Legacy Meshtastic BLE Service');
+      } catch (e2) {
+        try {
+          service = await server.getPrimaryService(MESHTASTIC_BLE_SERVICE_UUID_ALT2);
+          console.log('[BLE] Found Alternative Meshtastic BLE Service');
+        } catch (e3) {
+          console.warn('[BLE] Meshtastic Primary Service not found, checking NUS...');
+        }
+      }
+    }
+
+    if (service) {
+      try {
+        this.fromNumChar = await service.getCharacteristic(FROM_NUM_UUID);
+        await this.fromNumChar.startNotifications();
+        this.fromNumChar.addEventListener('characteristicvaluechanged', async () => {
+          await this.readAllPendingFromRadio(this.fromRadioChar);
+        });
+        console.log('[BLE] Subscribed to fromNum notifications');
+      } catch (err) {
+        try {
+          this.fromNumChar = await service.getCharacteristic(MESHTASTIC_CHAR_FROMNUM_ALT2);
+          await this.fromNumChar.startNotifications();
+          this.fromNumChar.addEventListener('characteristicvaluechanged', async () => {
+            await this.readAllPendingFromRadio(this.fromRadioChar);
+          });
+        } catch (e) {
+          console.warn('[BLE] fromNum characteristic not found or failed to subscribe:', err);
+        }
+      }
+
+      try {
+        this.fromRadioChar = await service.getCharacteristic(FROM_RADIO_UUID);
+        try {
+          await this.fromRadioChar.startNotifications();
+          this.fromRadioChar.addEventListener('characteristicvaluechanged', (evt: any) => {
+            const dataView = evt.target.value;
+            if (dataView && dataView.byteLength > 0) {
+              const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+              this.decodeFromRadioPacket(bytes);
+            }
+          });
+          console.log('[BLE] Subscribed to fromRadio direct notifications');
+        } catch (_) {}
+      } catch (err) {
+        try {
+          this.fromRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_FROMRADIO_ALT);
+        } catch (e) {
+          try {
+            this.fromRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_FROMRADIO_ALT2);
+          } catch (e2) {
+            console.warn('[BLE] fromRadio characteristic not found:', err);
+          }
+        }
+      }
+
+      try {
+        this.toRadioChar = await service.getCharacteristic(TO_RADIO_UUID);
+        console.log('[BLE] Found toRadio characteristic');
+        await this.sendToRadioHandshake();
+      } catch (err) {
+        try {
+          this.toRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_TORADIO_ALT);
+          await this.sendToRadioHandshake();
+        } catch (e) {
+          try {
+            this.toRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_TORADIO_ALT2);
+            await this.sendToRadioHandshake();
+          } catch (e2) {
+            console.warn('[BLE] toRadio characteristic not found:', err);
+          }
+        }
+      }
+
+      // Initial read to clear queue & fetch first packets
+      await this.readAllPendingFromRadio(this.fromRadioChar);
+    }
+
+    // Also check Nordic UART Service for NMEA / Serial Stream
+    try {
+      const nusService = await server.getPrimaryService(NORDIC_UART_SERVICE_UUID);
+      if (nusService) {
+        try {
+          this.nusTxChar = await nusService.getCharacteristic(NORDIC_UART_CHAR_TX);
+          await this.nusTxChar.startNotifications();
+          this.nusTxChar.addEventListener('characteristicvaluechanged', (evt: any) => {
+            this.handleBleNotification(evt.target.value);
+          });
+          console.log('[BLE] Subscribed to Nordic UART TX stream');
+        } catch (e) {}
+
+        try {
+          this.nusRxChar = await nusService.getCharacteristic(NORDIC_UART_CHAR_RX);
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * 2. Drain all pending packets from FromRadio until empty
+   */
+  public async readAllPendingFromRadio(fromRadioChar?: any): Promise<void> {
+    const targetChar = fromRadioChar || this.fromRadioChar;
+    if (!targetChar) return;
+
+    let emptyStreak = 0;
+    while (emptyStreak < 2) {
+      try {
+        const dataView = await targetChar.readValue();
+        if (!dataView || dataView.byteLength === 0) {
+          emptyStreak++;
+          break;
+        }
+        emptyStreak = 0;
+        const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+        this.decodeFromRadioPacket(bytes);
+      } catch (err) {
+        break;
+      }
+    }
+  }
+
+  // Send Meshtastic Handshake Packet to ToRadio to request NodeDB (including remote LoRa mesh nodes)
+  public async sendToRadioHandshake() {
+    if (!this.toRadioChar) return;
+    try {
+      // Meshtastic ToRadio want_config_id is field 3: (3 << 3) | 0 = 0x18
+      const randId = Math.floor(Math.random() * 1000000) + 1;
+      const handshake = this.encodeVarintField(3, randId);
+      if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
+        await this.toRadioChar.writeValueWithoutResponse(handshake);
+      } else {
+        await this.toRadioChar.writeValue(handshake);
+      }
+      console.log(`[BLE] Sent ToRadio want_config_id (${randId}) to trigger full NodeDB dump`);
+    } catch (e) {
+      try {
+        const randId = Math.floor(Math.random() * 1000000) + 1;
+        const fallback = this.encodeVarintField(100, randId);
+        await this.toRadioChar.writeValue(fallback);
+      } catch (e2) {
+        console.warn('[BLE] Could not write handshake to ToRadio:', e);
+      }
+    }
+  }
+
+  private encodeVarintField(fieldNum: number, value: number): Uint8Array {
+    const tag = (fieldNum << 3) | 0;
+    const bytes = [tag];
+    let v = value >>> 0;
+    while (v >= 0x80) {
+      bytes.push((v & 0x7F) | 0x80);
+      v >>>= 7;
+    }
+    bytes.push(v & 0x7F);
+    return new Uint8Array(bytes);
+  }
+
+  // Start periodic polling fallback
+  private startBleHeartbeatPolling() {
+    if (this.pollIntervalTimer) clearInterval(this.pollIntervalTimer);
+    this.pollIntervalTimer = setInterval(async () => {
+      if (!this.isBleConnected || !this.gattServer || !this.gattServer.connected) {
+        return;
+      }
+      try {
+        await this.readAllPendingFromRadio();
+      } catch (_) {}
+    }, 2500);
+  }
+
+  private handleFromNumNotification(_dataView: DataView) {
+    if (!this.fromRadioChar) return;
+    this.readAllPendingFromRadio();
+  }
+
+  // Parse incoming BLE GATT characteristic notifications (binary Protobuf and text/NMEA)
+  private handleBleNotification(dataView: DataView) {
+    try {
+      const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+      if (bytes.length === 0) return;
+
+      // Check if text/NMEA string was sent over serial BLE ($GNRMC, $GNGGA, JSON)
+      try {
+        const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+        if (text.includes('$GP') || text.includes('$GN') || text.includes('{')) {
+          this.parseRawTextTelemetry(text);
+          return;
+        }
+      } catch (_) {}
+
+      // Binary Protobuf Parser for Meshtastic FromRadio
+      this.decodeFromRadioPacket(bytes);
+    } catch (e) {
+      console.error('Notification parse error:', e);
+    }
+  }
+
+  // Helper: Read a single protobuf varint
+  private readVarint(bytes: Uint8Array, offset: number): { value: number; nextOffset: number } {
+    let val = 0;
+    let shift = 0;
+    let curr = offset;
+    while (curr < bytes.length) {
+      const b = bytes[curr++];
+      val |= (b & 0x7F) << shift;
+      shift += 7;
+      if ((b & 0x80) === 0) break;
+    }
+    return { value: val >>> 0, nextOffset: curr };
+  }
+
+  // Helper: Read length-delimited bytes sub-slice
+  private readBytes(bytes: Uint8Array, offset: number): { data: Uint8Array; nextOffset: number } {
+    const { value: len, nextOffset } = this.readVarint(bytes, offset);
+    const end = Math.min(bytes.length, nextOffset + len);
+    const data = bytes.subarray(nextOffset, end);
+    return { data, nextOffset: end };
+  }
+
+  // Helper: Read string
+  private readString(bytes: Uint8Array, offset: number): { str: string; nextOffset: number } {
+    const { data, nextOffset } = this.readBytes(bytes, offset);
+    const str = new TextDecoder('utf-8', { fatal: false }).decode(data);
+    return { str, nextOffset };
+  }
+
+  // Parse Position message protobuf payload
+  private parseProtobufPosition(bytes: Uint8Array): {
+    lat: number | null;
+    lng: number | null;
+    alt: number | null;
+    speedKt: number | null;
+    headingDeg: number | null;
+    sats: number | null;
+    precisionBits: number | null;
+    time: number | null;
+  } {
+    let offset = 0;
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let alt: number | null = null;
+    let speedKt: number | null = null;
+    let headingDeg: number | null = null;
+    let sats: number | null = null;
+    let precisionBits: number | null = null;
+    let time: number | null = null;
+
+    while (offset < bytes.length) {
+      const tagByte = bytes[offset++];
+      const wireType = tagByte & 0x07;
+      const fieldNum = tagByte >> 3;
+
+      if (wireType === 0) { // Varint
+        const { value, nextOffset } = this.readVarint(bytes, offset);
+        offset = nextOffset;
+        if (fieldNum === 3) alt = value;
+        if (fieldNum === 8) speedKt = +(value * 1.94384).toFixed(1); // m/s -> knots
+        if (fieldNum === 9) headingDeg = value;
+        if (fieldNum === 10) sats = value;
+        if (fieldNum === 11) precisionBits = value;
+      } else if (wireType === 5) { // 32-bit fixed
+        if (offset + 4 <= bytes.length) {
+          const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 4);
+          const intVal = dv.getInt32(0, true);
+          offset += 4;
+          if (fieldNum === 1) lat = intVal / 1e7;
+          else if (fieldNum === 2) lng = intVal / 1e7;
+          else if (fieldNum === 4) time = intVal;
+          else if (fieldNum === 8) {
+            const floatVal = dv.getFloat32(0, true);
+            if (!isNaN(floatVal) && floatVal >= 0) speedKt = +(floatVal * 1.94384).toFixed(1);
+          }
+          else if (fieldNum === 9) {
+            const floatVal = dv.getFloat32(0, true);
+            if (!isNaN(floatVal) && floatVal >= 0) headingDeg = Math.round(floatVal);
+          }
+        } else {
+          break;
+        }
+      } else if (wireType === 2) { // Length-delimited
+        const { nextOffset } = this.readBytes(bytes, offset);
+        offset = nextOffset;
+      } else if (wireType === 1) { // 64-bit
+        offset += 8;
+      } else {
+        break;
+      }
+    }
+
+    return { lat, lng, alt, speedKt, headingDeg, sats, precisionBits, time };
+  }
+
+  // Parse User message protobuf payload
+  private parseProtobufUser(bytes: Uint8Array): {
+    id?: string;
+    longName?: string;
+    shortName?: string;
+    hwModel?: string;
+  } {
+    let offset = 0;
+    let id: string | undefined;
+    let longName: string | undefined;
+    let shortName: string | undefined;
+
+    while (offset < bytes.length) {
+      const tagByte = bytes[offset++];
+      const wireType = tagByte & 0x07;
+      const fieldNum = tagByte >> 3;
+
+      if (wireType === 2) {
+        const { str, nextOffset } = this.readString(bytes, offset);
+        offset = nextOffset;
+        if (fieldNum === 1) id = str;
+        if (fieldNum === 2) longName = str;
+        if (fieldNum === 3) shortName = str;
+      } else if (wireType === 0) {
+        const { nextOffset } = this.readVarint(bytes, offset);
+        offset = nextOffset;
+      } else if (wireType === 5) {
+        offset += 4;
+      } else if (wireType === 1) {
+        offset += 8;
+      } else {
+        break;
+      }
+    }
+
+    return { id, longName, shortName };
+  }
+
+  // Parse DeviceMetrics protobuf payload
+  private parseProtobufDeviceMetrics(bytes: Uint8Array): {
+    batteryLevel?: number;
+    voltage?: number;
+    channelUtil?: number;
+    airUtilTx?: number;
+  } {
+    let offset = 0;
+    let batteryLevel: number | undefined;
+    let voltage: number | undefined;
+    let channelUtil: number | undefined;
+    let airUtilTx: number | undefined;
+
+    while (offset < bytes.length) {
+      const tagByte = bytes[offset++];
+      const wireType = tagByte & 0x07;
+      const fieldNum = tagByte >> 3;
+
+      if (wireType === 0) {
+        const { value, nextOffset } = this.readVarint(bytes, offset);
+        offset = nextOffset;
+        if (fieldNum === 1) batteryLevel = Math.min(100, Math.max(0, value));
+      } else if (wireType === 5) {
+        if (offset + 4 <= bytes.length) {
+          const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 4);
+          const fVal = dv.getFloat32(0, true);
+          offset += 4;
+          if (fieldNum === 2) voltage = +fVal.toFixed(2);
+          if (fieldNum === 3) channelUtil = +fVal.toFixed(1);
+          if (fieldNum === 4) airUtilTx = +fVal.toFixed(1);
+        } else break;
+      } else if (wireType === 2) {
+        const { nextOffset } = this.readBytes(bytes, offset);
+        offset = nextOffset;
+      } else if (wireType === 1) {
+        offset += 8;
+      } else {
+        break;
+      }
+    }
+
+    return { batteryLevel, voltage, channelUtil, airUtilTx };
+  }
+
+  // Parse EnvironmentMetrics protobuf payload (PortNum 67 / BME280 / BMP280 / BME680)
+  private parseProtobufEnvironmentMetrics(bytes: Uint8Array): {
+    temperature?: number;
+    relativeHumidity?: number;
+    barometricPressure?: number;
+    gasResistance?: number;
+    voltage?: number;
+    current?: number;
+    iaq?: number;
+    windDirection?: number;
+    windSpeed?: number;
+  } {
+    let offset = 0;
+    let temperature: number | undefined;
+    let relativeHumidity: number | undefined;
+    let barometricPressure: number | undefined;
+    let gasResistance: number | undefined;
+    let voltage: number | undefined;
+    let current: number | undefined;
+    let iaq: number | undefined;
+    let windDirection: number | undefined;
+    let windSpeed: number | undefined;
+
+    while (offset < bytes.length) {
+      const tagByte = bytes[offset++];
+      const wireType = tagByte & 0x07;
+      const fieldNum = tagByte >> 3;
+
+      if (wireType === 5) { // 32-bit float
+        if (offset + 4 <= bytes.length) {
+          const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 4);
+          const fVal = dv.getFloat32(0, true);
+          offset += 4;
+          if (fieldNum === 1) temperature = +fVal.toFixed(1);
+          if (fieldNum === 2) relativeHumidity = +fVal.toFixed(1);
+          if (fieldNum === 3) barometricPressure = +fVal.toFixed(1);
+          if (fieldNum === 4) gasResistance = +fVal.toFixed(0);
+          if (fieldNum === 5) voltage = +fVal.toFixed(2);
+          if (fieldNum === 6) current = +fVal.toFixed(1);
+          if (fieldNum === 13) windDirection = Math.round(fVal);
+          if (fieldNum === 14) windSpeed = +(fVal * 1.94384).toFixed(1); // m/s to kt
+        } else break;
+      } else if (wireType === 0) { // varint
+        const { value, nextOffset } = this.readVarint(bytes, offset);
+        offset = nextOffset;
+        if (fieldNum === 7) iaq = value;
+        if (fieldNum === 13) windDirection = value;
+      } else if (wireType === 2) {
+        const { nextOffset } = this.readBytes(bytes, offset);
+        offset = nextOffset;
+      } else if (wireType === 1) {
+        offset += 8;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      temperature,
+      relativeHumidity,
+      barometricPressure,
+      gasResistance,
+      voltage,
+      current,
+      iaq,
+      windDirection,
+      windSpeed,
+    };
+  }
+
+  // Parse overall Telemetry message containing device_metrics (Tag 2) or environment_metrics (Tag 3)
+  private parseProtobufTelemetry(bytes: Uint8Array): {
+    device?: { batteryLevel?: number; voltage?: number; channelUtil?: number; airUtilTx?: number };
+    environment?: {
+      temperature?: number;
+      relativeHumidity?: number;
+      barometricPressure?: number;
+      gasResistance?: number;
+      voltage?: number;
+      current?: number;
+      iaq?: number;
+      windDirection?: number;
+      windSpeed?: number;
+    };
+  } {
+    let offset = 0;
+    let device: any = undefined;
+    let environment: any = undefined;
+
+    while (offset < bytes.length) {
+      const tagByte = bytes[offset++];
+      const wireType = tagByte & 0x07;
+      const fieldNum = tagByte >> 3;
+
+      if (fieldNum === 2 && wireType === 2) { // device_metrics
+        const { data, nextOffset } = this.readBytes(bytes, offset);
+        offset = nextOffset;
+        device = this.parseProtobufDeviceMetrics(data);
+      } else if (fieldNum === 3 && wireType === 2) { // environment_metrics
+        const { data, nextOffset } = this.readBytes(bytes, offset);
+        offset = nextOffset;
+        environment = this.parseProtobufEnvironmentMetrics(data);
+      } else if (wireType === 0) {
+        const { nextOffset } = this.readVarint(bytes, offset);
+        offset = nextOffset;
+      } else if (wireType === 2) {
+        const { nextOffset } = this.readBytes(bytes, offset);
+        offset = nextOffset;
+      } else if (wireType === 5) {
+        offset += 4;
+      } else if (wireType === 1) {
+        offset += 8;
+      } else {
+        break;
+      }
+    }
+
+    // Direct payload fallback
+    if (!device && !environment) {
+      const maybeDev = this.parseProtobufDeviceMetrics(bytes);
+      if (maybeDev.batteryLevel !== undefined || maybeDev.voltage !== undefined) {
+        device = maybeDev;
+      }
+      const maybeEnv = this.parseProtobufEnvironmentMetrics(bytes);
+      if (maybeEnv.temperature !== undefined || maybeEnv.relativeHumidity !== undefined || maybeEnv.barometricPressure !== undefined) {
+        environment = maybeEnv;
+      }
+    }
+
+    return { device, environment };
+  }
+
+  // Helper to upsert a discovered node in the registry and emit update
+  private upsertDiscoveredNode(
+    nodeId: string,
+    partial: Partial<MeshtasticNode>,
+    isLocalBleDevice: boolean = false
+  ): MeshtasticNode {
+    const canonicalId = nodeId.startsWith('!') ? nodeId.toUpperCase() : `!${nodeId.toUpperCase()}`;
+    const hexSuffix = canonicalId.replace('!', '').slice(-4) || 'MESH';
+    const existing = this.discoveredBleNodes.get(canonicalId) || (isLocalBleDevice ? this.tEchoNodeState : null);
+
+    const updatedLat = partial.lat !== undefined && partial.lat !== null && partial.lat !== 0 
+      ? partial.lat 
+      : existing?.lat;
+    const updatedLng = partial.lng !== undefined && partial.lng !== null && partial.lng !== 0 
+      ? partial.lng 
+      : existing?.lng;
+
+    let updatedTrail = existing?.trail || [];
+    if (typeof updatedLat === 'number' && typeof updatedLng === 'number' && !isNaN(updatedLat) && !isNaN(updatedLng) && (updatedLat !== 0 || updatedLng !== 0)) {
+      updatedTrail = [...updatedTrail, { lat: updatedLat, lng: updatedLng }].slice(-1000);
+    }
+
+    const nodeTemp = partial.temperature !== undefined ? partial.temperature : existing?.temperature;
+    const nodeHum = partial.humidity !== undefined ? partial.humidity : (partial.relativeHumidity !== undefined ? partial.relativeHumidity : existing?.humidity);
+    const nodePress = partial.barometricPressure !== undefined ? partial.barometricPressure : existing?.barometricPressure;
+    const nodeGas = partial.gasResistance !== undefined ? partial.gasResistance : existing?.gasResistance;
+    const nodeIaq = partial.iaq !== undefined ? partial.iaq : existing?.iaq;
+
+    const node: MeshtasticNode = {
+      id: canonicalId,
+      longName: partial.longName || existing?.longName || `LoRa Node ${hexSuffix}`,
+      shortName: partial.shortName || existing?.shortName || hexSuffix,
+      mac: partial.mac || existing?.mac || `BLE:${hexSuffix}`,
+      battery: partial.battery ?? existing?.battery ?? 95,
+      voltage: partial.voltage ?? existing?.voltage ?? 4.12,
+      satsInView: partial.satsInView ?? existing?.satsInView ?? 8,
+      satsInFix: partial.satsInFix ?? existing?.satsInFix ?? 6,
+      gpsFix: (typeof updatedLat === 'number' && typeof updatedLng === 'number' && (updatedLat !== 0 || updatedLng !== 0)),
+      altitudeMeters: partial.altitudeMeters ?? existing?.altitudeMeters ?? 10.0,
+      speedKt: partial.speedKt ?? existing?.speedKt ?? 0.0,
+      headingDeg: partial.headingDeg ?? existing?.headingDeg ?? 0,
+      lat: updatedLat,
+      lng: updatedLng,
+      snr: partial.snr ?? existing?.snr ?? (isLocalBleDevice ? 9.2 : 7.8),
+      rssi: partial.rssi ?? existing?.rssi ?? (isLocalBleDevice ? -58 : -72),
+      hops: partial.hops ?? existing?.hops ?? (isLocalBleDevice ? 0 : 1),
+      boundBoatId: partial.boundBoatId !== undefined && partial.boundBoatId !== null ? partial.boundBoatId : (this.nodeBindings.get(canonicalId) || existing?.boundBoatId || null),
+      status: 'OPTIMAL',
+      connectionType: isLocalBleDevice ? 'BLE' : (partial.connectionType || existing?.connectionType || 'LORA_MESH'),
+      isBluetoothConnected: isLocalBleDevice,
+      lastPingTime: partial.lastPingTime ?? Date.now(),
+      hardwareModel: partial.hardwareModel || existing?.hardwareModel || (isLocalBleDevice ? 'LilyGO T-Echo (nRF52840)' : 'LoRa Mesh Node'),
+      firmwareVersion: 'v2.5.x',
+      channelUtil: partial.channelUtil ?? existing?.channelUtil ?? 1.2,
+      airUtilTx: partial.airUtilTx ?? existing?.airUtilTx ?? 0.4,
+      trail: updatedTrail,
+
+      // Environmental & iBME280 Sensor Data
+      temperature: nodeTemp,
+      humidity: nodeHum,
+      relativeHumidity: nodeHum,
+      barometricPressure: nodePress,
+      gasResistance: nodeGas,
+      iaq: nodeIaq,
+      sensorModel: partial.sensorModel || existing?.sensorModel || (nodeTemp !== undefined ? 'BME280' : undefined),
+    };
+
+    this.discoveredBleNodes.set(canonicalId, node);
+    if (isLocalBleDevice) {
+      this.tEchoNodeState = node;
+    }
+
+    this.emitNode(node);
+
+    if (this.mqttConfig.enabled && this.mqttConfig.streamOutbound && typeof node.lat === 'number' && typeof node.lng === 'number') {
+      this.publishNodeToMqtt(node);
+    }
+
+    return node;
+  }
+
+  /**
+   * 3. Decode incoming FromRadio Protobuf packet using ProtoReader
+   */
+  public decodeFromRadioPacket(bytes: Uint8Array) {
+    try {
+      const reader = new ProtoReader(bytes);
+      while (reader.hasMore()) {
+        const tag = reader.readTag();
+        if (!tag) break;
+
+        switch (tag.fieldNum) {
+          // Tag 2 & 11: MeshPacket (LoRa radio packet)
+          case 2:
+          case 11: {
+            if (tag.wireType === 2) {
+              const packetBytes = reader.readBytes();
+              this.decodeMeshPacket(packetBytes);
+            } else {
+              reader.skip(tag.wireType);
+            }
+            break;
+          }
+
+          // Tag 3: MyNodeInfo (Node's own identity)
+          case 3: {
+            if (tag.wireType === 2) {
+              const infoBytes = reader.readBytes();
+              this.decodeMyInfo(infoBytes);
+            } else {
+              reader.skip(tag.wireType);
+            }
+            break;
+          }
+
+          // Tag 4: NodeInfo (Other nodes discovered in mesh / NodeDB)
+          case 4: {
+            if (tag.wireType === 2) {
+              const nodeBytes = reader.readBytes();
+              this.decodeNodeInfo(nodeBytes);
+            } else {
+              reader.skip(tag.wireType);
+            }
+            break;
+          }
+
+          // Tag 7: config_complete_id
+          case 7: {
+            if (tag.wireType === 0) {
+              const configId = reader.readVarint();
+              console.log(`[BLE] Mesh NodeDB & Config sync complete (ID: ${configId})`);
+            } else {
+              reader.skip(tag.wireType);
+            }
+            break;
+          }
+
+          default:
+            reader.skip(tag.wireType);
+            break;
+        }
+      }
+    } catch (err) {
+      console.warn('[BLE] decodeFromRadioPacket parse notice:', err);
+    }
+  }
+
+  /**
+   * Decode MyNodeInfo (Tag 3 in FromRadio)
+   */
+  public decodeMyInfo(infoBytes: Uint8Array) {
+    const reader = new ProtoReader(infoBytes);
+    let myNodeNum: number | null = null;
+    let hasGps = false;
+    let firmwareVersion = 'v2.5.x';
+
+    while (reader.hasMore()) {
+      const tag = reader.readTag();
+      if (!tag) break;
+
+      if (tag.fieldNum === 1 && (tag.wireType === 0 || tag.wireType === 5)) { // my_node_num
+        myNodeNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
+      } else if (tag.fieldNum === 2 && tag.wireType === 0) { // has_gps
+        hasGps = reader.readVarint() !== 0;
+      } else if (tag.fieldNum === 4 && tag.wireType === 2) { // firmware_version
+        firmwareVersion = reader.readString();
+      } else {
+        reader.skip(tag.wireType);
+      }
+    }
+
+    if (myNodeNum !== null) {
+      const myHexId = `!${(myNodeNum >>> 0).toString(16).padStart(8, '0').toUpperCase()}`;
+      this.connectedNodeId = myHexId;
+      const node = this.upsertDiscoveredNode(myHexId, {
+        id: myHexId,
+        longName: this.connectedDeviceName || `T-Echo Base (${myHexId.slice(-4)})`,
+        shortName: myHexId.slice(-4),
+        connectionType: 'BLE',
+        isBluetoothConnected: true,
+        gpsFix: hasGps,
+        firmwareVersion: firmwareVersion,
+      }, true);
+      this.tEchoNodeState = node;
+      console.log(`[BLE] MyNodeInfo decoded: ${myHexId} (${firmwareVersion})`);
+    }
+  }
+
+  /**
+   * Decode NodeInfo (Tag 4 in FromRadio - Node Database entry from LoRa mesh)
+   */
+  public decodeNodeInfo(nodeBytes: Uint8Array) {
+    const reader = new ProtoReader(nodeBytes);
+    let nodeNum: number | null = null;
+    let user: { id?: string; longName?: string; shortName?: string; hwModel?: string } = {};
+    let pos: { lat: number | null; lng: number | null; alt: number | null; speedKt: number | null; headingDeg: number | null; sats: number | null } = { lat: null, lng: null, alt: null, speedKt: null, headingDeg: null, sats: null };
+    let snr = 8.0;
+    let metrics: { batteryLevel?: number; voltage?: number; channelUtil?: number; airUtilTx?: number } = {};
+    let hopsAway = 1;
+
+    while (reader.hasMore()) {
+      const tag = reader.readTag();
+      if (!tag) break;
+
+      if (tag.fieldNum === 1 && (tag.wireType === 0 || tag.wireType === 5)) { // num
+        nodeNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
+      } else if (tag.fieldNum === 2 && tag.wireType === 2) { // user
+        const uReader = new ProtoReader(reader.readBytes());
+        while (uReader.hasMore()) {
+          const uTag = uReader.readTag();
+          if (!uTag) break;
+          if (uTag.fieldNum === 1 && uTag.wireType === 2) user.id = uReader.readString();
+          else if (uTag.fieldNum === 2 && uTag.wireType === 2) user.longName = uReader.readString();
+          else if (uTag.fieldNum === 3 && uTag.wireType === 2) user.shortName = uReader.readString();
+          else if (uTag.fieldNum === 5 && uTag.wireType === 0) user.hwModel = `HW_${uReader.readVarint()}`;
+          else uReader.skip(uTag.wireType);
+        }
+      } else if (tag.fieldNum === 3 && tag.wireType === 2) { // position
+        const pReader = new ProtoReader(reader.readBytes());
+        while (pReader.hasMore()) {
+          const pTag = pReader.readTag();
+          if (!pTag) break;
+          if (pTag.fieldNum === 1 && (pTag.wireType === 5 || pTag.wireType === 0)) {
+            const rawLat = pTag.wireType === 5 ? pReader.readFixed32() : pReader.readInt32();
+            pos.lat = rawLat / 1e7;
+          } else if (pTag.fieldNum === 2 && (pTag.wireType === 5 || pTag.wireType === 0)) {
+            const rawLng = pTag.wireType === 5 ? pReader.readFixed32() : pReader.readInt32();
+            pos.lng = rawLng / 1e7;
+          } else if (pTag.fieldNum === 3 && (pTag.wireType === 0 || pTag.wireType === 5)) {
+            pos.alt = pTag.wireType === 0 ? pReader.readInt32() : pReader.readFixed32();
+          } else if (pTag.fieldNum === 8 && (pTag.wireType === 0 || pTag.wireType === 5)) {
+            const spd = pTag.wireType === 0 ? pReader.readVarint() : pReader.readFloat();
+            pos.speedKt = +(spd * 1.94384).toFixed(1);
+          } else if (pTag.fieldNum === 9 && (pTag.wireType === 0 || pTag.wireType === 5)) {
+            const hdg = pTag.wireType === 0 ? pReader.readVarint() : pReader.readFloat();
+            pos.headingDeg = Math.round(hdg);
+          } else if (pTag.fieldNum === 10 && pTag.wireType === 0) {
+            pos.sats = pReader.readVarint();
+          } else {
+            pReader.skip(pTag.wireType);
+          }
+        }
+      } else if (tag.fieldNum === 4 && tag.wireType === 5) { // snr
+        snr = +reader.readFloat().toFixed(1);
+      } else if (tag.fieldNum === 6 && tag.wireType === 2) { // device_metrics
+        const mReader = new ProtoReader(reader.readBytes());
+        while (mReader.hasMore()) {
+          const mTag = mReader.readTag();
+          if (!mTag) break;
+          if (mTag.fieldNum === 1 && mTag.wireType === 0) metrics.batteryLevel = Math.min(100, Math.max(0, mReader.readVarint()));
+          else if (mTag.fieldNum === 2 && mTag.wireType === 5) metrics.voltage = +mReader.readFloat().toFixed(2);
+          else if (mTag.fieldNum === 3 && mTag.wireType === 5) metrics.channelUtil = +mReader.readFloat().toFixed(1);
+          else if (mTag.fieldNum === 4 && mTag.wireType === 5) metrics.airUtilTx = +mReader.readFloat().toFixed(1);
+          else mReader.skip(mTag.wireType);
+        }
+      } else if (tag.fieldNum === 7 && tag.wireType === 0) { // hops_away
+        hopsAway = reader.readVarint();
+      } else {
+        reader.skip(tag.wireType);
+      }
+    }
+
+    if (nodeNum !== null || user.id) {
+      const canonicalId = user.id ? (user.id.startsWith('!') ? user.id.toUpperCase() : `!${user.id.toUpperCase()}`) : `!${(nodeNum! >>> 0).toString(16).padStart(8, '0').toUpperCase()}`;
+      const isLocal = this.connectedNodeId ? (canonicalId === this.connectedNodeId) : (hopsAway === 0);
+
+      const discovered = this.upsertDiscoveredNode(canonicalId, {
+        longName: user.longName || (isLocal ? this.connectedDeviceName : `Node ${canonicalId.slice(-4)}`),
+        shortName: user.shortName || canonicalId.slice(-4),
+        lat: (pos.lat !== null && !isNaN(pos.lat) && pos.lat !== 0) ? pos.lat : undefined,
+        lng: (pos.lng !== null && !isNaN(pos.lng) && pos.lng !== 0) ? pos.lng : undefined,
+        altitudeMeters: pos.alt ?? undefined,
+        speedKt: pos.speedKt ?? undefined,
+        headingDeg: pos.headingDeg ?? undefined,
+        satsInFix: pos.sats ?? undefined,
+        battery: metrics.batteryLevel ?? undefined,
+        voltage: metrics.voltage ?? undefined,
+        channelUtil: metrics.channelUtil ?? undefined,
+        airUtilTx: metrics.airUtilTx ?? undefined,
+        snr: snr,
+        hops: isLocal ? 0 : hopsAway,
+        connectionType: isLocal ? 'BLE' : 'LORA_MESH',
+      }, isLocal);
+
+      this.emitPacketLog({
+        id: 'pkt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        timestamp: new Date().toLocaleTimeString(),
+        rawTimestamp: Date.now(),
+        fromNode: discovered.id,
+        fromNodeName: discovered.longName,
+        toNode: '^all',
+        portnum: 'NODEINFO_APP',
+        snr: snr,
+        rssi: isLocal ? -58 : -72,
+        hops: isLocal ? 0 : hopsAway,
+        payload: `NodeDB Entry: ${discovered.longName} (${discovered.id}) ${discovered.lat ? `Pos:${discovered.lat.toFixed(4)},${discovered.lng?.toFixed(4)}` : 'No GPS Fix'} Hops:${hopsAway}`,
+      });
+
+      console.log(`[BLE] Discovered LoRa Node from NodeDB: ${discovered.id} (${discovered.longName})`);
+    }
+  }
+
+  /**
+   * Decode MeshPacket (Tag 2 & 11 in FromRadio)
+   */
+  public decodeMeshPacket(packetBytes: Uint8Array) {
+    const reader = new ProtoReader(packetBytes);
+    let fromNum: number | null = null;
+    let toNum: number | null = null;
+    let portnum = 0;
+    let payloadBytes: Uint8Array | null = null;
+    let rxSnr = 8.0;
+    let rxRssi = -70;
+    let hopLimit = 3;
+
+    while (reader.hasMore()) {
+      const tag = reader.readTag();
+      if (!tag) break;
+
+      if (tag.fieldNum === 1 && (tag.wireType === 0 || tag.wireType === 5)) { // from
+        fromNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
+      } else if (tag.fieldNum === 2 && (tag.wireType === 0 || tag.wireType === 5)) { // to
+        toNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
+      } else if (tag.fieldNum === 4 && tag.wireType === 2) { // decoded (Data)
+        const dReader = new ProtoReader(reader.readBytes());
+        while (dReader.hasMore()) {
+          const dTag = dReader.readTag();
+          if (!dTag) break;
+          if (dTag.fieldNum === 1 && dTag.wireType === 0) portnum = dReader.readVarint();
+          else if (dTag.fieldNum === 2 && dTag.wireType === 2) payloadBytes = dReader.readBytes();
+          else dReader.skip(dTag.wireType);
+        }
+      } else if (tag.fieldNum === 7 && tag.wireType === 5) { // rx_snr
+        rxSnr = +reader.readFloat().toFixed(1);
+      } else if (tag.fieldNum === 8 && tag.wireType === 0) { // hop_limit
+        hopLimit = reader.readVarint();
+      } else if (tag.fieldNum === 11 && (tag.wireType === 0 || tag.wireType === 5)) { // rx_rssi
+        rxRssi = reader.readInt32();
+        if (rxRssi > 0) rxRssi = -rxRssi;
+      } else {
+        reader.skip(tag.wireType);
+      }
+    }
+
+    if (fromNum !== null) {
+      const senderId = `!${(fromNum >>> 0).toString(16).padStart(8, '0').toUpperCase()}`;
+      const isLocal = this.connectedNodeId ? (senderId === this.connectedNodeId) : false;
+
+      let updates: Partial<MeshtasticNode> = {
+        snr: rxSnr,
+        rssi: rxRssi,
+        hops: isLocal ? 0 : Math.max(1, 3 - hopLimit),
+        connectionType: isLocal ? 'BLE' : 'LORA_MESH',
+      };
+      let logPayload = `PortNum ${portnum}`;
+      let textMsg: string | undefined;
+
+      if (payloadBytes && payloadBytes.length > 0) {
+        // Port 1: TEXT_MESSAGE_APP
+        if (portnum === 1) {
+          textMsg = new TextDecoder('utf-8', { fatal: false }).decode(payloadBytes);
+          logPayload = `Text: "${textMsg}"`;
+        }
+        // Port 3: POSITION_APP
+        else if (portnum === 3) {
+          const pos = this.parseProtobufPosition(payloadBytes);
+          if (pos.lat !== null && pos.lng !== null && !isNaN(pos.lat) && !isNaN(pos.lng) && (pos.lat !== 0 || pos.lng !== 0)) {
+            updates.lat = pos.lat;
+            updates.lng = pos.lng;
+            if (pos.alt !== null) updates.altitudeMeters = pos.alt;
+            if (pos.speedKt !== null) updates.speedKt = pos.speedKt;
+            if (pos.headingDeg !== null) updates.headingDeg = pos.headingDeg;
+            if (pos.sats !== null) updates.satsInFix = pos.sats;
+
+            // GNSS satellite atomic hardware timestamp (pos.time is in seconds since epoch from GPS receiver)
+            const gnssSatelliteTime = (pos.time !== null && pos.time > 1000000000) ? pos.time * 1000 : Date.now();
+            updates.lastPingTime = gnssSatelliteTime;
+
+            // Buffer point for Store-and-Forward trajectory replay and mark rounding backfill
+            const backfillPt: BackfillPoint = {
+              lat: pos.lat,
+              lng: pos.lng,
+              speedKt: pos.speedKt ?? 0,
+              headingDeg: pos.headingDeg ?? 0,
+              altitudeMeters: pos.alt ?? 0,
+              accuracy: (pos.sats && pos.sats >= 4) ? Math.max(2, 20 - pos.sats) : 5,
+              timestamp: gnssSatelliteTime,
+            };
+            const canonicalSender = senderId.startsWith('!') ? senderId : `!${senderId}`;
+            const buf = this.nodePositionBuffers.get(canonicalSender) || [];
+            buf.push(backfillPt);
+            if (buf.length > 2000) buf.shift();
+            this.nodePositionBuffers.set(canonicalSender, buf);
+
+            const timeStr = new Date(gnssSatelliteTime).toISOString().slice(11, 19);
+            logPayload = `GNSS Sat Fix: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} SOG:${pos.speedKt ?? 0}kt COG:${pos.headingDeg ?? 0}° [GPS Time: ${timeStr}Z]`;
+          }
+        }
+        // Port 4: NODEINFO_APP
+        else if (portnum === 4) {
+          const user = this.parseProtobufUser(payloadBytes);
+          if (user.longName) updates.longName = user.longName;
+          if (user.shortName) updates.shortName = user.shortName;
+          logPayload = `Node Info: ${user.longName || user.shortName || senderId}`;
+        }
+        // Port 67: TELEMETRY_APP
+        else if (portnum === 67) {
+          const telemetry = this.decodeTelemetryPacket(payloadBytes);
+          if (telemetry.batteryPct !== undefined) updates.battery = telemetry.batteryPct;
+          if (telemetry.voltage !== undefined) updates.voltage = telemetry.voltage;
+          if (telemetry.tempC !== undefined) updates.temperature = telemetry.tempC;
+          if (telemetry.humPct !== undefined) {
+            updates.humidity = telemetry.humPct;
+            updates.relativeHumidity = telemetry.humPct;
+          }
+          if (telemetry.pressureHpa !== undefined) updates.barometricPressure = telemetry.pressureHpa;
+          if (telemetry.tempC !== undefined || telemetry.pressureHpa !== undefined) {
+            updates.sensorModel = 'BME280';
+            logPayload = `BME280: ${telemetry.tempC ?? '?'}°C, ${telemetry.humPct ?? '?'}% RH, ${telemetry.pressureHpa ?? '?'} hPa`;
+          } else if (telemetry.batteryPct !== undefined) {
+            logPayload = `Device Telemetry: Bat ${telemetry.batteryPct}% (${telemetry.voltage ?? '?'}V)`;
+          }
+        }
+      }
+
+      const senderNode = this.upsertDiscoveredNode(senderId, updates, isLocal);
+
+      this.emitPacketLog({
+        id: 'pkt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        timestamp: new Date().toLocaleTimeString(),
+        rawTimestamp: Date.now(),
+        fromNode: senderNode.id,
+        fromNodeName: senderNode.longName,
+        toNode: toNum ? `!${(toNum >>> 0).toString(16).padStart(8, '0').toUpperCase()}` : '^all',
+        portnum: portnum === 1 ? 'TEXT_MESSAGE_APP' : (portnum === 3 ? 'POSITION_APP' : (portnum === 4 ? 'NODEINFO_APP' : (portnum === 67 ? 'TELEMETRY_APP' : 'ROUTING_APP'))),
+        snr: rxSnr,
+        rssi: rxRssi,
+        hops: updates.hops,
+        payload: logPayload,
+        textMessage: textMsg,
+      });
+    }
+  }
+
+  /**
+   * 4. Decode Telemetry Protobuf Packet (Port 67)
+   */
+  public decodeTelemetryPacket(payloadBytes: Uint8Array): {
+    tempC?: number;
+    humPct?: number;
+    pressureHpa?: number;
+    batteryPct?: number;
+    voltage?: number;
+  } {
+    const reader = new ProtoReader(payloadBytes);
+    let tempC: number | undefined;
+    let humPct: number | undefined;
+    let pressureHpa: number | undefined;
+    let batteryPct: number | undefined;
+    let voltage: number | undefined;
+
+    while (reader.hasMore()) {
+      const tag = reader.readTag();
+      if (!tag) break;
+
+      // Field 2: DeviceMetrics (Battery, Voltage, Channel Util)
+      if (tag.fieldNum === 2) {
+        const dmReader = new ProtoReader(reader.readBytes());
+        while (dmReader.hasMore()) {
+          const dTag = dmReader.readTag();
+          if (dTag.fieldNum === 1) batteryPct = dmReader.readVarint();
+          else if (dTag.fieldNum === 2) voltage = parseFloat(dmReader.readFloat().toFixed(2));
+          else dmReader.skip(dTag.wireType);
+        }
+      }
+      // Field 3: EnvironmentMetrics (BME280 / SHTC3 Onboard Sensor)
+      else if (tag.fieldNum === 3) {
+        const envReader = new ProtoReader(reader.readBytes());
+        while (envReader.hasMore()) {
+          const eTag = envReader.readTag();
+          if (eTag.fieldNum === 1) tempC = parseFloat(envReader.readFloat().toFixed(1));
+          else if (eTag.fieldNum === 2) humPct = Math.round(envReader.readFloat());
+          else if (eTag.fieldNum === 3) pressureHpa = parseFloat(envReader.readFloat().toFixed(1));
+          else envReader.skip(eTag.wireType);
+        }
+      } else {
+        reader.skip(tag.wireType);
+      }
+    }
+
+    return { tempC, humPct, pressureHpa, batteryPct, voltage };
+  }
+
+  /**
+   * 5. Request BME280 / Environmental Telemetry from local or remote node
+   */
+  public async requestBmeTelemetry(toRadioChar?: any): Promise<boolean> {
+    const targetChar = toRadioChar || this.toRadioChar;
+    if (!targetChar) {
+      console.warn('[BLE] toRadio characteristic not ready');
+      return false;
+    }
+
+    try {
+      // Construct a MeshPacket targeting broadcast with want_response: true on Port 67 (0x43)
+      const dataPayload = new Uint8Array([
+        0x08, 0x43, // portnum: 67 (TELEMETRY_APP)
+        0x18, 0x01, // want_response: true
+      ]);
+
+      const meshPkt = new Uint8Array([
+        0x10, 0xff, 0xff, 0xff, 0xff, 0x0f, // to = 0xFFFFFFFF (broadcast)
+        0x22, dataPayload.length, ...dataPayload // decoded Data field
+      ]);
+
+      // Wrap in ToRadio envelope (field 2 = packet)
+      const toRadioPacket = new Uint8Array([0x12, meshPkt.length, ...meshPkt]);
+      if (typeof targetChar.writeValueWithoutResponse === 'function') {
+        await targetChar.writeValueWithoutResponse(toRadioPacket);
+      } else {
+        await targetChar.writeValue(toRadioPacket);
+      }
+      console.log('[BLE] Sent BME280 Telemetry Request (Port 67 want_response)');
+      return true;
+    } catch (err) {
+      console.warn('[BLE] Failed to send BME telemetry request:', err);
+      return false;
+    }
+  }
+
+
+  // Parse Text / NMEA if Bluetooth serial stream is used ($GNRMC, $GNGGA, $GNVTG)
+  private parseRawTextTelemetry(text: string) {
+    if (!this.tEchoNodeState) return;
+
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('$')) continue;
+
+      if (trimmed.includes('RMC')) {
+        const parts = trimmed.split(',');
+        if (parts.length > 6 && parts[2] === 'A') { // Valid fix
+          const rawLat = parseFloat(parts[3]);
+          const latDeg = Math.floor(rawLat / 100);
+          const latMin = rawLat - latDeg * 100;
+          let lat = latDeg + latMin / 60;
+          if (parts[4] === 'S') lat = -lat;
+
+          const rawLng = parseFloat(parts[5]);
+          const lngDeg = Math.floor(rawLng / 100);
+          const lngMin = rawLng - lngDeg * 100;
+          let lng = lngDeg + lngMin / 60;
+          if (parts[6] === 'W') lng = -lng;
+
+          const spdKt = parseFloat(parts[7]) || 0;
+          const cog = parseFloat(parts[8]) || 0;
+
+          this.tEchoNodeState.lat = lat;
+          this.tEchoNodeState.lng = lng;
+          this.tEchoNodeState.speedKt = spdKt;
+          this.tEchoNodeState.headingDeg = Math.round(cog);
+          this.tEchoNodeState.gpsFix = true;
+          this.tEchoNodeState.lastPingTime = Date.now();
+          this.emitNode(this.tEchoNodeState);
+        }
+      } else if (trimmed.includes('GGA')) {
+        const parts = trimmed.split(',');
+        if (parts.length > 9) {
+          const fixQuality = parseInt(parts[6], 10);
+          if (fixQuality > 0) {
+            const rawLat = parseFloat(parts[2]);
+            const latDeg = Math.floor(rawLat / 100);
+            const latMin = rawLat - latDeg * 100;
+            let lat = latDeg + latMin / 60;
+            if (parts[3] === 'S') lat = -lat;
+
+            const rawLng = parseFloat(parts[4]);
+            const lngDeg = Math.floor(rawLng / 100);
+            const lngMin = rawLng - lngDeg * 100;
+            let lng = lngDeg + lngMin / 60;
+            if (parts[5] === 'W') lng = -lng;
+
+            const sats = parseInt(parts[7], 10) || 8;
+            const alt = parseFloat(parts[9]) || 10;
+
+            this.tEchoNodeState.lat = lat;
+            this.tEchoNodeState.lng = lng;
+            this.tEchoNodeState.satsInFix = sats;
+            this.tEchoNodeState.satsInView = Math.max(sats + 2, 8);
+            this.tEchoNodeState.altitudeMeters = alt;
+            this.tEchoNodeState.gpsFix = true;
+            this.tEchoNodeState.lastPingTime = Date.now();
+            this.emitNode(this.tEchoNodeState);
+          }
+        }
+      } else if (trimmed.includes('VTG')) {
+        const parts = trimmed.split(',');
+        if (parts.length > 7) {
+          const cog = parseFloat(parts[1]) || 0;
+          const spdKt = parseFloat(parts[7]) || 0;
+          this.tEchoNodeState.headingDeg = Math.round(cog);
+          this.tEchoNodeState.speedKt = spdKt;
+          this.tEchoNodeState.lastPingTime = Date.now();
+          this.emitNode(this.tEchoNodeState);
+        }
+      }
+    }
+  }
+
+  // Manually synchronize or update T-Echo telemetry with live device GPS or custom calibration
+  public syncWithDeviceGps(
+    lat: number,
+    lng: number,
+    speedKt = 0,
+    headingDeg = 0,
+    altitudeMeters = 10,
+    sats = 10
+  ) {
+    if (!this.tEchoNodeState) {
+      this.tEchoNodeState = {
+        id: this.connectedNodeId || '!TECHO-LIVE',
+        longName: this.connectedDeviceName || 'LilyGO T-Echo nRF52840',
+        shortName: 'TECHO',
+        mac: 'BLE:ECHO01',
+        battery: 95,
+        voltage: 4.12,
+        satsInView: sats + 2,
+        satsInFix: sats,
+        gpsFix: true,
+        altitudeMeters,
+        speedKt,
+        headingDeg,
+        lat,
+        lng,
+        snr: 9.2,
+        rssi: -58,
+        hops: 0,
+        boundBoatId: null,
+        status: 'OPTIMAL',
+        connectionType: 'BLE',
+        isBluetoothConnected: true,
+        lastPingTime: Date.now(),
+        hardwareModel: 'LilyGO T-Echo (nRF52840 / SX1262)',
+        firmwareVersion: 'v2.5.x',
+        trail: [{ lat, lng }],
+      };
+    } else {
+      this.tEchoNodeState.lat = lat;
+      this.tEchoNodeState.lng = lng;
+      this.tEchoNodeState.speedKt = speedKt;
+      this.tEchoNodeState.headingDeg = headingDeg;
+      this.tEchoNodeState.altitudeMeters = altitudeMeters;
+      this.tEchoNodeState.satsInFix = sats;
+      this.tEchoNodeState.gpsFix = true;
+      this.tEchoNodeState.lastPingTime = Date.now();
+      const oldTrail = this.tEchoNodeState.trail || [];
+      this.tEchoNodeState.trail = [...oldTrail, { lat, lng }].slice(-1000);
+    }
+
+    this.emitNode(this.tEchoNodeState);
+    if (this.mqttConfig.enabled && this.mqttConfig.streamOutbound) {
+      this.publishNodeToMqtt(this.tEchoNodeState);
+    }
+  }
+
+  // --- DISCOVERY OF OTHER LORA NODES VIA T-ECHO ---
+  public registerDiscoveredLoraNode(
+    id: string,
+    longName: string,
+    lat: number,
+    lng: number,
+    battery = 85,
+    snr = 6.2,
+    rssi = -76,
+    hops = 1
+  ): MeshtasticNode {
+    const loraNode: MeshtasticNode = {
+      id: id.startsWith('!') ? id : `!${id}`,
+      longName: longName || `LoRa Node ${id}`,
+      shortName: id.slice(-4).toUpperCase(),
+      mac: `24:6F:28:${id.slice(-4)}:10`,
+      battery: battery,
+      voltage: +(3.3 + (battery / 100) * 0.9).toFixed(2),
+      satsInView: 11,
+      satsInFix: 9,
+      gpsFix: true,
+      altitudeMeters: 10.0,
+      speedKt: +(4 + Math.random() * 5).toFixed(1),
+      headingDeg: Math.floor(Math.random() * 360),
+      lat: lat,
+      lng: lng,
+      snr: snr,
+      rssi: rssi,
+      hops: hops,
+      boundBoatId: null,
+      status: 'OPTIMAL',
+      connectionType: 'LORA_MESH',
+      isBluetoothConnected: false,
+      lastPingTime: Date.now(),
+      hardwareModel: 'LoRa Mesh Receiver (via T-Echo)',
+      firmwareVersion: 'v2.5.x',
+      channelUtil: 1.5,
+      airUtilTx: 0.5,
+      trail: [{ lat, lng }],
+    };
+
+    this.emitNode(loraNode);
+    this.emitPacketLog({
+      id: 'pkt-' + Date.now(),
+      timestamp: new Date().toLocaleTimeString(),
+      fromNode: loraNode.id,
+      toNode: '^all',
+      portnum: 'POSITION_APP',
+      snr: snr,
+      rssi: rssi,
+      payload: `LoRa Mesh Position: Lat:${lat.toFixed(5)} Lng:${lng.toFixed(5)} SOG:${loraNode.speedKt}kt COG:${loraNode.headingDeg}°`,
+    });
+
+    return loraNode;
+  }
+
+  // --- MQTT INBOUND & OUTBOUND ---
+  public async connectMqtt(config: MqttConfig): Promise<{ success: boolean; error?: string }> {
+    const rawUrl = (config.brokerUrl || '').trim();
+    const isOfficialMeshtastic = rawUrl.includes('mqtt.meshtastic.org');
+
+    if (this.mqttClient) {
+      try {
+        this.mqttClient.end(true);
+      } catch (e) {}
+      this.mqttClient = null;
+    }
+
+    if (!config.enabled) {
+      this.isMqttConnected = false;
+      saveMqttConfig({ ...config, enabled: false });
+      this.emitMqttStatus({ connected: false, brokerUrl: config.brokerUrl });
+
+      if (isOfficialMeshtastic) {
+        try {
+          await fetch('/api/mqtt/disconnect', { method: 'POST' });
+        } catch (e) {}
+      }
+      return { success: true };
+    }
+
+    // Official Meshtastic broker (mqtt.meshtastic.org) runs on TCP / TLS ports without direct browser WSS.
+    // Use our built-in backend bridge to connect seamlessly via TLS/TCP to mqtt.meshtastic.org.
+    if (isOfficialMeshtastic) {
+      try {
+        const res = await fetch('/api/mqtt/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            brokerUrl: config.brokerUrl || 'mqtt.meshtastic.org',
+            topic: config.topic || 'msh/2/json/#',
+            username: config.username || 'meshdev',
+            password: config.password || 'large4cats',
+          }),
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          this.isMqttConnected = true;
+          this.mqttConfig = { ...config, enabled: true };
+          saveMqttConfig({ ...config, enabled: true });
+          this.emitMqttStatus({ connected: true, brokerUrl: config.brokerUrl });
+          return { success: true };
+        } else {
+          this.isMqttConnected = false;
+          saveMqttConfig({ ...config, enabled: false });
+          this.emitMqttStatus({ connected: false, error: data?.error });
+          return {
+            success: false,
+            error: data?.error || 'Failed to start Meshtastic server MQTT bridge.',
+          };
+        }
+      } catch (err: any) {
+        this.isMqttConnected = false;
+        saveMqttConfig({ ...config, enabled: false });
+        this.emitMqttStatus({ connected: false, error: err?.message });
+        return {
+          success: false,
+          error: `Server Bridge Error: ${err?.message || 'Unable to connect to Meshtastic broker'}`,
+        };
+      }
+    }
+
+    // Direct Browser WebSocket connection for brokers with WSS support (HiveMQ, EMQX, etc.)
+    const wsUrl = normalizeMqttWsUrl(config.brokerUrl);
+    this.mqttConfig = { ...config, brokerUrl: wsUrl, enabled: true };
+
+    try {
+      const client = mqtt.connect(wsUrl, {
+        username: config.username || undefined,
+        password: config.password || undefined,
+        clientId: `tmtrac_${Math.random().toString(16).substring(2, 8)}`,
+        clean: true,
+        connectTimeout: 8000,
+        reconnectPeriod: 5000,
+      });
+
+      return new Promise((resolve) => {
+        let settled = false;
+
+        const timeoutId = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            this.isMqttConnected = false;
+            this.emitMqttStatus({ connected: false, error: `Connection timed out connecting to ${wsUrl}` });
+            try {
+              client.end(true);
+            } catch (e) {}
+            resolve({
+              success: false,
+              error: `Connection timed out connecting to ${wsUrl}. Verify broker is online or use HiveMQ/EMQX WSS presets.`,
+            });
+          }
+        }, 8500);
+
+        client.on('connect', () => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            this.mqttClient = client;
+            this.isMqttConnected = true;
+            saveMqttConfig({ ...config, brokerUrl: wsUrl, enabled: true });
+            this.emitMqttStatus({ connected: true, brokerUrl: wsUrl });
+
+            client.subscribe(config.topic, { qos: 0 }, (err) => {
+              if (err) {
+                resolve({ success: false, error: err.message });
+              } else {
+                resolve({ success: true });
+              }
+            });
+          }
+        });
+
+        client.on('message', (topic, payload) => {
+          this.handleMqttMessage(topic, payload);
+        });
+
+        client.on('close', () => {
+          this.isMqttConnected = false;
+          this.emitMqttStatus({ connected: false, brokerUrl: wsUrl });
+        });
+
+        client.on('error', (err: any) => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            this.isMqttConnected = false;
+            this.emitMqttStatus({ connected: false, error: err?.message });
+            try {
+              client.end(true);
+            } catch (e) {}
+            resolve({ success: false, error: err?.message || 'MQTT Connection Error' });
+          }
+        });
+      });
+    } catch (err: any) {
+      this.isMqttConnected = false;
+      this.emitMqttStatus({ connected: false, error: err?.message });
+      return { success: false, error: err?.message || 'MQTT Connection Error' };
+    }
+  }
+
+  public publishNodeToMqtt(node: MeshtasticNode) {
+    if (!this.mqttClient || !this.mqttClient.connected) return;
+
+    // Standard Meshtastic MQTT JSON topic: <root_topic>/2/json/<channel>/<node_id>
+    const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
+    // If base topic doesn't end in channel name (e.g. LongFast), add LongFast/!id
+    const hasChannel = cleanBase.split('/').length >= 4;
+    const topic = hasChannel
+      ? `${cleanBase}/${node.id.startsWith('!') ? node.id : `!${node.id}`}`
+      : `${cleanBase}/LongFast/${node.id.startsWith('!') ? node.id : `!${node.id}`}`;
+
+    // Convert hex nodeId (e.g. !12345678) to integer uint32 if valid hex
+    const hexClean = node.id.replace('!', '').replace(/[^0-9a-fA-F]/g, '');
+    const fromUint32 = hexClean.length === 8 ? parseInt(hexClean, 16) : 0;
+
+    // Build 100% Meshtastic JSON Spec Compliant Payload
+    const payload = JSON.stringify({
+      channel: 0,
+      from: fromUint32 || node.id,
+      type: 'position',
+      sender: node.longName || node.id,
+      payload: {
+        latitude_i: Math.round(node.lat * 1e7),
+        longitude_i: Math.round(node.lng * 1e7),
+        altitude: Math.round(node.altitudeMeters || 0),
+        // ground_speed in Meshtastic spec is in m/s (1 knot = 0.514444 m/s)
+        ground_speed: +(Math.round((node.speedKt || 0) * 0.514444)).toFixed(1),
+        ground_track: Math.round(node.headingDeg || 0),
+        battery_level: Math.round(node.battery || 100),
+        voltage: +(node.voltage || 4.1).toFixed(2),
+        sats_in_view: node.satsInView || 8,
+        precision_bits: 32,
+        time: Math.floor(Date.now() / 1000),
+      },
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+
+    this.mqttClient.publish(topic, payload, { qos: 0 });
+  }
+
+  private handleMqttMessage(topic: string, payload: Buffer) {
+    try {
+      const text = payload.toString('utf-8');
+      const json = JSON.parse(text);
+
+      // Convert uint32 integer ID or string to canonical '!hex' format
+      let nodeId = 'NODE';
+      if (typeof json.from === 'number') {
+        nodeId = `!${(json.from >>> 0).toString(16).padStart(8, '0')}`;
+      } else if (typeof json.from === 'string' && json.from.trim()) {
+        const raw = json.from.trim();
+        nodeId = raw.startsWith('!') ? raw : `!${raw}`;
+      } else {
+        const lastPart = topic.split('/').pop() || 'NODE';
+        nodeId = lastPart.startsWith('!') ? lastPart : `!${lastPart}`;
+      }
+
+      this.emitPacketLog({
+        id: 'pkt-' + Date.now(),
+        timestamp: new Date().toLocaleTimeString(),
+        fromNode: nodeId,
+        toNode: json.to || '^all',
+        portnum: json.type === 'position' ? 'POSITION_APP' : (json.type === 'telemetry' ? 'TELEMETRY_APP' : (json.type === 'nodeinfo' ? 'NODEINFO_APP' : 'TEXT_MESSAGE_APP')),
+        snr: json.snr ?? 8.0,
+        rssi: json.rssi ?? -65,
+        payload: text.slice(0, 100),
+      });
+
+      if (json.type === 'position' && json.payload) {
+        const p = json.payload;
+        const lat = typeof p.latitude_i === 'number' ? p.latitude_i / 1e7 : (typeof p.lat === 'number' ? p.lat : (typeof p.latitude === 'number' ? p.latitude : undefined));
+        const lng = typeof p.longitude_i === 'number' ? p.longitude_i / 1e7 : (typeof p.lng === 'number' ? p.lng : (typeof p.longitude === 'number' ? p.longitude : undefined));
+        // ground_speed in Meshtastic position protobuf is in m/s (1 m/s = 1.94384 knots)
+        const speed = typeof p.ground_speed === 'number' ? +(p.ground_speed * 1.94384).toFixed(1) : (typeof p.speed === 'number' ? p.speed : 0);
+        const heading = p.ground_track ?? p.heading ?? 0;
+
+        if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+          const existing = this.tEchoNodeState?.id === nodeId ? this.tEchoNodeState : null;
+          const node: MeshtasticNode = {
+            id: nodeId,
+            longName: json.sender || (existing ? existing.longName : `MQTT Node ${nodeId.slice(-4)}`),
+            shortName: nodeId.slice(-4).toUpperCase(),
+            mac: `MQTT:${nodeId.slice(-4)}`,
+            battery: p.battery_level ?? (existing?.battery || 85),
+            voltage: p.voltage ?? (existing?.voltage || 4.0),
+            satsInView: p.sats_in_view ?? 8,
+            satsInFix: 7,
+            gpsFix: true,
+            altitudeMeters: p.altitude ?? 10,
+            speedKt: speed,
+            headingDeg: heading,
+            lat: lat,
+            lng: lng,
+            snr: json.snr ?? 7.5,
+            rssi: json.rssi ?? -70,
+            hops: 1,
+            boundBoatId: existing?.boundBoatId || null,
+            status: 'OPTIMAL',
+            connectionType: 'MQTT',
+            isBluetoothConnected: false,
+            lastPingTime: Date.now(),
+            hardwareModel: 'MQTT Gateway Feed',
+            firmwareVersion: 'v2.5.x',
+            trail: existing?.trail ? [...existing.trail, { lat, lng }].slice(-1000) : [{ lat, lng }],
+          };
+          this.emitNode(node);
+        }
+      }
+    } catch (e) {
+      console.warn('MQTT payload parse error:', e);
+    }
+  }
+
+  public disconnectAll() {
+    this.stopAutoGpsSync();
+    if (this.pollIntervalTimer) {
+      clearInterval(this.pollIntervalTimer);
+      this.pollIntervalTimer = null;
+    }
+    if (this.gattDevice && this.gattDevice.gatt && this.gattDevice.gatt.connected) {
+      this.gattDevice.gatt.disconnect();
+    }
+    this.isBleConnected = false;
+    this.gattServer = null;
+    this.fromRadioChar = null;
+    this.toRadioChar = null;
+    this.fromNumChar = null;
+    this.nusTxChar = null;
+    this.nusRxChar = null;
+
+    if (this.mqttClient) {
+      this.mqttClient.end();
+      this.mqttClient = null;
+    }
+  }
+}
+
+export const meshtasticService = new MeshtasticBleMqttService();

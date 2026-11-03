@@ -1,0 +1,416 @@
+import React, { useState } from 'react';
+import {
+  X,
+  User,
+  Lock,
+  Mail,
+  Anchor,
+  Compass,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  ShieldCheck,
+  Award,
+  Crown,
+  ArrowRight,
+} from 'lucide-react';
+import { authService } from '../services/authService';
+import { tenantService } from '../services/tenantService';
+import { UserAccount } from '../types/regatta';
+
+interface UserAuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialMode?: 'login' | 'register-participant' | 'register-org';
+  onSuccess?: (user: UserAccount) => void;
+}
+
+export const UserAuthModal: React.FC<UserAuthModalProps> = ({
+  isOpen,
+  onClose,
+  initialMode = 'login',
+  onSuccess,
+}) => {
+  const [mode, setMode] = useState<'login' | 'register-participant' | 'register-org'>(initialMode);
+  const [loginInput, setLoginInput] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Participant form fields
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [sailingClub, setSailingClub] = useState('');
+  const [sailNumber, setSailNumber] = useState('');
+  const [handicapRating, setHandicapRating] = useState('IRC 1.000');
+  const [role, setRole] = useState<'RACE_OFFICER' | 'SKIPPER' | 'SPECTATOR'>('SKIPPER');
+
+  // Organization registration fields
+  const [orgName, setOrgName] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const res = await authService.login(loginInput, password);
+    setLoading(false);
+    if (res.success && res.user) {
+      await tenantService.fetchCurrentTenant();
+      onSuccess?.(res.user);
+      onClose();
+    } else {
+      setError(res.error || 'Failed to sign in. Please verify credentials.');
+    }
+  };
+
+  const handleRegisterParticipant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const res = await authService.register({
+      email,
+      username,
+      password,
+      fullName,
+      sailingClub,
+      sailNumber,
+      handicapRating,
+      role,
+    });
+    setLoading(false);
+    if (res.success && res.user) {
+      onSuccess?.(res.user);
+      onClose();
+    } else {
+      setError(res.error || 'Registration failed. Please check your inputs.');
+    }
+  };
+
+  const handleRegisterOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const res = await tenantService.registerOrganization({
+      organizationName: orgName,
+      adminEmail: email,
+      adminUsername: username,
+      password,
+      fullName,
+      sailingClub: orgName,
+    });
+    setLoading(false);
+    if (res.success && res.user) {
+      onSuccess?.(res.user);
+      onClose();
+    } else {
+      setError(res.error || 'Failed to create organization. Please verify details.');
+    }
+  };
+
+  return (
+    <div
+      id="user-auth-modal-backdrop"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        id="user-auth-modal-container"
+        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col text-slate-100"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 via-[#0a1528] to-slate-900 p-4 sm:p-6 border-b border-slate-700/80 flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              {mode === 'register-org' ? <Building2 className="w-5 h-5" /> : <Anchor className="w-5 h-5" />}
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
+                {mode === 'login' && 'Sign In to TMTRAC'}
+                {mode === 'register-participant' && 'Participant Registration'}
+                {mode === 'register-org' && 'Register Organization / Club'}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {mode === 'login' && 'Access your organization events or participant vessel telemetry.'}
+                {mode === 'register-participant' && 'Register your skipper or race crew account for live boat tracking.'}
+                {mode === 'register-org' && 'Create your sailing club tenant with isolated regattas and plan limits.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab Selector */}
+        <div className="grid grid-cols-3 border-b border-slate-800 bg-slate-950/40 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => { setMode('login'); setError(null); }}
+            className={`py-2.5 px-2 text-center transition-colors font-semibold cursor-pointer ${
+              mode === 'login'
+                ? 'border-b-2 border-cyan-400 text-cyan-300 bg-cyan-500/5'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('register-participant'); setError(null); }}
+            className={`py-2.5 px-2 text-center transition-colors font-semibold cursor-pointer ${
+              mode === 'register-participant'
+                ? 'border-b-2 border-cyan-400 text-cyan-300 bg-cyan-500/5'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Join as Sailor
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('register-org'); setError(null); }}
+            className={`py-2.5 px-2 text-center transition-colors font-semibold cursor-pointer ${
+              mode === 'register-org'
+                ? 'border-b-2 border-cyan-400 text-cyan-300 bg-cyan-500/5'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Create Club
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <div className="p-6 overflow-y-auto flex-1">
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* MODE 1: LOGIN */}
+          {mode === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1.5">Username or Email</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    placeholder="me@email.com"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono font-bold text-sm shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? 'Authenticating...' : 'Sign In'}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+          {/* MODE 2: REGISTER PARTICIPANT */}
+          {mode === 'register-participant' && (
+            <form onSubmit={handleRegisterParticipant} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Captain Jack"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="sailor_jack"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="jack@yacht.com"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Sail Number</label>
+                  <input
+                    type="text"
+                    value={sailNumber}
+                    onChange={(e) => setSailNumber(e.target.value)}
+                    placeholder="MAS 88"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Participant Role</label>
+                  <select
+                    value={role}
+                    onChange={(e: any) => setRole(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="SKIPPER">Skipper / Helm</option>
+                    <option value="RACE_OFFICER">Race Officer / Jury</option>
+                    <option value="SPECTATOR">Spectator Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono font-bold text-xs shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? 'Registering...' : 'Register as Participant'}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+          {/* MODE 3: REGISTER ORGANIZATION (TENANT) */}
+          {mode === 'register-org' && (
+            <form onSubmit={handleRegisterOrg} className="space-y-3.5">
+              <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-200">
+                Creates an isolated <strong>Organization Tenant</strong> with Free tier limits (1 active event, 10 boats). You can upgrade anytime.
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Club or Organization Name</label>
+                <div className="relative">
+                  <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="e.g. Royal Selangor Yacht Club"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Admin Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Commodore Smith"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Admin Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="rsyc_admin"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Admin Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@rsyc.com.my"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Admin Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono font-bold text-xs shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? 'Creating Tenant...' : 'Create Organization (Free Starter)'}
+                <Crown className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,6 @@
+{
+  "name": "TMTRAC",
+  "description": "LoRa Mesh Marine Regatta & Offshore Race Management System with Live Spectator Tracking, Automated OCS, Handicap Rules, and Gemini AI Assistant",
+  "requestFramePermissions": ["bluetooth", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
