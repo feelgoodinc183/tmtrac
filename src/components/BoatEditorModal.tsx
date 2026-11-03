@@ -292,7 +292,7 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
               onChange={(e) => setNodeId(e.target.value)}
               className="w-full bg-canvas border border-line focus:border-accent rounded-xl px-3 py-2 text-xs text-accent outline-none transition-all"
             >
-              <option value="">-- No Hardware Node Assigned (Autonomous Simulation) --</option>
+              <option value="">No tracker yet</option>
               {nodes.map((n) => {
                 const hasPos = typeof n.lat === 'number' && typeof n.lng === 'number' && !isNaN(n.lat) && !isNaN(n.lng) && n.lat !== 0 && n.lng !== 0;
                 const posStr = hasPos ? ` • GPS Fix: ${n.lat.toFixed(4)}°, ${n.lng.toFixed(4)}°` : '';

@@ -672,7 +672,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   ) : (
                     <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-line/40 text-ink-muted px-1">
                       <span className="flex items-center gap-1 italic text-ink-muted">
-                        No tracker: position simulated
+                        No tracker: position not live
                       </span>
                       {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
                         <button

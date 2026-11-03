@@ -1270,19 +1270,17 @@ export default function App() {
     ),
   ]);
 
-  // Dead Reckoning Telemetry Simulation & Course Progress Engine (paused during active replay)
+  // Race progress engine: timing, mark roundings, finish detection and ranking (paused during replay)
   useEffect(() => {
     if (showReplayBar) return;
     const tickInterval = raceState.telemetryRate === 'HIGH_FREQUENCY' ? 1000 : 3000;
 
-    const simulationTimer = setInterval(() => {
+    const progressTimer = setInterval(() => {
       setBoats((prevBoats) => {
         const updatedBoats = prevBoats.map((boat, boatIdx) => {
           const dtSec = tickInterval / 1000;
           const safeLat = typeof boat.lat === 'number' && Number.isFinite(boat.lat) ? boat.lat : 6.307;
           const safeLng = typeof boat.lng === 'number' && Number.isFinite(boat.lng) ? boat.lng : 99.843;
-          let safeSog = typeof boat.sog === 'number' && Number.isFinite(boat.sog) ? boat.sog : 5;
-          let safeCog = typeof boat.cog === 'number' && Number.isFinite(boat.cog) ? boat.cog : 0;
 
           // Look up independent class race state for this boat's class
           const boatClassState = getClassRaceState(raceState, boat.class);
@@ -1334,49 +1332,12 @@ export default function App() {
             nodes.some((n) => n.boundBoatId === boat.id) ||
             (deviceGps.active && deviceGps.profile?.boundBoatId === boat.id);
 
-          if (isBoundToTracker) {
-            // Do NOT apply synthetic dead-reckoning movement to hardware/GPS tracked boats.
-            // Preserve live telemetry received from GPS/Meshtastic hardware while evaluating race progress.
-            return {
-              ...boat,
-              status: updatedStatus,
-              markRoundings: progress.updatedRoundings,
-              dtw: progress.dtwNm,
-              elapsedSeconds: newElapsed,
-              correctedSeconds: newCorrected,
-            };
-          }
-
-          // In simulation for unbound boats, guide boat steering toward target mark if this class is racing
-          if (progress.targetMark && updatedStatus !== 'FINISHED' && boatClassState.status === 'RACING') {
-            const targetBearing = calculateBearingDeg(safeLat, safeLng, progress.targetMark.lat, progress.targetMark.lng);
-            // Slight steering adjustment per boat index for realistic separation
-            const jitter = ((boatIdx % 3) - 1) * 2;
-            safeCog = (targetBearing + jitter + 360) % 360;
-            safeSog = 6.5 * (boat.handicapRating || 1.0) + (boatIdx % 2) * 0.4;
-          } else if (updatedStatus === 'FINISHED') {
-            safeSog = 1.0; // Slow down in finish area
-          }
-
-          const distDegrees = safeSog * 0.000008 * dtSec;
-          const rad = (safeCog * Math.PI) / 180;
-
-          const rawLat = safeLat + distDegrees * Math.cos(rad);
-          const rawLng = safeLng + distDegrees * Math.sin(rad) * 1.5;
-
-          const newLat = Number.isFinite(rawLat) ? +rawLat.toFixed(6) : safeLat;
-          const newLng = Number.isFinite(rawLng) ? +rawLng.toFixed(6) : safeLng;
-          const existingTrail = Array.isArray(boat.trail) ? boat.trail.filter((t) => t && Number.isFinite(t.lat) && Number.isFinite(t.lng)) : [];
-          const newTrail = [...existingTrail, { lat: newLat, lng: newLng }].slice(-1000);
-
+          // Only real position data moves a boat. A boat without a tracker stays where it is at
+          // 0 kt, so it can't round marks or finish on its own (the race officer can set its
+          // status by hand); it used to be sailed round the course by a simulator.
           return {
             ...boat,
-            lat: newLat,
-            lng: newLng,
-            sog: safeSog,
-            cog: safeCog,
-            heading: safeCog,
-            trail: newTrail,
+            ...(isBoundToTracker ? {} : { sog: 0 }),
             status: updatedStatus,
             markRoundings: progress.updatedRoundings,
             dtw: progress.dtwNm,
@@ -1427,7 +1388,7 @@ export default function App() {
       );
     }, tickInterval);
 
-    return () => clearInterval(simulationTimer);
+    return () => clearInterval(progressTimer);
   }, [raceState.telemetryRate, raceState.countdownSeconds, raceState.status, marks]);
 
   // Handle Mark Updating and Realtime Broadcast

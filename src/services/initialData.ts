@@ -162,20 +162,6 @@ export const INITIAL_RACE_STATE: RaceState = {
   pendingSyncBuffer: 0,
 };
 
-export function generateTrail(startLat: number, startLng: number, cogDeg: number, pointsCount = 50): Array<{ lat: number; lng: number }> {
-  if (typeof startLat !== 'number' || typeof startLng !== 'number' || isNaN(startLat) || isNaN(startLng)) {
-    return [];
-  }
-  const trail: Array<{ lat: number; lng: number }> = [];
-  const rad = (((cogDeg || 0) - 180) * Math.PI) / 180;
-  const step = 0.00018;
-  for (let i = pointsCount; i >= 0; i--) {
-    const lat = startLat + i * step * Math.cos(rad) + Math.sin(i * 0.28) * 0.00003;
-    const lng = startLng + i * step * Math.sin(rad) * 1.4 + Math.cos(i * 0.28) * 0.00003;
-    trail.push({ lat: +lat.toFixed(6), lng: +lng.toFixed(6) });
-  }
-  return trail;
-}
 
 export function generateMultiLegTrail(
   startLat: number,

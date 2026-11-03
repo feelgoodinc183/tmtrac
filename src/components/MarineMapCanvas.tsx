@@ -15,7 +15,6 @@ import {
 import { MapLayersControl } from './MapLayersControl';
 import { MarkDetailModal } from './MarkDetailModal';
 import { calculateCourseLegs, getOrderedCourseSequence, calculateBearingDeg } from '../services/courseService';
-import { generateTrail } from '../services/initialData';
 import {
   Compass,
   Wind,
@@ -412,9 +411,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
     const targetBoat = boats.find((b) => b.id === followedTargetId);
     if (targetBoat) {
-      const boatTrail = (targetBoat.trail && targetBoat.trail.length >= 2)
-        ? targetBoat.trail
-        : generateTrail(targetBoat.lat, targetBoat.lng, targetBoat.cog || targetBoat.heading || 320, 50);
+      // Only the real recorded track; no made-up wake
+      const boatTrail = targetBoat.trail || [];
       const ratio = replayActive ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
       const interp = getInterpolatedTrajectory(
         boatTrail,
@@ -698,10 +696,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         boundNode?.isDeviceGps ||
         (deviceGps?.active && (deviceGps.profile?.boundBoatId === b.id || b.nodeId === deviceGps.profile?.deviceId || b.nodeId === 'device-phone-local'));
 
-      // Ensure rich trajectory for replay
-      const boatTrail = (b.trail && Array.isArray(b.trail) && b.trail.length >= 2)
-        ? b.trail
-        : generateTrail(b.lat, b.lng, b.cog || b.heading || 320, 50);
+      // Only the real recorded track; a boat without one shows no trail
+      const boatTrail = Array.isArray(b.trail) ? b.trail : [];
 
       const replayRatio = (playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800);
       const {

@@ -512,7 +512,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                 ) : boat.nodeId ? (
                                   <span className="text-xs text-accent">GPS Mesh</span>
                                 ) : (
-                                  <span className="text-xs text-ink-muted">Sim / Unbound</span>
+                                  <span className="text-xs text-ink-muted">No tracker</span>
                                 )}
                               </td>
                               <td className="px-3 py-2.5 text-right">
