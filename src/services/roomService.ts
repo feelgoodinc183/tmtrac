@@ -47,14 +47,14 @@ class RoomService {
     const savedPin = urlPin || localStorage.getItem(ROOM_PINS_KEY_PREFIX + targetRoom);
     if (savedPin) {
       this.verifyPin(savedPin, targetRoom).then((res) => {
-        this.isOrganizerRole = res.isAdmin;
+        this.isOrganizerRole = res.canEdit;
         this.isParticipantRole = res.isParticipant;
         this.notifyListeners();
       });
     } else {
       // Check if current user is owner or admin
       this.verifyPin('', targetRoom).then((res) => {
-        if (res.isAdmin) {
+        if (res.canEdit) {
           this.isOrganizerRole = true;
           this.notifyListeners();
         }
@@ -180,7 +180,7 @@ class RoomService {
             lastActive: data.room.lastActive,
             hasPassword: true,
           };
-          if (data.room.isOwner || data.room.isAdmin) {
+          if (data.room.isOwner || data.room.canEdit || data.room.isAdmin) {
             this.isOrganizerRole = true;
           }
           this.notifyListeners();
@@ -193,7 +193,7 @@ class RoomService {
     return null;
   }
 
-  public async verifyPin(pin: string, roomCode = this.activeRoomCode): Promise<{ valid: boolean; isAdmin: boolean; isParticipant: boolean }> {
+  public async verifyPin(pin: string, roomCode = this.activeRoomCode): Promise<{ valid: boolean; isAdmin: boolean; isParticipant: boolean; canEdit: boolean }> {
     try {
       const res = await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/verify-pin`, {
         method: 'POST',
@@ -204,19 +204,19 @@ class RoomService {
         const data = await res.json();
         if (data.valid) {
           if (roomCode === this.activeRoomCode) {
-            this.isOrganizerRole = !!data.isAdmin;
+            this.isOrganizerRole = !!(data.canEdit ?? data.isAdmin);
             this.isParticipantRole = !!data.isParticipant;
             if (pin) this.activeRoomPin = pin;
             if (pin && data.isAdmin) localStorage.setItem(ROOM_PINS_KEY_PREFIX + roomCode, pin);
             this.notifyListeners();
           }
-          return { valid: true, isAdmin: !!data.isAdmin, isParticipant: !!data.isParticipant };
+          return { valid: true, isAdmin: !!data.isAdmin, isParticipant: !!data.isParticipant, canEdit: !!(data.canEdit ?? data.isAdmin) };
         }
       }
     } catch (e) {
       console.warn('PIN verification network error:', e);
     }
-    return { valid: false, isAdmin: false, isParticipant: false };
+    return { valid: false, isAdmin: false, isParticipant: false, canEdit: false };
   }
 
   public async validateRoomCode(roomCode: string): Promise<{ valid: boolean; error?: string; room?: any }> {
@@ -271,13 +271,13 @@ class RoomService {
       this.isParticipantRole = false;
     } else if (pin) {
       const res = await this.verifyPin(pin, cleanCode);
-      this.isOrganizerRole = res.isAdmin;
+      this.isOrganizerRole = res.canEdit;
       this.isParticipantRole = res.isParticipant;
     } else {
       // Check if we have saved pin or ownership
       const savedPin = localStorage.getItem(ROOM_PINS_KEY_PREFIX + cleanCode);
       const res = await this.verifyPin(savedPin || '', cleanCode);
-      this.isOrganizerRole = res.isAdmin;
+      this.isOrganizerRole = res.canEdit;
       this.isParticipantRole = res.isParticipant;
     }
 

@@ -640,6 +640,8 @@ export interface GpsBatchBackfillPayload {
   deviceType?: string;
   boundBoatId?: string | null;
   points: BackfillPoint[];
+  // Set on offline replays; the server answers GPS_BATCH_ACK or GPS_BATCH_REJECTED with it
+  batchId?: string;
 }
 
 

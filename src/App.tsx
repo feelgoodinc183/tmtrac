@@ -249,13 +249,25 @@ export default function App() {
 
   // User Management, Authentication & Tenant Dashboard States
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => authService.getCurrentUser());
-  const isUserAdminOrOfficer = Boolean(
-    isOrganizer ||
-    currentUser?.role === 'ADMIN' ||
-    currentUser?.role === 'RACE_OFFICER' ||
-    currentUser?.isSuperAdmin ||
-    authService.isSuperAdmin()
-  );
+  // Edit controls follow the server's answer for this room (PIN, own-club role, owner); an
+  // Admin or Race Officer account from another club does not get them.
+  const isUserAdminOrOfficer = Boolean(isOrganizer || currentUser?.isSuperAdmin || authService.isSuperAdmin());
+  // Shown when the server refuses an edit, so a change never looks saved when it wasn't
+  const [saveRejection, setSaveRejection] = useState<{ action: string; roomCode: string; at: number } | null>(null);
+
+  useEffect(() => {
+    return deviceTrackerService.onEditRejected((rejection) => {
+      setSaveRejection({ action: rejection.action, roomCode: rejection.roomCode, at: Date.now() });
+      // The server is the authority on edit rights; hide controls it won't accept
+      setIsOrganizer(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!saveRejection) return;
+    const timer = setTimeout(() => setSaveRejection(null), 8000);
+    return () => clearTimeout(timer);
+  }, [saveRejection]);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(() => tenantService.getCurrentTenant());
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authModalInitialMode, setAuthModalInitialMode] = useState<'login' | 'register-participant' | 'register-org'>('login');
@@ -576,7 +588,9 @@ export default function App() {
       if (session.roomCode) {
         setActiveRoomCode(session.roomCode);
       }
-      if (typeof session.isAdmin === 'boolean') {
+      if (typeof session.canEdit === 'boolean') {
+        setIsOrganizer(session.canEdit);
+      } else if (typeof session.isAdmin === 'boolean') {
         setIsOrganizer(session.isAdmin);
       }
       if (session.seriesRaces && Array.isArray(session.seriesRaces)) {
@@ -2720,6 +2734,48 @@ export default function App() {
         directSunlightMode ? 'bg-black text-white' : 'bg-[#0A0F1E] text-[#E8EAED]'
       }`}
     >
+      {saveRejection && (
+        <div
+          id="save-rejected-banner"
+          role="alert"
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] w-[min(92vw,560px)] p-3 rounded-xl bg-rose-950/95 border border-rose-500/50 text-rose-100 shadow-2xl flex items-start gap-3 text-sm"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">
+              {({
+                UPDATE_MARKS: 'Course marks',
+                UPDATE_BOATS: 'Fleet changes',
+                UPDATE_RACE_STATE: 'Race settings',
+                UPDATE_SERIES_RACES: 'Series results',
+                SEND_VHF_NOTICE: 'VHF notice',
+              } as Record<string, string>)[saveRejection.action] || 'Change'}{' '}
+              not saved
+            </p>
+            <p className="text-xs text-rose-200/90 mt-0.5">
+              This device has no Race Officer rights in room #{saveRejection.roomCode}. Unlock with the Race Officer PIN, then make the change again.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSaveRejection(null);
+              setShowPinUnlockModal(true);
+            }}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold cursor-pointer"
+          >
+            Enter PIN
+          </button>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setSaveRejection(null)}
+            className="shrink-0 px-2 py-1.5 rounded-lg text-rose-200 hover:bg-rose-900 text-xs cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Top Header with Live Peer Indicator */}
       <Header
         raceState={raceState}

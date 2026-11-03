@@ -483,6 +483,7 @@ async function startServer() {
       tenantId: room.tenantId,
       tenantName: room.tenantName,
       isAdmin: (ws as any).isAdmin,
+      canEdit: canEditRoom((ws as any).userRole),
       userRole: (ws as any).userRole,
       sessionId: `regatta-room-${room.code}`,
       connectedClients: getRoomClientCount(room.code),
@@ -507,6 +508,14 @@ async function startServer() {
         currentRoom.lastActive = Date.now();
         const role = (ws as any).userRole || 'SPECTATOR';
         const isAdminSession = (ws as any).isAdmin;
+        // Tell the sender an edit was refused, so the app can say "not saved" instead of looking saved
+        const rejectEdit = (action: string) => {
+          console.warn(`[Server Gate] Blocked unauthorized ${action} by ${role} in room ${currentRoom.code}`);
+          ws.send(JSON.stringify({
+            type: 'UPDATE_REJECTED',
+            payload: { action, roomCode: currentRoom.code, role, reason: 'NOT_ALLOWED' },
+          }));
+        };
 
         switch (type) {
           case 'JOIN_ROOM': {
@@ -532,6 +541,7 @@ async function startServer() {
                 tenantId: newRoom.tenantId,
                 tenantName: newRoom.tenantName,
                 isAdmin: isNowAdmin,
+                canEdit: canEditRoom(newRole),
                 userRole: (ws as any).userRole,
                 sessionId: `regatta-room-${newRoom.code}`,
                 connectedClients: getRoomClientCount(newRoom.code),
@@ -605,6 +615,9 @@ async function startServer() {
           case 'GPS_BATCH_BACKFILL': {
             if (payload && payload.deviceId && Array.isArray(payload.points) && payload.points.length > 0) {
               if (role === 'SPECTATOR' && !isAdminSession) {
+                if (payload.batchId) {
+                  ws.send(JSON.stringify({ type: 'GPS_BATCH_REJECTED', payload: { batchId: payload.batchId, roomCode: currentRoom.code, reason: 'NOT_PARTICIPANT' } }));
+                }
                 return;
               }
 
@@ -657,6 +670,10 @@ async function startServer() {
                 points: payload.points,
                 tracker: updatedTracker,
               }, ws);
+
+              if (payload.batchId) {
+                ws.send(JSON.stringify({ type: 'GPS_BATCH_ACK', payload: { batchId: payload.batchId, count: payload.points.length, roomCode: currentRoom.code } }));
+              }
             }
             break;
           }
@@ -675,7 +692,7 @@ async function startServer() {
           // Protected Mutating Messages: Require ADMIN or RACE_OFFICER permission
           case 'UPDATE_MARKS': {
             if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
-              console.warn(`[Server Gate] Blocked unauthorized UPDATE_MARKS by ${role}`);
+              rejectEdit('UPDATE_MARKS');
               return;
             }
             if (Array.isArray(payload)) {
@@ -695,7 +712,7 @@ async function startServer() {
 
           case 'UPDATE_RACE_STATE': {
             if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
-              console.warn(`[Server Gate] Blocked unauthorized UPDATE_RACE_STATE by ${role}`);
+              rejectEdit('UPDATE_RACE_STATE');
               return;
             }
             if (payload && typeof payload === 'object') {
@@ -733,6 +750,7 @@ async function startServer() {
 
           case 'UPDATE_BOATS': {
             if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
+              rejectEdit('UPDATE_BOATS');
               return;
             }
             if (Array.isArray(payload)) {
@@ -745,6 +763,7 @@ async function startServer() {
 
           case 'UPDATE_SERIES_RACES': {
             if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
+              rejectEdit('UPDATE_SERIES_RACES');
               return;
             }
             if (Array.isArray(payload)) {
@@ -757,6 +776,7 @@ async function startServer() {
 
           case 'SEND_VHF_NOTICE': {
             if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
+              rejectEdit('SEND_VHF_NOTICE');
               return;
             }
             if (payload) {
@@ -790,6 +810,7 @@ async function startServer() {
                   tenantId: currentRoom.tenantId,
                   tenantName: currentRoom.tenantName,
                   isAdmin: (ws as any).isAdmin,
+                  canEdit: canEditRoom((ws as any).userRole),
                   userRole: (ws as any).userRole,
                   sessionId: `regatta-room-${currentRoom.code}`,
                   connectedClients: getRoomClientCount(currentRoom.code),
@@ -1637,7 +1658,9 @@ async function startServer() {
 
     const user = req.gate?.user;
     const isOwner = !!(user && room.ownerId === user.id);
-    const isAdmin = resolveRoomRole(roomRoleUserFromGate(req), room) === 'ADMIN';
+    const accountRole = resolveRoomRole(roomRoleUserFromGate(req), room);
+    const isAdmin = accountRole === 'ADMIN';
+    const canEdit = canEditRoom(accountRole);
 
     res.json({
       success: true,
@@ -1653,6 +1676,7 @@ async function startServer() {
         ownerName: room.ownerName,
         isOwner,
         isAdmin,
+        canEdit,
         raceState: room.raceState,
         marks: room.marks,
         boats: room.boats,
@@ -1677,7 +1701,7 @@ async function startServer() {
 
     const user = req.gate?.user;
     if (user && room.ownerId === user.id) {
-      return res.json({ success: true, valid: true, code: room.code, isOwner: true, isAdmin: true, isParticipant: true });
+      return res.json({ success: true, valid: true, code: room.code, isOwner: true, isAdmin: true, isParticipant: true, canEdit: true });
     }
 
     const pin = typeof req.body?.pin === 'string' ? req.body.pin.trim() : '';
@@ -1695,6 +1719,7 @@ async function startServer() {
       code: room.code,
       isAdmin,
       isParticipant,
+      canEdit: canEditRoom(role),
       isOwner: false,
     });
   });

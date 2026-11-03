@@ -115,6 +115,8 @@ export type SessionSyncCallback = (session: {
   title?: string;
   locationName?: string;
   isAdmin?: boolean;
+  // Whether this connection may edit the room (Race Officer or admin), as decided by the server
+  canEdit?: boolean;
   raceState?: Partial<RaceState>;
   marks?: CourseMark[];
   boats?: Boat[];
@@ -128,6 +130,7 @@ export type RemoteBoatsCallback = (boats: Boat[]) => void;
 export type RemoteVhfCallback = (bulletin: VhfBulletin) => void;
 export type RemoteSeriesRacesCallback = (series: CompletedRace[]) => void;
 export type BatchBackfillCallback = (payload: GpsBatchBackfillPayload) => void;
+export type EditRejectedCallback = (rejection: { action: string; roomCode: string; role: string; reason: string }) => void;
 
 class HybridDeviceTrackerService {
   private profile: DeviceTrackerProfile = getDefaultDeviceProfile();
@@ -150,9 +153,12 @@ class HybridDeviceTrackerService {
   private remoteVhfCallbacks: RemoteVhfCallback[] = [];
   private remoteSeriesRacesCallbacks: RemoteSeriesRacesCallback[] = [];
   private batchBackfillCallbacks: BatchBackfillCallback[] = [];
+  private editRejectedCallbacks: EditRejectedCallback[] = [];
 
   // Store-and-Forward Offline FIFO Buffer
   private offlinePointsBuffer: BackfillPoint[] = [];
+  // Replayed batches waiting for the server's GPS_BATCH_ACK; they stay on the device until then
+  private pendingGpsBatches: Map<string, BackfillPoint[]> = new Map();
 
   // Live WebSocket Connection to Server
   private ws: WebSocket | null = null;
@@ -354,40 +360,85 @@ class HybridDeviceTrackerService {
   }
 
   public getOfflineBufferCount(): number {
-    return this.offlinePointsBuffer.length;
+    let pending = 0;
+    this.pendingGpsBatches.forEach((points) => (pending += points.length));
+    return this.offlinePointsBuffer.length + pending;
+  }
+
+  // Saves queued and not-yet-confirmed points together, so a reload or crash loses neither
+  private persistOfflineBuffer() {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const all: BackfillPoint[] = [];
+      this.pendingGpsBatches.forEach((points) => all.push(...points));
+      all.push(...this.offlinePointsBuffer);
+      if (all.length === 0) {
+        localStorage.removeItem('tmtrac_offline_gps_buffer');
+      } else {
+        localStorage.setItem('tmtrac_offline_gps_buffer', JSON.stringify(all.slice(-2000)));
+      }
+    } catch (e) {}
+  }
+
+  // Puts unconfirmed batches back at the front of the queue (oldest first) for the next flush
+  private requeuePendingBatches(batchIds?: string[]) {
+    const ids = batchIds || Array.from(this.pendingGpsBatches.keys());
+    const back: BackfillPoint[] = [];
+    ids.forEach((id) => {
+      const points = this.pendingGpsBatches.get(id);
+      if (points) back.push(...points);
+      this.pendingGpsBatches.delete(id);
+    });
+    if (back.length > 0) {
+      this.offlinePointsBuffer = [...back, ...this.offlinePointsBuffer].slice(-5000);
+    }
+    this.persistOfflineBuffer();
   }
 
   public flushOfflineBuffer() {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     if (this.offlinePointsBuffer.length === 0) return;
+    // One replay at a time: wait for the server to answer the batches already in flight
+    if (this.pendingGpsBatches.size > 0) return;
 
     console.log(`🚀 [Store-and-Forward] Flushing ${this.offlinePointsBuffer.length} queued offline GPS points to server...`);
     const pointsToSend = [...this.offlinePointsBuffer];
     this.offlinePointsBuffer = [];
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('tmtrac_offline_gps_buffer');
-      }
-    } catch (e) {}
 
     // Transmit in chunks of 200 fixes to prevent buffer overload
     const CHUNK_SIZE = 200;
+    const flushId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     for (let i = 0; i < pointsToSend.length; i += CHUNK_SIZE) {
       const chunk = pointsToSend.slice(i, i + CHUNK_SIZE);
+      const batchId = `${flushId}-${i / CHUNK_SIZE}`;
+      this.pendingGpsBatches.set(batchId, chunk);
       const payload: GpsBatchBackfillPayload = {
         deviceId: this.profile.deviceId,
         deviceName: this.profile.deviceName,
         deviceType: this.profile.deviceType,
         boundBoatId: this.profile.boundBoatId,
         points: chunk,
+        batchId,
       };
-      this.sendWs('GPS_BATCH_BACKFILL', payload);
+      if (!this.sendWs('GPS_BATCH_BACKFILL', payload)) {
+        this.requeuePendingBatches([batchId]);
+        continue;
+      }
       if (this.broadcastChannel) {
         try {
           this.broadcastChannel.postMessage({ type: 'FLEET_GPS_BATCH_BACKFILL', payload });
         } catch (e) {}
       }
     }
+    this.persistOfflineBuffer();
+  }
+
+  // Called when the server refuses an edit from this device (no edit rights in the room)
+  public onEditRejected(cb: EditRejectedCallback): () => void {
+    this.editRejectedCallbacks.push(cb);
+    return () => {
+      this.editRejectedCallbacks = this.editRejectedCallbacks.filter((c) => c !== cb);
+    };
   }
 
   // Allow LoRa Gateway / Node (Meshtastic) to broadcast historical backfilled points (from internal flash or burst RF)
@@ -625,6 +676,31 @@ class HybridDeviceTrackerService {
                     payload.trackers.forEach((t: any) => this.handleIncomingFleetPacket(t));
                   }
                   this.sessionSyncCallbacks.forEach((cb) => cb(payload));
+                  // A (re)join may have granted participant rights: retry points the server refused earlier
+                  this.flushOfflineBuffer();
+                }
+                break;
+              }
+
+              case 'GPS_BATCH_ACK': {
+                if (payload?.batchId && this.pendingGpsBatches.delete(payload.batchId)) {
+                  this.persistOfflineBuffer();
+                  if (this.pendingGpsBatches.size === 0) this.flushOfflineBuffer();
+                }
+                break;
+              }
+
+              case 'GPS_BATCH_REJECTED': {
+                if (payload?.batchId) {
+                  console.warn(`[Store-and-Forward] Server kept none of batch ${payload.batchId} (${payload.reason}); points stay queued`);
+                  this.requeuePendingBatches([payload.batchId]);
+                }
+                break;
+              }
+
+              case 'UPDATE_REJECTED': {
+                if (payload) {
+                  this.editRejectedCallbacks.forEach((cb) => cb(payload));
                 }
                 break;
               }
@@ -722,6 +798,8 @@ class HybridDeviceTrackerService {
         socket.onclose = () => {
           this.wsConnected = false;
           this.ws = null;
+          // Batches the server never confirmed go back in the queue for the next connection
+          this.requeuePendingBatches();
           if (this.pingTimer) clearInterval(this.pingTimer);
           // Auto reconnect after 2 seconds
           if (!this.wsReconnectTimer) {
@@ -1307,11 +1385,7 @@ class HybridDeviceTrackerService {
       if (this.offlinePointsBuffer.length > 5000) {
         this.offlinePointsBuffer.shift();
       }
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('tmtrac_offline_gps_buffer', JSON.stringify(this.offlinePointsBuffer.slice(-2000)));
-        }
-      } catch (e) {}
+      this.persistOfflineBuffer();
     }
 
     // 2. Broadcast over local BroadcastChannel
