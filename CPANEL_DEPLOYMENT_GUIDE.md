@@ -51,17 +51,16 @@ This package contains everything needed to deploy **TMTRAC** (LoRa Mesh Marine R
    ├── app.js                          (Passenger entry point)
    ├── package.json                    (Production dependencies)
    ├── .htaccess                       (LiteSpeed & HTTPS routing)
-   ├── .env                            (Configuration)
+   ├── .env.example                    (Template: copy to .env on first install only)
    ├── CPANEL_DEPLOYMENT_GUIDE.md
-   ├── dist/
-   │   ├── server.cjs                  (Production Express + WebSocket server)
-   │   ├── index.html                  (Compiled React Single Page App)
-   │   ├── robots.txt
-   │   └── assets/                     (Hashed JS & CSS bundles)
-   └── data/
-       ├── tmtrac.db                   (SQLite database)
-       └── tmtrac_store.json           (Persistent fallback store)
+   └── dist/
+       ├── server.cjs                  (Production Express + WebSocket server)
+       ├── index.html                  (Compiled React Single Page App)
+       ├── robots.txt
+       └── assets/                     (Hashed JS & CSS bundles)
    ```
+   The zips never contain `.env` or `data/`, so extracting an update keeps the live settings and database.
+   The server creates `data/` (database) on first start.
 
 ---
 

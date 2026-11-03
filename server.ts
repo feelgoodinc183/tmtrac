@@ -2721,21 +2721,24 @@ async function startServer() {
     }
   });
 
-  // Dedicated cPanel Deployment Package Download Endpoints
-  app.get(['/download/cpanel-fullstack', '/tmtrac-cpanel-deployment.zip'], (req, res) => {
-    const filePath = path.join(process.cwd(), 'tmtrac-cpanel-deployment.zip');
-    res.download(filePath, 'tmtrac-cpanel-deployment.zip');
-  });
+  // Deployment package downloads are for the AI Studio dev preview only; on the live site they
+  // would hand anyone the server bundle, so production never registers them
+  if (isDevMode) {
+    app.get(['/download/cpanel-fullstack', '/tmtrac-cpanel-deployment.zip'], (req, res) => {
+      const filePath = path.join(process.cwd(), 'tmtrac-cpanel-deployment.zip');
+      res.download(filePath, 'tmtrac-cpanel-deployment.zip');
+    });
 
-  app.get(['/download/cpanel-update', '/tmtrac-update-only.zip'], (req, res) => {
-    const filePath = path.join(process.cwd(), 'tmtrac-update-only.zip');
-    res.download(filePath, 'tmtrac-update-only.zip');
-  });
+    app.get(['/download/cpanel-update', '/tmtrac-update-only.zip'], (req, res) => {
+      const filePath = path.join(process.cwd(), 'tmtrac-update-only.zip');
+      res.download(filePath, 'tmtrac-update-only.zip');
+    });
 
-  app.get(['/download/public-html', '/tmtrac-public_html.zip'], (req, res) => {
-    const filePath = path.join(process.cwd(), 'tmtrac-public_html.zip');
-    res.download(filePath, 'tmtrac-public_html.zip');
-  });
+    app.get(['/download/public-html', '/tmtrac-public_html.zip'], (req, res) => {
+      const filePath = path.join(process.cwd(), 'tmtrac-public_html.zip');
+      res.download(filePath, 'tmtrac-public_html.zip');
+    });
+  }
 
   // Android Universal Links / Digital Asset Links
   app.get('/.well-known/assetlinks.json', (req, res) => {

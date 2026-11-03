@@ -67,10 +67,10 @@ with zipfile.ZipFile(fullstack_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) 
         z.write(guide_path, 'CPANEL_DEPLOYMENT_GUIDE.md')
         z.write(guide_path, 'README.md')
     
+    # Ship only the template: extracting a .env would overwrite the live server's real settings
     env_example = os.path.join(ROOT_DIR, '.env.example')
     if os.path.exists(env_example):
         z.write(env_example, '.env.example')
-        z.write(env_example, '.env')
 
     # dist contents
     for root, dirs, files in os.walk(DIST_DIR):
@@ -81,13 +81,8 @@ with zipfile.ZipFile(fullstack_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) 
             rel_f = os.path.relpath(abs_f, ROOT_DIR)
             z.write(abs_f, rel_f)
 
-    # data directory (pre-seeded with packages, users, and super admin)
-    data_dir = os.path.join(ROOT_DIR, 'data')
-    if os.path.exists(data_dir):
-        for data_file in os.listdir(data_dir):
-            if data_file.endswith('.json') or data_file.endswith('.db'):
-                abs_df = os.path.join(data_dir, data_file)
-                z.write(abs_df, os.path.join('data', data_file))
+    # No data/ files: extracting them would overwrite the live database. The server creates and
+    # seeds data/ on first start.
 
     # restart.php helper
     restart_php_path = os.path.join(PUBLIC_DIR, 'restart.php')
@@ -138,11 +133,6 @@ with zipfile.ZipFile(update_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as 
             abs_f = os.path.join(root, file)
             rel_f = os.path.relpath(abs_f, ROOT_DIR)
             z.write(abs_f, rel_f)
-    if os.path.exists(data_dir):
-        for data_file in os.listdir(data_dir):
-            if data_file.endswith('.json') or data_file.endswith('.db'):
-                abs_df = os.path.join(data_dir, data_file)
-                z.write(abs_df, os.path.join('data', data_file))
 
     if os.path.exists(restart_php_path):
         z.write(restart_php_path, 'restart.php')
@@ -152,10 +142,11 @@ with zipfile.ZipFile(update_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as 
 
 print(f"Saved {update_zip_name} ({os.path.getsize(update_zip_path)} bytes)")
 
-# 5. Copy zip files to public/ and dist/ so user can download directly via URL
-for zip_file, path in [(fullstack_zip_name, fullstack_zip_path), (static_zip_name, static_zip_path), (update_zip_name, update_zip_path)]:
-    shutil.copy(path, os.path.join(PUBLIC_DIR, zip_file))
-    shutil.copy(path, os.path.join(DIST_DIR, zip_file))
+# Zips stay in the project root only. Copies in public/ or dist/ would be published on the live site.
+for zip_file in (fullstack_zip_name, static_zip_name, update_zip_name):
+    for stale in (os.path.join(PUBLIC_DIR, zip_file), os.path.join(DIST_DIR, zip_file)):
+        if os.path.exists(stale):
+            os.remove(stale)
 
-print("All deployment zip archives successfully created and placed in root, public/, and dist/!")
+print("All deployment zip archives created in the project root.")
 
