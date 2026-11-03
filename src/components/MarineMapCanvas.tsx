@@ -739,7 +739,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       }
 
       const trackerBadgeHtml = boundNode
-        ? `<span style="background: ${isPhoneGpsBound ? 'rgba(0,212,255,0.25)' : 'rgba(0,255,157,0.25)'}; color: ${isPhoneGpsBound ? '#00D4FF' : '#00FF9D'}; font-size: 12px; font-weight: 800; padding: 1px 4px; border-radius: 3px; border: 1px solid ${isPhoneGpsBound ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,157,0.5)'}; display: inline-flex; align-items: center; gap: 2px;">${isPhoneGpsBound ? '📱 PHONE GPS' : `📻 ${boundNode.shortName || boundNode.id.slice(-4)}`}</span>`
+        ? `<span style="background: ${isPhoneGpsBound ? 'rgba(0,212,255,0.25)' : 'rgba(0,255,157,0.25)'}; color: ${isPhoneGpsBound ? '#00D4FF' : '#00FF9D'}; font-size: 12px; font-weight: 800; padding: 1px 4px; border-radius: 3px; border: 1px solid ${isPhoneGpsBound ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,157,0.5)'}; display: inline-flex; align-items: center; gap: 2px;">${isPhoneGpsBound ? 'PHONE GPS' : `${boundNode.shortName || boundNode.id.slice(-4)}`}</span>`
         : '';
 
       const statusBadgeHtml = b.status === 'OCS'
@@ -1040,9 +1040,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
       {/* FLOATING ACTIVE PLACEMENT BANNER HUD */}
       {courseEditMode !== 'NONE' && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 pointer-events-auto bg-canvas/95 border-2 border-warning-ink text-ink px-5 py-2.5 rounded-2xl backdrop-blur-md flex items-center gap-3 animate-bounce">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 pointer-events-auto bg-canvas/95 border-2 border-warning-ink text-ink px-5 py-2.5 rounded-2xl backdrop-blur-md flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-warning-ink text-canvas font-bold text-xs flex items-center justify-center">
-            {courseEditMode === 'DROP_MARK' ? `#${sequentialMarksCount + 1}` : '🎯'}
+            {courseEditMode === 'DROP_MARK' ? `#${sequentialMarksCount + 1}` : '+'}
           </div>
           <div>
             <div className="text-xs font-bold text-warning-ink">

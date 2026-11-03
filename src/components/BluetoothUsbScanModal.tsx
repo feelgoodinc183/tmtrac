@@ -247,78 +247,78 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-lb-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200 font-google">
-      <div className="bg-lb-0a0f1e/95 backdrop-blur-md border border-ll-334155/80 w-full max-w-3xl rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-lt-e0e6ed max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0">
+    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200">
+      <div className="bg-surface/95 backdrop-blur-md border border-line/80 w-full max-w-3xl rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0">
         {/* Header */}
-        <div className="px-5 py-4 landscape:py-2.5 bg-lb-060b16/90 border-b border-ll-1e293b flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 landscape:py-2.5 bg-canvas/90 border-b border-line flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-lb-00d4ff/15 border border-ll-00d4ff/40 flex items-center justify-center text-lt-00d4ff shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-accent/15 border border-accent/40 flex items-center justify-center text-accent shrink-0 shadow-sm">
               <Radio className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-bold tracking-tight text-lt-white flex items-center gap-2 truncate">
+              <h2 className="text-base font-bold tracking-tight text-ink flex items-center gap-2 truncate">
                 LoRa Device & Mesh Hardware Hub
-                <span className="text-xs bg-lb-00d4ff/20 text-lt-00d4ff px-2 py-0.5 rounded-full font-mono border border-ll-00d4ff/30">
+                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full border border-accent/30">
                   LIVE TELEMETRY & MQTT
                 </span>
               </h2>
-              <p className="text-xs text-lt-64748b font-mono truncate">
+              <p className="text-xs text-ink-muted truncate">
                 Connect LoRa Device via Bluetooth LE, USB-C Serial, or Stream over MQTT
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-lt-94a3b8 hover:text-lt-white hover:bg-lb-1e293b/80 transition-all"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-ll-1e293b bg-lb-060b16/60 p-2.5 gap-2 shrink-0 overflow-x-auto custom-scrollbar">
+        <div className="flex border-b border-line bg-canvas/60 p-2.5 gap-2 shrink-0 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('BLUETOOTH')}
-            className={`flex-1 py-2.5 px-3 rounded-2xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[120px] ${
+            className={`flex-1 py-2.5 px-3 rounded-2xl  text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[120px] ${
               activeTab === 'BLUETOOTH'
-                ? 'bg-lb-00d4ff text-lt-020408 shadow-[0_0_12px_rgba(0,212,255,0.4)]'
-                : 'bg-lb-0a0f1e text-lt-94a3b8 hover:text-lt-white border border-ll-1e293b'
+                ? 'bg-accent text-on-accent '
+                : 'bg-surface text-ink-muted hover:text-ink border border-line'
             }`}
           >
             <Bluetooth className="w-4 h-4" />
             LoRa Bluetooth Tracker
             {hardwareConn.bluetoothConnected && (
-              <span className="w-2 h-2 rounded-full bg-lb-00ff9d animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-success-ink" />
             )}
           </button>
 
           <button
             onClick={() => setActiveTab('USB')}
-            className={`flex-1 py-2.5 px-3 rounded-2xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[120px] ${
+            className={`flex-1 py-2.5 px-3 rounded-2xl  text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[120px] ${
               activeTab === 'USB'
-                ? 'bg-lb-00ff9d text-lt-020408 shadow-[0_0_12px_rgba(0,255,157,0.4)]'
-                : 'bg-lb-0a0f1e text-lt-94a3b8 hover:text-lt-white border border-ll-1e293b'
+                ? 'bg-success-ink text-canvas '
+                : 'bg-surface text-ink-muted hover:text-ink border border-line'
             }`}
           >
             <Usb className="w-4 h-4" />
             USB Serial
             {hardwareConn.usbConnected && (
-              <span className="w-2 h-2 rounded-full bg-lb-00d4ff animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-accent" />
             )}
           </button>
 
           <button
             onClick={() => setActiveTab('MQTT')}
-            className={`flex-1 py-2.5 px-3 rounded-2xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[120px] ${
+            className={`flex-1 py-2.5 px-3 rounded-2xl  text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[120px] ${
               activeTab === 'MQTT'
-                ? 'bg-lb-c084fc text-lt-020408 shadow-[0_0_12px_rgba(192,132,252,0.4)]'
-                : 'bg-lb-0a0f1e text-lt-94a3b8 hover:text-lt-white border border-ll-1e293b'
+                ? 'bg-ink text-canvas '
+                : 'bg-surface text-ink-muted hover:text-ink border border-line'
             }`}
           >
             <Wifi className="w-4 h-4" />
             MQTT Stream
             {mqttConnected && (
-              <span className="w-2 h-2 rounded-full bg-lb-00ff9d animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-success-ink" />
             )}
           </button>
         </div>
@@ -328,10 +328,10 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
           {/* BLUETOOTH TAB CONTENT */}
           {activeTab === 'BLUETOOTH' && (
             <div className="space-y-4">
-              <div className="p-3 bg-lb-00d4ff/10 border border-ll-00d4ff/30 rounded-xl text-xs text-lt-00d4ff flex items-start gap-2.5 font-mono">
+              <div className="p-3 bg-accent/10 border border-accent/30 rounded-xl text-xs text-accent flex items-start gap-2.5">
                 <Radio className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="block text-lt-white font-google">LoRa Device Bluetooth Connection</strong>
+                  <strong className="block text-ink">LoRa Device Bluetooth Connection</strong>
                   1. Turn on your LoRa Device (nRF52840 / SX1262) and ensure Bluetooth is enabled.
                   <br />
                   2. Click <strong>Connect LoRa Device (Web BLE)</strong> and pair with <code>LoRa Device</code> or <code>Meshtastic_xxxx</code>.
@@ -341,25 +341,25 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               </div>
 
               {/* Status Banner */}
-              <div className="p-4 rounded-xl bg-lb-060b16 border border-ll-1e293b flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-canvas border border-line flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-lg bg-lb-00d4ff/10 text-lt-00d4ff border border-ll-00d4ff/20">
+                  <div className="p-2.5 rounded-lg bg-accent/10 text-accent border border-accent/20">
                     <Bluetooth className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-lt-white">
+                    <h4 className="text-xs font-bold text-ink">
                       {hardwareConn.bluetoothConnected
                         ? `Paired LoRa Device: ${hardwareConn.bluetoothDeviceName}`
                         : 'No Bluetooth LoRa Device Connected'}
                     </h4>
-                    <p className="text-xs text-lt-64748b font-mono">
+                    <p className="text-xs text-ink-muted">
                       GATT Service: cb0b0001-035f-45f4-822e-b648e23003b3
                     </p>
                   </div>
                 </div>
 
                 {hardwareConn.bluetoothConnected && (
-                  <span className="text-xs font-mono bg-lb-00ff9d/10 text-lt-00ff9d px-2.5 py-1 rounded-full border border-ll-00ff9d/30 flex items-center gap-1 font-bold">
+                  <span className="text-xs bg-success-ink/10 text-success-ink px-2.5 py-1 rounded-full border border-success-ink/30 flex items-center gap-1 font-bold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     LIVE TELEMETRY
                   </span>
@@ -371,7 +371,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                 <button
                   onClick={handleWebBluetoothScan}
                   disabled={isScanningBle}
-                  className="w-full py-3 px-4 bg-lb-00d4ff hover:bg-lb-cyan-300 disabled:opacity-50 text-lt-020408 font-bold text-xs rounded-xl transition-all shadow-[0_0_12px_rgba(0,212,255,0.3)] flex items-center justify-center gap-2 font-mono"
+                  className="w-full py-3 px-4 bg-accent hover:brightness-110 disabled:opacity-50 text-on-accent font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <RefreshCw className={`w-4 h-4 ${isScanningBle ? 'animate-spin' : ''}`} />
                   {isScanningBle ? 'Connecting BLE...' : 'Connect LoRa Device (Web BLE)'}
@@ -379,26 +379,26 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               </div>
 
               {bleError && (
-                <div className="p-3.5 bg-lb-ff4d4d/10 border border-ll-ff4d4d/40 rounded-xl text-xs text-lt-ff4d4d space-y-2 font-mono animate-fadeIn">
+                <div className="p-3.5 bg-danger/10 border border-danger-ink/40 rounded-xl text-xs text-danger-ink space-y-2 animate-fadeIn">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-lt-ff4d4d" />
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-danger-ink" />
                     <div className="space-y-1">
-                      <strong className="block text-lt-white font-google">Bluetooth Connection Error</strong>
-                      <p className="text-xs text-lt-ff8080 leading-relaxed">{bleError}</p>
+                      <strong className="block text-ink">Bluetooth Connection Error</strong>
+                      <p className="text-xs text-danger-ink leading-relaxed">{bleError}</p>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-ll-ff4d4d/20 flex flex-wrap items-center gap-2">
+                  <div className="pt-2 border-t border-danger-ink/20 flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => window.open(window.location.href, '_blank')}
-                      className="px-2.5 py-1 bg-lb-1e293b hover:bg-lb-334155 text-lt-white text-xs rounded-lg border border-ll-475569 font-bold flex items-center gap-1 transition-all"
+                      className="px-2.5 py-1 bg-raised hover:bg-raised text-ink text-xs rounded-lg border border-line font-bold flex items-center gap-1 transition-all"
                     >
-                      <ExternalLink className="w-3 h-3 text-lt-00d4ff" />
+                      <ExternalLink className="w-3 h-3 text-accent" />
                       Open in New Tab (Direct BLE)
                     </button>
                     <button
                       onClick={() => setActiveTab('USB')}
-                      className="px-2.5 py-1 bg-lb-00ff9d/10 hover:bg-lb-00ff9d/20 text-lt-00ff9d text-xs rounded-lg border border-ll-00ff9d/30 font-bold flex items-center gap-1 transition-all"
+                      className="px-2.5 py-1 bg-success-ink/10 hover:bg-success-ink/20 text-success-ink text-xs rounded-lg border border-success-ink/30 font-bold flex items-center gap-1 transition-all"
                     >
                       <Plug className="w-3 h-3" />
                       Try USB Serial
@@ -410,13 +410,13 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               {/* Connected Active Nodes List */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-mono uppercase tracking-widest text-lt-64748b block">
+                  <label className="text-xs text-ink-muted block">
                     Connected & Detected Nodes ({deduplicateNodes(nodes).length})
                   </label>
                   {onClearDemoNodes && deduplicateNodes(nodes).some((n) => !n.isDeviceGps && n.connectionType !== 'PHONE' && n.connectionType !== 'TABLET' && (n.id.startsWith('node-') || n.id.startsWith('!TECHO-') || n.id.startsWith('mock-'))) && (
                     <button
                       onClick={onClearDemoNodes}
-                      className="text-xs font-mono font-bold text-lt-red-400 hover:text-lt-red-200 bg-lb-red-500/10 hover:bg-lb-red-500/25 border border-ll-red-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all"
+                      className="text-xs font-bold text-danger-ink hover:text-danger-ink bg-danger/10 hover:bg-danger/25 border border-danger-ink/30 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all"
                       title="Clear all demo/simulated nodes"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -426,7 +426,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                 </div>
 
                 {deduplicateNodes(nodes).length === 0 ? (
-                  <div className="p-4 bg-lb-060b16 border border-dashed border-ll-1e293b rounded-xl text-center text-xs text-lt-64748b font-mono">
+                  <div className="p-4 bg-canvas border border-dashed border-line rounded-xl text-center text-xs text-ink-muted">
                     No nodes connected yet. Click "Connect LoRa Device (Web BLE)" or "Simulate" above.
                   </div>
                 ) : (
@@ -439,54 +439,54 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                       return (
                         <div
                           key={node.id}
-                          className="p-3 bg-lb-060b16 rounded-xl border border-ll-1e293b hover:border-ll-00d4ff/40 transition-all flex flex-col gap-2"
+                          className="p-3 bg-canvas rounded-xl border border-line hover:border-accent/40 transition-all flex flex-col gap-2"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded bg-lb-0a0f1e border border-ll-1e293b ${isBle ? 'text-lt-00ff9d' : 'text-lt-00d4ff'}`}>
+                              <div className={`p-2 rounded bg-surface border border-line ${isBle ? 'text-success-ink' : 'text-accent'}`}>
                                 <Bluetooth className="w-4 h-4" />
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-lt-white">{node.longName}</span>
-                                  <span className="text-xs font-mono text-lt-00d4ff bg-lb-00d4ff/10 px-1.5 py-0.5 rounded">
+                                  <span className="text-xs font-bold text-ink">{node.longName}</span>
+                                  <span className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                                     {node.id}
                                   </span>
                                   {isDemo && (
-                                    <span className="text-xs font-mono text-lt-purple-300 bg-lb-purple-500/20 border border-ll-purple-500/40 px-1.5 py-0.2 rounded font-bold">
+                                    <span className="text-xs text-ink bg-raised/20 border border-line/40 px-1.5 py-0.2 rounded font-bold">
                                       DEMO
                                     </span>
                                   )}
                                   {isBle && (
-                                    <span className="text-xs font-mono text-lt-emerald-300 bg-lb-emerald-500/20 border border-ll-emerald-500/40 px-1.5 py-0.2 rounded font-bold">
+                                    <span className="text-xs text-success-ink bg-success-ink/20 border border-success-ink/40 px-1.5 py-0.2 rounded font-bold">
                                       BLE LORA DEVICE
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-lt-64748b font-mono">
-                                  Battery: <strong className="text-lt-white">{node.battery}% ({node.voltage}V)</strong> • Sats:{' '}
-                                  <strong className="text-lt-00ff9d">{node.satsInView}</strong> • RSSI: {node.rssi} dBm
+                                <p className="text-xs text-ink-muted">
+                                  Battery: <strong className="text-ink">{node.battery}% ({node.voltage}V)</strong> • Sats:{' '}
+                                  <strong className="text-success-ink">{node.satsInView}</strong> • RSSI: {node.rssi} dBm
                                 </p>
                                 {node.lat && node.lng ? (
-                                  <p className="text-xs text-lt-slate-300 font-mono">
-                                    GPS: <strong className="text-lt-white">{safeFixed(node.lat, 5)}°N, {safeFixed(node.lng, 5)}°E</strong> • SOG: <strong className="text-lt-00d4ff">{safeFixed(node.speedKt, 1, '0.0')}kt</strong> • COG: <strong className="text-lt-emerald-400">{node.headingDeg ?? 0}°</strong>
+                                  <p className="text-xs text-ink">
+                                    GPS: <strong className="text-ink">{safeFixed(node.lat, 5)}°N, {safeFixed(node.lng, 5)}°E</strong> • SOG: <strong className="text-accent">{safeFixed(node.speedKt, 1, '0.0')}kt</strong> • COG: <strong className="text-success-ink">{node.headingDeg ?? 0}°</strong>
                                   </p>
                                 ) : null}
-                                <p className="text-xs text-lt-94a3b8 font-mono flex items-center gap-1 mt-0.5">
-                                  <Clock className="w-2.5 h-2.5 text-lt-00d4ff" />
-                                  Last Heard: <strong className="text-lt-00d4ff">{formatLastHeard(node.lastPingTime)}</strong>
+                                <p className="text-xs text-ink-muted flex items-center gap-1 mt-0.5">
+                                  <Clock className="w-2.5 h-2.5 text-accent" />
+                                  Last Heard: <strong className="text-accent">{formatLastHeard(node.lastPingTime)}</strong>
                                 </p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono bg-lb-00ff9d/10 text-lt-00ff9d px-2 py-0.5 rounded border border-ll-00ff9d/20">
+                              <span className="text-xs bg-success-ink/10 text-success-ink px-2 py-0.5 rounded border border-success-ink/20">
                                 {node.connectionType}
                               </span>
                               {onDeleteNode && (
                                 <button
                                   onClick={() => onDeleteNode(node.id)}
-                                  className="p-1.5 rounded bg-lb-0a0f1e hover:bg-lb-red-500/20 text-lt-slate-400 hover:text-lt-red-400 border border-ll-slate-700/50 hover:border-ll-red-500/40 transition-all"
+                                  className="p-1.5 rounded bg-surface hover:bg-danger/20 text-ink-muted hover:text-danger-ink border border-line/50 hover:border-danger-ink/40 transition-all"
                                   title={`Delete / remove ${node.id}`}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -497,19 +497,19 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
 
                           {/* Environmental telemetry strip */}
                           {hasBme280 && (
-                            <div className="bg-lb-emerald-950/20 border border-ll-emerald-500/30 rounded-lg px-2.5 py-1 flex items-center justify-between text-xs font-mono text-lt-emerald-300 flex-wrap gap-1">
-                              <span className="flex items-center gap-1 font-bold text-lt-emerald-400">
-                                <Gauge className="w-3 h-3 text-lt-emerald-400" />
+                            <div className="bg-surface/20 border border-success-ink/30 rounded-lg px-2.5 py-1 flex items-center justify-between text-xs text-success-ink flex-wrap gap-1">
+                              <span className="flex items-center gap-1 font-bold text-success-ink">
+                                <Gauge className="w-3 h-3 text-success-ink" />
                                 <span>BME280:</span>
                               </span>
                               {node.barometricPressure !== undefined && node.barometricPressure !== null && (
-                                <span>🧭 {safeFixed(node.barometricPressure, 1)} hPa</span>
+                                <span>{safeFixed(node.barometricPressure, 1)} hPa</span>
                               )}
                               {node.temperature !== undefined && node.temperature !== null && (
-                                <span>🌡️ {safeFixed(node.temperature, 1)}°C</span>
+                                <span>{safeFixed(node.temperature, 1)}°C</span>
                               )}
                               {node.humidity !== undefined && node.humidity !== null && (
-                                <span>💧 {safeFixed(node.humidity, 1)}% RH</span>
+                                <span>{safeFixed(node.humidity, 1)}% RH</span>
                               )}
                             </div>
                           )}
@@ -525,31 +525,31 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
           {/* USB SERIAL TAB */}
           {activeTab === 'USB' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-lb-060b16 border border-ll-1e293b space-y-3">
+              <div className="p-4 rounded-xl bg-canvas border border-line space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <Plug className="w-5 h-5 text-lt-00ff9d" />
-                    <h4 className="text-xs font-bold text-lt-white">USB-C Serial Interface</h4>
+                    <Plug className="w-5 h-5 text-success-ink" />
+                    <h4 className="text-xs font-bold text-ink">USB-C Serial Interface</h4>
                   </div>
                   {hardwareConn.usbConnected ? (
-                    <span className="text-xs font-mono bg-lb-00ff9d/10 text-lt-00ff9d px-2.5 py-1 rounded-full border border-ll-00ff9d/30 font-bold flex items-center gap-1">
+                    <span className="text-xs bg-success-ink/10 text-success-ink px-2.5 py-1 rounded-full border border-success-ink/30 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       CONNECTED ({hardwareConn.baudRate} BAUD)
                     </span>
                   ) : (
-                    <span className="text-xs font-mono text-lt-64748b">DISCONNECTED</span>
+                    <span className="text-xs text-ink-muted">DISCONNECTED</span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-lt-64748b font-mono block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       Baud Rate
                     </label>
                     <select
                       value={selectedBaud}
                       onChange={(e) => setSelectedBaud(Number(e.target.value))}
-                      className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-xs text-lt-00ff9d font-mono focus:border-ll-00ff9d outline-none"
+                      className="w-full bg-surface border border-line rounded-lg p-2 text-xs text-success-ink focus:border-success-ink outline-none"
                     >
                       <option value={115200}>115200 Baud (Meshtastic Standard)</option>
                       <option value={9600}>9600 Baud (NMEA GPS Standard)</option>
@@ -557,10 +557,10 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-xs text-lt-64748b font-mono block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       Protocol
                     </label>
-                    <div className="bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-xs text-lt-white font-mono">
+                    <div className="bg-surface border border-line rounded-lg p-2 text-xs text-ink">
                       Meshtastic Serial Protobuf
                     </div>
                   </div>
@@ -571,7 +571,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                 <button
                   onClick={handleWebSerialConnect}
                   disabled={isConnectingUsb}
-                  className="w-full py-3 px-4 bg-lb-00ff9d hover:bg-lb-emerald-300 disabled:opacity-50 text-lt-020408 font-bold text-xs rounded-xl transition-all shadow-[0_0_12px_rgba(0,255,157,0.3)] flex items-center justify-center gap-2 font-mono"
+                  className="w-full py-3 px-4 bg-success-ink hover:brightness-110 disabled:opacity-50 text-canvas font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <Plug className="w-4 h-4" />
                   {isConnectingUsb ? 'Connecting USB...' : 'Accept USB Connection'}
@@ -579,21 +579,21 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               </div>
 
               {usbError && (
-                <div className="p-3 bg-lb-ff4d4d/10 border border-ll-ff4d4d/30 rounded-xl text-xs text-lt-ff4d4d flex items-center gap-2 font-mono">
+                <div className="p-3 bg-danger/10 border border-danger-ink/30 rounded-xl text-xs text-danger-ink flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{usbError}</span>
                 </div>
               )}
 
-              <div className="bg-lb-020408 border border-ll-1e293b rounded-xl p-3 font-mono text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between text-xs text-lt-64748b border-b border-ll-1e293b pb-1 mb-2">
-                  <span className="text-lt-00ff9d flex items-center gap-1">
+              <div className="bg-canvas border border-line rounded-xl p-3 text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between text-xs text-ink-muted border-b border-line pb-1 mb-2">
+                  <span className="text-success-ink flex items-center gap-1">
                     <Terminal className="w-3.5 h-3.5" /> USB SERIAL LOG
                   </span>
                   <span>115200 8N1</span>
                 </div>
                 {serialLogs.map((log, idx) => (
-                  <div key={idx} className="text-lt-94a3b8 text-xs truncate">
+                  <div key={idx} className="text-ink-muted text-xs truncate">
                     &gt; {log}
                   </div>
                 ))}
@@ -604,39 +604,39 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
           {/* MQTT LIVE STREAM TAB */}
           {activeTab === 'MQTT' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-lb-060b16 border border-ll-1e293b space-y-3">
+              <div className="p-4 rounded-xl bg-canvas border border-line space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <Wifi className="w-5 h-5 text-lt-c084fc" />
+                    <Wifi className="w-5 h-5 text-ink-muted" />
                     <div>
-                      <h4 className="text-xs font-bold text-lt-white flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
                         Official Meshtastic MQTT Broker Stream
-                        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-lb-38bdf8/10 text-lt-38bdf8 border border-ll-38bdf8/30">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
                           Root: msh
                         </span>
                       </h4>
-                      <p className="text-xs text-lt-64748b font-mono">
+                      <p className="text-xs text-ink-muted">
                         Subscribing to official Meshtastic MQTT mesh feed
                       </p>
                     </div>
                   </div>
                   {mqttConnected ? (
-                    <span className="text-xs font-mono bg-lb-00ff9d/10 text-lt-00ff9d px-2.5 py-1 rounded-full border border-ll-00ff9d/30 font-bold flex items-center gap-1">
+                    <span className="text-xs bg-success-ink/10 text-success-ink px-2.5 py-1 rounded-full border border-success-ink/30 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       STREAMING LIVE
                     </span>
                   ) : (
-                    <span className="text-xs font-mono text-lt-64748b">DISCONNECTED</span>
+                    <span className="text-xs text-ink-muted">DISCONNECTED</span>
                   )}
                 </div>
 
                 {/* Broker Preset Pills */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs text-lt-64748b font-mono uppercase block font-semibold">
+                    <label className="text-xs text-ink-muted block font-semibold">
                       Broker Server Presets
                     </label>
-                    <span className="text-xs font-mono text-lt-38bdf8">Auto Server Bridge & WSS</span>
+                    <span className="text-xs text-accent">Auto Server Bridge & WSS</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {[
@@ -654,10 +654,10 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                             password: b.pass,
                           })
                         }
-                        className={`text-xs font-mono px-2 py-1 rounded-md border transition-all ${
+                        className={`text-xs  px-2 py-1 rounded-md border transition-all ${
                           mqttConfig.brokerUrl === b.url || (b.url === 'mqtt.meshtastic.org' && mqttConfig.brokerUrl.includes('mqtt.meshtastic.org'))
-                            ? 'bg-lb-c084fc/20 text-lt-e0e6ed border-ll-c084fc font-bold'
-                            : 'bg-lb-0a0f1e text-lt-94a3b8 border-ll-1e293b hover:border-ll-475569'
+                            ? 'bg-ink/20 text-ink border-line font-bold'
+                            : 'bg-surface text-ink-muted border-line hover:border-line'
                         }`}
                       >
                         {b.name}
@@ -666,21 +666,21 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-2.5 font-mono text-xs">
+                <div className="space-y-2.5 text-xs">
                   <div>
-                    <label className="text-xs text-lt-64748b block mb-1">
-                      Broker Host / WebSocket URL <span className="text-lt-38bdf8">(Default: mqtt.meshtastic.org)</span>
+                    <label className="text-xs text-ink-muted block mb-1">
+                      Broker Host / WebSocket URL <span className="text-accent">(Default: mqtt.meshtastic.org)</span>
                     </label>
                     <input
                       type="text"
                       value={mqttConfig.brokerUrl}
                       onChange={(e) => updateAndSaveMqttConfig({ brokerUrl: e.target.value })}
                       placeholder="mqtt.meshtastic.org"
-                      className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-lt-white text-xs focus:border-ll-c084fc outline-none"
+                      className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
                     />
                     {mqttConfig.brokerUrl.includes('mqtt.meshtastic.org') && (
-                      <p className="text-xs text-lt-81c995 font-mono mt-1 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-lt-81c995" />
+                      <p className="text-xs text-success-ink mt-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-success-ink" />
                         Connecting via backend container TCP bridge (Port 1883) to prevent browser WSS timeout.
                       </p>
                     )}
@@ -688,15 +688,15 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
 
                   {/* Root Topic and Topic Presets */}
                   <div className="space-y-1.5">
-                    <label className="text-xs text-lt-64748b block">
-                      Subscription Topic / Root Channel <span className="text-lt-38bdf8">(Root: msh)</span>
+                    <label className="text-xs text-ink-muted block">
+                      Subscription Topic / Root Channel <span className="text-accent">(Root: msh)</span>
                     </label>
                     <input
                       type="text"
                       value={mqttConfig.topic}
                       onChange={(e) => updateAndSaveMqttConfig({ topic: e.target.value })}
                       placeholder="msh/2/json/#"
-                      className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-lt-white text-xs focus:border-ll-c084fc outline-none"
+                      className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
                     />
                     <div className="flex flex-wrap gap-1.5 pt-0.5">
                       {[
@@ -711,10 +711,10 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                           key={t.topic}
                           type="button"
                           onClick={() => updateAndSaveMqttConfig({ topic: t.topic })}
-                          className={`text-xs font-mono px-2 py-0.5 rounded border transition-all ${
+                          className={`text-xs  px-2 py-0.5 rounded border transition-all ${
                             mqttConfig.topic === t.topic
-                              ? 'bg-lb-38bdf8/20 text-lt-38bdf8 border-ll-38bdf8 font-bold'
-                              : 'bg-lb-0a0f1e text-lt-64748b border-ll-1e293b hover:text-lt-e0e6ed'
+                              ? 'bg-accent/20 text-accent border-accent font-bold'
+                              : 'bg-surface text-ink-muted border-line hover:text-ink'
                           }`}
                         >
                           {t.label}
@@ -726,27 +726,27 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                   {/* Auth Credentials */}
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div>
-                      <label className="text-xs text-lt-64748b block mb-1">
-                        Username <span className="text-lt-94a3b8">(Official: meshdev)</span>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Username <span className="text-ink-muted">(Official: meshdev)</span>
                       </label>
                       <input
                         type="text"
                         value={mqttConfig.username || ''}
                         onChange={(e) => updateAndSaveMqttConfig({ username: e.target.value })}
                         placeholder="meshdev"
-                        className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-lt-white text-xs focus:border-ll-c084fc outline-none"
+                        className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-lt-64748b block mb-1">
-                        Password <span className="text-lt-94a3b8">(Official: large4cats)</span>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Password <span className="text-ink-muted">(Official: large4cats)</span>
                       </label>
                       <input
                         type="password"
                         value={mqttConfig.password || ''}
                         onChange={(e) => updateAndSaveMqttConfig({ password: e.target.value })}
                         placeholder="large4cats"
-                        className="w-full bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-lt-white text-xs focus:border-ll-c084fc outline-none"
+                        className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
                       />
                     </div>
                   </div>
@@ -757,9 +757,9 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                       id="streamOutbound"
                       checked={mqttConfig.streamOutbound}
                       onChange={(e) => setMqttConfig({ ...mqttConfig, streamOutbound: e.target.checked })}
-                      className="accent-ll-c084fc"
+                      className="accent-line"
                     />
-                    <label htmlFor="streamOutbound" className="text-xs text-lt-e0e6ed select-none">
+                    <label htmlFor="streamOutbound" className="text-xs text-ink select-none">
                       Stream Local LoRa Device / Telemetry Outbound to MQTT
                     </label>
                   </div>
@@ -769,10 +769,10 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               <button
                 onClick={handleConnectMqtt}
                 disabled={isConnectingMqtt}
-                className={`w-full py-3 px-4 font-bold text-xs rounded-xl transition-all font-mono flex items-center justify-center gap-2 ${
+                className={`w-full py-3 px-4 font-bold text-xs rounded-xl transition-all  flex items-center justify-center gap-2 ${
                   mqttConnected
-                    ? 'bg-lb-ff4d4d text-lt-white hover:bg-lb-red-600'
-                    : 'bg-lb-c084fc text-lt-020408 hover:bg-lb-purple-300 shadow-[0_0_12px_rgba(192,132,252,0.4)]'
+                    ? 'bg-danger text-on-danger hover:brightness-110'
+                    : 'bg-ink text-canvas hover:bg-ink '
                 }`}
               >
                 <Wifi className="w-4 h-4" />
@@ -784,16 +784,16 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               </button>
 
               {mqttError && (
-                <div className="p-3 bg-lb-ff4d4d/10 border border-ll-ff4d4d/30 rounded-xl text-xs text-lt-ff4d4d flex items-center gap-2 font-mono">
+                <div className="p-3 bg-danger/10 border border-danger-ink/30 rounded-xl text-xs text-danger-ink flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{mqttError}</span>
                 </div>
               )}
 
               {/* Add Detected LoRa Mesh Node manually or automatically */}
-              <div className="p-3 bg-lb-060b16 border border-ll-1e293b rounded-xl space-y-2">
-                <label className="text-xs font-mono text-lt-8ab4f8 block font-bold flex items-center gap-1">
-                  <TowerControl className="w-3.5 h-3.5 text-lt-8ab4f8" />
+              <div className="p-3 bg-canvas border border-line rounded-xl space-y-2">
+                <label className="text-xs text-accent block font-bold flex items-center gap-1">
+                  <TowerControl className="w-3.5 h-3.5 text-accent" />
                   Add LoRa Mesh Node Detected by LoRa Device
                 </label>
                 <div className="flex gap-2">
@@ -802,18 +802,18 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                     value={discoveredLoraNodeId}
                     onChange={(e) => setDiscoveredLoraNodeId(e.target.value)}
                     placeholder="Node ID (e.g. 4F92)"
-                    className="flex-1 bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-xs text-lt-white font-mono"
+                    className="flex-1 bg-surface border border-line rounded-lg p-2 text-xs text-ink"
                   />
                   <input
                     type="text"
                     value={discoveredLoraNodeName}
                     onChange={(e) => setDiscoveredLoraNodeName(e.target.value)}
                     placeholder="Node Name (e.g. SeaGhost)"
-                    className="flex-1 bg-lb-0a0f1e border border-ll-1e293b rounded-lg p-2 text-xs text-lt-white font-mono"
+                    className="flex-1 bg-surface border border-line rounded-lg p-2 text-xs text-ink"
                   />
                   <button
                     onClick={handleAddManualDiscoveredNode}
-                    className="px-3 bg-lb-00d4ff text-lt-020408 font-bold rounded-lg text-xs hover:bg-lb-cyan-300 font-mono flex items-center gap-1"
+                    className="px-3 bg-accent text-on-accent font-bold rounded-lg text-xs hover:brightness-110 flex items-center gap-1"
                   >
                     <PlusCircle className="w-3.5 h-3.5" /> Add
                   </button>
@@ -824,8 +824,8 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3.5 bg-lb-060b16/90 border-t border-ll-1e293b flex items-center justify-between shrink-0 flex-wrap gap-2">
-          <span className="text-xs text-lt-00ff9d font-mono flex items-center gap-1.5">
+        <div className="px-5 py-3.5 bg-canvas/90 border-t border-line flex items-center justify-between shrink-0 flex-wrap gap-2">
+          <span className="text-xs text-success-ink flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Config Saved
           </span>
@@ -834,7 +834,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               saveMqttConfig({ ...mqttConfig, enabled: mqttConnected });
               onClose();
             }}
-            className="px-5 py-2 rounded-xl bg-lb-00d4ff text-lt-020408 font-bold text-xs shadow-[0_0_12px_rgba(0,212,255,0.3)] hover:bg-lb-cyan-300 transition-all font-mono"
+            className="px-5 py-2 rounded-xl bg-accent text-on-accent font-bold text-xs hover:brightness-110 transition-all"
           >
             Done
           </button>

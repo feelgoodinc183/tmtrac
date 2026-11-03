@@ -155,43 +155,43 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
   const getRoleBadge = (role: TrackerVesselRole) => {
     switch (role) {
       case 'COMPETITOR':
-        return { label: 'COMPETITOR', bg: 'bg-lb-00d4ff/20 text-lt-00d4ff border-ll-00d4ff/40', icon: Flag };
+        return { label: 'COMPETITOR', bg: 'bg-accent/20 text-accent border-accent/40', icon: Flag };
       case 'SAFETY_BOAT':
-        return { label: 'SAFETY RIB', bg: 'bg-lb-ff9900/20 text-lt-ff9900 border-ll-ff9900/40', icon: LifeBuoy };
+        return { label: 'SAFETY RIB', bg: 'bg-warning-ink/20 text-warning-ink border-warning-ink/40', icon: LifeBuoy };
       case 'RACE_COMMITTEE':
-        return { label: 'RACE COMMITTEE', bg: 'bg-lb-ff4d4d/20 text-lt-ff4d4d border-ll-ff4d4d/40', icon: Shield };
+        return { label: 'RACE COMMITTEE', bg: 'bg-danger/20 text-danger-ink border-danger-ink/40', icon: Shield };
       case 'SPECTATOR':
-        return { label: 'SPECTATOR', bg: 'bg-lb-00ff9d/20 text-lt-00ff9d border-ll-00ff9d/40', icon: Users };
+        return { label: 'SPECTATOR', bg: 'bg-success-ink/20 text-success-ink border-success-ink/40', icon: Users };
       case 'VIP_CHASE':
-        return { label: 'VIP CHASE', bg: 'bg-lb-c084fc/20 text-lt-c084fc border-ll-c084fc/40', icon: Award };
+        return { label: 'VIP CHASE', bg: 'bg-ink/20 text-ink-muted border-line/40', icon: Award };
       case 'MEDIA':
-        return { label: 'MEDIA / DRONE', bg: 'bg-lb-e879f9/20 text-lt-e879f9 border-ll-e879f9/40', icon: Tv };
+        return { label: 'MEDIA / DRONE', bg: 'bg-ink/20 text-ink-muted border-line/40', icon: Tv };
     }
   };
 
   const totalHybridTrackers = (deviceGps?.active ? 1 : 0) + (fleetMembers?.length || 0) + (nodes?.length || 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-lb-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200 font-google">
-      <div className="bg-lb-0a0f1e/95 backdrop-blur-md border border-ll-334155/80 rounded-3xl landscape:rounded-2xl w-full max-w-3xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 flex flex-col shadow-2xl overflow-hidden text-lt-e0e6ed">
+    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200">
+      <div className="bg-surface/95 backdrop-blur-md border border-line/80 rounded-3xl landscape:rounded-2xl w-full max-w-3xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 flex flex-col shadow-2xl overflow-hidden text-ink">
         
         {/* MODAL HEADER */}
-        <div className="px-5 py-4 landscape:py-2.5 border-b border-ll-1e293b bg-lb-060b16/90 flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 landscape:py-2.5 border-b border-line bg-canvas/90 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-lb-00d4ff/15 border border-ll-00d4ff/40 flex items-center justify-center text-lt-00d4ff shrink-0 shadow-sm">
-              <Navigation className="w-5 h-5 animate-pulse" />
+            <div className="w-10 h-10 rounded-2xl bg-accent/15 border border-accent/40 flex items-center justify-center text-accent shrink-0 shadow-sm">
+              <Navigation className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold text-lt-white tracking-tight truncate">
+                <h2 className="text-base sm:text-lg font-bold text-ink tracking-tight truncate">
                   Hybrid Fleet & Multi-Device Trackers
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-lb-00ff9d/20 text-lt-00ff9d border border-ll-00ff9d/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-lb-00ff9d animate-ping" />
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-success-ink/20 text-success-ink border border-success-ink/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success-ink" />
                   {totalHybridTrackers} Active Nodes
                 </span>
               </div>
-              <p className="text-xs text-lt-64748b font-mono mt-0.5 truncate">
+              <p className="text-xs text-ink-muted mt-0.5 truncate">
                 Join live race tracking from Phone, Tablet, PC or LoRa Device
               </p>
             </div>
@@ -199,20 +199,20 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-lt-94a3b8 hover:text-lt-white hover:bg-lb-1e293b/80 transition-colors"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex border-b border-ll-1e293b bg-lb-060b16/60 shrink-0 px-3 py-2 gap-1.5 overflow-x-auto custom-scrollbar">
+        <div className="flex border-b border-line bg-canvas/60 shrink-0 px-3 py-2 gap-1.5 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('MY_GPS')}
-            className={`py-3 px-4 text-xs font-bold font-mono tracking-wider uppercase border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`py-3 px-4 text-xs font-bold    border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
               activeTab === 'MY_GPS'
-                ? 'border-ll-00d4ff text-lt-00d4ff bg-lb-00d4ff/5'
-                : 'border-transparent text-lt-64748b hover:text-lt-94a3b8'
+                ? 'border-accent text-accent bg-accent/5'
+                : 'border-transparent text-ink-muted hover:text-ink-muted'
             }`}
           >
             <Navigation className="w-3.5 h-3.5" />
@@ -221,10 +221,10 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
           <button
             onClick={() => setActiveTab('FLEET_LIST')}
-            className={`py-3 px-4 text-xs font-bold font-mono tracking-wider uppercase border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`py-3 px-4 text-xs font-bold    border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
               activeTab === 'FLEET_LIST'
-                ? 'border-ll-00d4ff text-lt-00d4ff bg-lb-00d4ff/5'
-                : 'border-transparent text-lt-64748b hover:text-lt-94a3b8'
+                ? 'border-accent text-accent bg-accent/5'
+                : 'border-transparent text-ink-muted hover:text-ink-muted'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -233,10 +233,10 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
           <button
             onClick={() => setActiveTab('SETTINGS')}
-            className={`py-3 px-4 text-xs font-bold font-mono tracking-wider uppercase border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`py-3 px-4 text-xs font-bold    border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
               activeTab === 'SETTINGS'
-                ? 'border-ll-00d4ff text-lt-00d4ff bg-lb-00d4ff/5'
-                : 'border-transparent text-lt-64748b hover:text-lt-94a3b8'
+                ? 'border-accent text-accent bg-accent/5'
+                : 'border-transparent text-ink-muted hover:text-ink-muted'
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
@@ -246,10 +246,10 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
           {!isSpectator && (
             <button
               onClick={() => setActiveTab('SIMULATOR')}
-              className={`py-3 px-4 text-xs font-bold font-mono tracking-wider uppercase border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+              className={`py-3 px-4 text-xs font-bold    border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
                 activeTab === 'SIMULATOR'
-                  ? 'border-ll-00ff9d text-lt-00ff9d bg-lb-00ff9d/5'
-                  : 'border-transparent text-lt-64748b hover:text-lt-94a3b8'
+                  ? 'border-success-ink text-success-ink bg-success-ink/5'
+                  : 'border-transparent text-ink-muted hover:text-ink-muted'
               }`}
             >
               <PlusCircle className="w-3.5 h-3.5" />
@@ -268,32 +268,32 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
               {/* PRIMARY POWER SWITCH CARD */}
               <div className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
                 deviceGps.active
-                  ? 'bg-lb-00d4ff/10 border-ll-00d4ff/50 shadow-[0_0_20px_rgba(0,212,255,0.15)]'
-                  : 'bg-lb-0f172a border-ll-1e293b'
+                  ? 'bg-accent/10 border-accent/50 '
+                  : 'bg-surface border-line'
               }`}>
                 <div className="flex items-center gap-3.5">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
                     deviceGps.active
-                      ? 'bg-lb-00d4ff text-lt-020408 border-ll-00d4ff'
-                      : 'bg-lb-1e293b text-lt-64748b border-ll-334155'
+                      ? 'bg-accent text-on-accent border-accent'
+                      : 'bg-raised text-ink-muted border-line'
                   }`}>
                     {getDeviceIcon(deviceGps.profile?.deviceType || 'PHONE', 'w-6 h-6')}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-lt-white">
+                      <h3 className="text-base font-bold text-ink">
                         {deviceGps.profile?.deviceName || 'This Device GPS Tracker'}
                       </h3>
-                      <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-xs  font-bold ${
                         deviceGps.active
-                          ? 'bg-lb-00ff9d/20 text-lt-00ff9d border border-ll-00ff9d/30'
-                          : 'bg-lb-1e293b text-lt-64748b'
+                          ? 'bg-success-ink/20 text-success-ink border border-success-ink/30'
+                          : 'bg-raised text-ink-muted'
                       }`}>
                         {deviceGps.active ? 'LIVE BROADCASTING' : 'OFFLINE'}
                       </span>
                     </div>
-                    <p className="text-xs text-lt-94a3b8 font-mono mt-0.5">
-                      Role: <strong className="text-lt-white">{deviceGps.profile?.role || 'COMPETITOR'}</strong> • Device ID: <span className="text-lt-00d4ff">{deviceGps.profile?.deviceId}</span>
+                    <p className="text-xs text-ink-muted mt-0.5">
+                      Role: <strong className="text-ink">{deviceGps.profile?.role || 'COMPETITOR'}</strong> • Device ID: <span className="text-accent">{deviceGps.profile?.deviceId}</span>
                     </p>
                   </div>
                 </div>
@@ -301,10 +301,10 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     onClick={onToggleDeviceGps}
-                    className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-mono text-xs font-bold tracking-wider transition-all shadow-md flex items-center justify-center gap-2 ${
+                    className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl  text-xs font-bold  transition-all shadow-md flex items-center justify-center gap-2 ${
                       deviceGps.active
-                        ? 'bg-lb-ff4d4d hover:bg-lb-red-600 text-lt-white'
-                        : 'bg-lb-00d4ff hover:bg-lb-cyan-300 text-lt-020408'
+                        ? 'bg-danger hover:brightness-110 text-on-danger'
+                        : 'bg-accent hover:brightness-110 text-on-accent'
                     }`}
                   >
                     <Navigation className="w-4 h-4" />
@@ -315,10 +315,10 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
               {/* GPS ERROR WARNING */}
               {deviceGps.error && (
-                <div className="p-3.5 bg-lb-ff4d4d/10 border border-ll-ff4d4d/40 rounded-xl text-xs text-lt-ff4d4d font-mono flex items-start gap-2.5">
+                <div className="p-3.5 bg-danger/10 border border-danger-ink/40 rounded-xl text-xs text-danger-ink flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="block text-lt-white font-google">GPS Signal Warning</strong>
+                    <strong className="block text-ink">GPS Signal Warning</strong>
                     <span>{deviceGps.error}</span>
                   </div>
                 </div>
@@ -326,75 +326,75 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
               {/* LIVE TELEMETRY STATS GRID */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 bg-lb-0f172a border border-ll-1e293b rounded-xl font-mono">
-                  <span className="text-xs text-lt-64748b block uppercase tracking-wider">Speed (SOG)</span>
-                  <div className="text-xl font-bold text-lt-00d4ff mt-1">
+                <div className="p-3.5 bg-surface border border-line rounded-xl">
+                  <span className="text-xs text-ink-muted block">Speed (SOG)</span>
+                  <div className="text-xl font-bold text-accent mt-1">
                     {deviceGps.active && typeof deviceGps.speedKt === 'number' ? safeFixed(deviceGps.speedKt, 1) : '--'}
-                    <span className="text-xs text-lt-64748b font-normal ml-1">kt</span>
+                    <span className="text-xs text-ink-muted font-normal ml-1">kt</span>
                   </div>
-                  <span className="text-xs text-lt-94a3b8">Ground Velocity</span>
+                  <span className="text-xs text-ink-muted">Ground Velocity</span>
                 </div>
 
-                <div className="p-3.5 bg-lb-0f172a border border-ll-1e293b rounded-xl font-mono">
-                  <span className="text-xs text-lt-64748b block uppercase tracking-wider">Heading (COG)</span>
-                  <div className="text-xl font-bold text-lt-00ff9d mt-1">
+                <div className="p-3.5 bg-surface border border-line rounded-xl">
+                  <span className="text-xs text-ink-muted block">Heading (COG)</span>
+                  <div className="text-xl font-bold text-success-ink mt-1">
                     {deviceGps.active && deviceGps.headingDeg !== null ? `${deviceGps.headingDeg}°` : '--'}
                   </div>
-                  <span className="text-xs text-lt-94a3b8">Compass Track</span>
+                  <span className="text-xs text-ink-muted">Compass Track</span>
                 </div>
 
-                <div className="p-3.5 bg-lb-0f172a border border-ll-1e293b rounded-xl font-mono">
-                  <span className="text-xs text-lt-64748b block uppercase tracking-wider">Accuracy</span>
-                  <div className="text-xl font-bold text-lt-fbbc04 mt-1">
+                <div className="p-3.5 bg-surface border border-line rounded-xl">
+                  <span className="text-xs text-ink-muted block">Accuracy</span>
+                  <div className="text-xl font-bold text-warning-ink mt-1">
                     {deviceGps.active && deviceGps.accuracy !== null ? `±${deviceGps.accuracy}m` : '--'}
                   </div>
-                  <span className="text-xs text-lt-94a3b8">Fix Precision</span>
+                  <span className="text-xs text-ink-muted">Fix Precision</span>
                 </div>
 
-                <div className="p-3.5 bg-lb-0f172a border border-ll-1e293b rounded-xl font-mono">
-                  <span className="text-xs text-lt-64748b block uppercase tracking-wider">Mesh Packets</span>
-                  <div className="text-xl font-bold text-lt-c084fc mt-1">
+                <div className="p-3.5 bg-surface border border-line rounded-xl">
+                  <span className="text-xs text-ink-muted block">Mesh Packets</span>
+                  <div className="text-xl font-bold text-ink-muted mt-1">
                     {deviceGps.packetsSent || 0}
                   </div>
-                  <span className="text-xs text-lt-94a3b8">Broadcasted Pings</span>
+                  <span className="text-xs text-ink-muted">Broadcasted Pings</span>
                 </div>
               </div>
 
               {/* COORDINATES & MESH RELAY BOX */}
-              <div className="p-4 bg-lb-060b16 border border-ll-1e293b rounded-xl space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between border-b border-ll-1e293b pb-2">
-                  <span className="text-lt-64748b uppercase tracking-wider">GPS Position:</span>
-                  <span className="text-lt-white font-bold">
+              <div className="p-4 bg-canvas border border-line rounded-xl space-y-3 text-xs">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-ink-muted">GPS Position:</span>
+                  <span className="text-ink font-bold">
                     {deviceGps.active && typeof deviceGps.lat === 'number' && typeof deviceGps.lng === 'number'
                       ? `${safeFixed(deviceGps.lat, 6)}° N, ${safeFixed(deviceGps.lng, 6)}° E`
                       : 'Awaiting Hardware Location...'}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-ll-1e293b pb-2">
-                  <span className="text-lt-64748b uppercase tracking-wider">Mesh Transport:</span>
-                  <span className="text-lt-00d4ff font-bold">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-ink-muted">Mesh Transport:</span>
+                  <span className="text-accent font-bold">
                     WebSocket MQTT + BroadcastChannel Fleet Mesh
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-ll-1e293b pb-2">
-                  <span className="text-lt-64748b uppercase tracking-wider">GNSS Sat Hardware Time:</span>
-                  <span className="text-lt-00ff9d font-bold flex items-center gap-1.5">
-                    <Radio className="w-3.5 h-3.5 text-lt-00ff9d" />
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-ink-muted">GNSS Sat Hardware Time:</span>
+                  <span className="text-success-ink font-bold flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-success-ink" />
                     {deviceGps.timestamp ? `${new Date(deviceGps.timestamp).toISOString().slice(11, 23)} UTC` : 'Syncing Satellites...'}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-ll-1e293b pb-2">
-                  <span className="text-lt-64748b uppercase tracking-wider">Store & Forward Buffer:</span>
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-ink-muted">Store & Forward Buffer:</span>
                   <span className="font-bold flex items-center gap-1.5">
                     {deviceTrackerService.getOfflineBufferCount() > 0 ? (
-                      <span className="px-2 py-0.5 rounded bg-lb-amber-500/20 text-lt-amber-400 text-xs font-mono border border-ll-amber-500/30">
+                      <span className="px-2 py-0.5 rounded bg-warning-ink/20 text-warning-ink text-xs border border-warning-ink/30">
                         {deviceTrackerService.getOfflineBufferCount()} offline fixes cached
                       </span>
                     ) : (
-                      <span className="text-lt-00ff9d text-xs font-mono">
+                      <span className="text-success-ink text-xs">
                         Synced • Zero-Loss Protected
                       </span>
                     )}
@@ -402,8 +402,8 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-lt-64748b uppercase tracking-wider">Bound Race Boat:</span>
-                  <span className="text-lt-00ff9d font-bold">
+                  <span className="text-ink-muted">Bound Race Boat:</span>
+                  <span className="text-success-ink font-bold">
                     {deviceGps.profile?.boundBoatId
                       ? boats.find((b) => b.id === deviceGps.profile.boundBoatId)?.name || deviceGps.profile.boundBoatId
                       : 'Independent Participant / Free Fleet Tracker'}
@@ -415,15 +415,15 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-lt-00d4ff" />
-                    <h4 className="text-xs sm:text-sm font-bold text-lt-white font-mono uppercase tracking-wider">
+                    <Users className="w-4 h-4 text-accent" />
+                    <h4 className="text-xs sm:text-sm font-bold text-ink">
                       Live Fleet Members ({fleetMembers.length + (deviceGps.active ? 1 : 0)})
                     </h4>
                   </div>
                   {fleetMembers.length > 0 && (
                     <button
                       onClick={() => deviceTrackerService.clearRemoteMembers()}
-                      className="text-xs font-mono text-lt-ff4d4d hover:underline flex items-center gap-1"
+                      className="text-xs text-danger-ink hover:underline flex items-center gap-1"
                     >
                       <Trash2 className="w-3 h-3" />
                       Clear Sim Trackers
@@ -433,21 +433,21 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
                 {/* Local user device card if active */}
                 {deviceGps.active && (
-                  <div className="p-3 bg-lb-00d4ff/10 border border-ll-00d4ff/50 rounded-xl flex items-center justify-between gap-3">
+                  <div className="p-3 bg-accent/10 border border-accent/50 rounded-xl flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-lb-00d4ff text-lt-020408 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-accent text-on-accent flex items-center justify-center font-bold shrink-0">
                         {getDeviceIcon(deviceGps.profile?.deviceType || 'PHONE', 'w-4 h-4')}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <strong className="text-xs text-lt-white">
+                          <strong className="text-xs text-ink">
                             {deviceGps.profile?.deviceName || 'This Device (My Phone)'}
                           </strong>
-                          <span className="px-1.5 py-0.2 rounded text-xs font-bold font-mono bg-lb-00d4ff text-lt-black">
+                          <span className="px-1.5 py-0.2 rounded text-xs font-bold bg-accent text-on-accent">
                             YOU (LOCAL)
                           </span>
                         </div>
-                        <span className="text-xs font-mono text-lt-00d4ff">
+                        <span className="text-xs text-accent">
                           {typeof deviceGps.lat === 'number' && typeof deviceGps.lng === 'number' ? `${safeFixed(deviceGps.lat, 4)}°N, ${safeFixed(deviceGps.lng, 4)}°E` : 'Locating...'} • {safeFixed(deviceGps.speedKt, 1, '0.0')} kt • {Math.round(deviceGps.headingDeg || 0)}°
                         </span>
                       </div>
@@ -458,7 +458,7 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                         onFollowTarget(deviceTrackerService.getLocalNode().id, deviceGps.profile?.deviceName || 'My Device');
                         onClose();
                       }}
-                      className="px-2.5 py-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-00d4ff text-xs font-mono font-bold flex items-center gap-1 transition-all shrink-0"
+                      className="px-2.5 py-1.5 rounded-lg bg-raised hover:bg-raised text-accent text-xs font-bold flex items-center gap-1 transition-all shrink-0"
                       title="Follow this device on map"
                     >
                       <Crosshair className="w-3 h-3" />
@@ -469,19 +469,19 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
                 {/* Remote fleet members */}
                 {fleetMembers.length === 0 && !deviceGps.active ? (
-                  <div className="p-5 text-center bg-lb-0f172a border border-dashed border-ll-1e293b rounded-xl space-y-2.5">
-                    <div className="w-9 h-9 rounded-full bg-lb-00d4ff/10 text-lt-00d4ff flex items-center justify-center mx-auto border border-ll-00d4ff/30">
+                  <div className="p-5 text-center bg-surface border border-dashed border-line rounded-xl space-y-2.5">
+                    <div className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto border border-accent/30">
                       <Users className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-lt-white">No Other Visitors Active Right Now</h4>
-                      <p className="text-xs text-lt-94a3b8 font-mono mt-0.5 max-w-sm mx-auto">
+                      <h4 className="text-xs font-bold text-ink">No Other Visitors Active Right Now</h4>
+                      <p className="text-xs text-ink-muted mt-0.5 max-w-sm mx-auto">
                         Turn on GPS above or open this link on another device to see live fleet members tracking on the map.
                       </p>
                     </div>
                     <button
                       onClick={() => handleAddSimulation('COMPETITOR')}
-                      className="px-3 py-1.5 bg-lb-00ff9d hover:bg-lb-emerald-300 text-lt-020408 font-bold text-xs rounded-xl font-mono transition-all"
+                      className="px-3 py-1.5 bg-success-ink hover:brightness-110 text-canvas font-bold text-xs rounded-xl transition-all"
                     >
                       + Add Simulated Competitor Tracker
                     </button>
@@ -495,11 +495,11 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                       return (
                         <div
                           key={member.deviceId}
-                          className="p-3 bg-lb-0f172a hover:bg-lb-131e33 border border-ll-1e293b rounded-xl flex items-center justify-between gap-3 transition-all"
+                          className="p-3 bg-surface hover:bg-raised border border-line rounded-xl flex items-center justify-between gap-3 transition-all"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center border text-lt-white font-bold shrink-0"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center border text-ink font-bold shrink-0"
                               style={{ backgroundColor: `${member.color}25`, borderColor: member.color, color: member.color }}
                             >
                               {getDeviceIcon(member.deviceType, 'w-4 h-4')}
@@ -507,16 +507,16 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 truncate">
-                                <span className="text-xs font-bold text-lt-white truncate">{member.deviceName}</span>
-                                <span className={`px-1.5 py-0.2 rounded text-xs font-mono font-bold border flex items-center gap-0.5 shrink-0 ${roleBadge.bg}`}>
+                                <span className="text-xs font-bold text-ink truncate">{member.deviceName}</span>
+                                <span className={`px-1.5 py-0.2 rounded text-xs  font-bold border flex items-center gap-0.5 shrink-0 ${roleBadge.bg}`}>
                                   <RoleIcon className="w-2.5 h-2.5" />
                                   {roleBadge.label}
                                 </span>
                               </div>
-                              <div className="text-xs font-mono text-lt-94a3b8 mt-0.5">
+                              <div className="text-xs text-ink-muted mt-0.5">
                                 <span>{safeFixed(member.lat, 4)}°N, {safeFixed(member.lng, 4)}°E</span> •{' '}
-                                <span className="text-lt-00d4ff font-bold">{safeFixed(member.speedKt, 1, '0.0')} kt</span> •{' '}
-                                <span className="text-lt-00ff9d">{member.headingDeg ?? 0}°</span>
+                                <span className="text-accent font-bold">{safeFixed(member.speedKt, 1, '0.0')} kt</span> •{' '}
+                                <span className="text-success-ink">{member.headingDeg ?? 0}°</span>
                               </div>
                             </div>
                           </div>
@@ -527,7 +527,7 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                                 onFollowTarget(member.deviceId, member.deviceName);
                                 onClose();
                               }}
-                              className="px-2.5 py-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-00d4ff text-xs font-mono font-bold flex items-center gap-1 transition-all"
+                              className="px-2.5 py-1.5 rounded-lg bg-raised hover:bg-raised text-accent text-xs font-bold flex items-center gap-1 transition-all"
                               title="Follow this device on map"
                             >
                               <Crosshair className="w-3 h-3" />
@@ -542,14 +542,14 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
               </div>
 
               {/* QUICK SHARE BANNER */}
-              <div className="p-4 bg-gradient-to-r from-lb-1a73e8/20 to-lb-00d4ff/10 border border-ll-00d4ff/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 border border-accent/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-lb-00d4ff/20 text-lt-00d4ff flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl bg-accent/20 text-accent flex items-center justify-center">
                     <Share2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-lt-white">Invite Crew & Spectator Devices</h4>
-                    <p className="text-xs text-lt-94a3b8 font-mono">
+                    <h4 className="text-xs font-bold text-ink">Invite Crew & Spectator Devices</h4>
+                    <p className="text-xs text-ink-muted">
                       Share this URL with crew on other phones/tablets to view and broadcast on the same live map.
                     </p>
                   </div>
@@ -557,9 +557,9 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
                 <button
                   onClick={handleCopyShareLink}
-                  className="w-full sm:w-auto px-4 py-2 bg-lb-00d4ff hover:bg-lb-cyan-300 text-lt-020408 font-bold text-xs rounded-xl font-mono flex items-center justify-center gap-1.5 transition-all shadow-md shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shrink-0"
                 >
-                  {copiedLink ? <Check className="w-3.5 h-3.5 text-lt-black" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-canvas" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedLink ? 'Link Copied!' : 'Copy Regatta URL'}
                 </button>
               </div>
@@ -572,15 +572,15 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">All Visiting Devices & Hybrid Trackers</h3>
-                  <p className="text-xs text-lt-94a3b8 font-mono mt-0.5">
+                  <h3 className="text-sm font-bold text-ink">All Visiting Devices & Hybrid Trackers</h3>
+                  <p className="text-xs text-ink-muted mt-0.5">
                     Real-time mesh synchronization between mobile phones, tablets, PCs, and LoRa radios.
                   </p>
                 </div>
 
                 <button
                   onClick={() => deviceTrackerService.clearRemoteMembers()}
-                  className="px-2.5 py-1 text-xs font-mono text-lt-ff4d4d hover:bg-lb-ff4d4d/10 rounded border border-ll-ff4d4d/30 transition-all flex items-center gap-1"
+                  className="px-2.5 py-1 text-xs text-danger-ink hover:bg-danger/10 rounded border border-danger-ink/30 transition-all flex items-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" />
                   Clear Remote Trackers
@@ -590,46 +590,46 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
               <div className="space-y-2.5">
                 {/* Local user card if active */}
                 {deviceGps.active && (
-                  <div className="p-3 bg-lb-00d4ff/10 border border-ll-00d4ff/50 rounded-xl flex items-center justify-between gap-3">
+                  <div className="p-3 bg-accent/10 border border-accent/50 rounded-xl flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-lb-00d4ff text-lt-020408 flex items-center justify-center">
+                      <div className="w-9 h-9 rounded-lg bg-accent text-on-accent flex items-center justify-center">
                         {getDeviceIcon(deviceGps.profile?.deviceType || 'PHONE')}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <strong className="text-xs text-lt-white">{deviceGps.profile?.deviceName}</strong>
-                          <span className="px-1.5 py-0.2 rounded text-xs font-bold font-mono bg-lb-00d4ff text-lt-black">
+                          <strong className="text-xs text-ink">{deviceGps.profile?.deviceName}</strong>
+                          <span className="px-1.5 py-0.2 rounded text-xs font-bold bg-accent text-on-accent">
                             YOU (LOCAL)
                           </span>
                         </div>
-                        <span className="text-xs font-mono text-lt-00d4ff">
+                        <span className="text-xs text-accent">
                           {safeFixed(deviceGps.lat, 4)}°N, {safeFixed(deviceGps.lng, 4)}°E • {safeFixed(deviceGps.speedKt, 1, '0.0')} kt • ±{deviceGps.accuracy ?? 5}m
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-right font-mono text-xs">
-                      <span className="text-lt-00ff9d font-bold block">{deviceGps.profile?.role}</span>
-                      <span className="text-xs text-lt-64748b">Broadcasting Live</span>
+                    <div className="text-right text-xs">
+                      <span className="text-success-ink font-bold block">{deviceGps.profile?.role}</span>
+                      <span className="text-xs text-ink-muted">Broadcasting Live</span>
                     </div>
                   </div>
                 )}
 
                 {/* Remote fleet members */}
                 {fleetMembers.length === 0 && !deviceGps.active ? (
-                  <div className="p-8 text-center bg-lb-0f172a border border-dashed border-ll-1e293b rounded-2xl space-y-3">
-                    <div className="w-12 h-12 rounded-full bg-lb-00d4ff/10 text-lt-00d4ff flex items-center justify-center mx-auto border border-ll-00d4ff/30">
+                  <div className="p-8 text-center bg-surface border border-dashed border-line rounded-2xl space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto border border-accent/30">
                       <Users className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-lt-white">No Other Visitors Active Right Now</h4>
-                      <p className="text-xs text-lt-94a3b8 font-mono mt-1 max-w-md mx-auto">
+                      <h4 className="text-sm font-bold text-ink">No Other Visitors Active Right Now</h4>
+                      <p className="text-xs text-ink-muted mt-1 max-w-md mx-auto">
                         Turn on your device GPS above or open this link on your smartphone to see multiple devices tracking each other on the live marine map.
                       </p>
                     </div>
                     <button
                       onClick={() => setActiveTab('SIMULATOR')}
-                      className="px-4 py-2 bg-lb-00ff9d hover:bg-lb-emerald-300 text-lt-020408 font-bold text-xs rounded-xl font-mono transition-all"
+                      className="px-4 py-2 bg-success-ink hover:brightness-110 text-canvas font-bold text-xs rounded-xl transition-all"
                     >
                       + Generate Simulated Fleet Trackers
                     </button>
@@ -642,11 +642,11 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                     return (
                       <div
                         key={member.deviceId}
-                        className="p-3.5 bg-lb-0f172a hover:bg-lb-131e33 border border-ll-1e293b rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all"
+                        className="p-3.5 bg-surface hover:bg-raised border border-line rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all"
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-9 h-9 rounded-lg flex items-center justify-center border text-lt-white font-bold shrink-0"
+                            className="w-9 h-9 rounded-lg flex items-center justify-center border text-ink font-bold shrink-0"
                             style={{ backgroundColor: `${member.color}25`, borderColor: member.color, color: member.color }}
                           >
                             {getDeviceIcon(member.deviceType)}
@@ -654,24 +654,24 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-lt-white">{member.deviceName}</span>
-                              <span className={`px-1.5 py-0.2 rounded text-xs font-mono font-bold border flex items-center gap-1 ${roleBadge.bg}`}>
+                              <span className="text-xs font-bold text-ink">{member.deviceName}</span>
+                              <span className={`px-1.5 py-0.2 rounded text-xs  font-bold border flex items-center gap-1 ${roleBadge.bg}`}>
                                 <RoleIcon className="w-2.5 h-2.5" />
                                 {roleBadge.label}
                               </span>
                             </div>
-                            <div className="text-xs font-mono text-lt-94a3b8 mt-0.5">
+                            <div className="text-xs text-ink-muted mt-0.5">
                               <span>{safeFixed(member.lat, 4)}°N, {safeFixed(member.lng, 4)}°E</span> •{' '}
-                              <span className="text-lt-00d4ff font-bold">{safeFixed(member.speedKt, 1, '0.0')} kt</span> •{' '}
-                              <span className="text-lt-00ff9d">{member.headingDeg ?? 0}°</span>
+                              <span className="text-accent font-bold">{safeFixed(member.speedKt, 1, '0.0')} kt</span> •{' '}
+                              <span className="text-success-ink">{member.headingDeg ?? 0}°</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-ll-1e293b">
+                        <div className="flex items-center gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-line">
                           <button
                             onClick={() => onFollowTarget(`!DEV-${member.deviceId.slice(-4).toUpperCase()}`, member.deviceName)}
-                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-lb-1e293b hover:bg-lb-334155 text-lt-00d4ff text-xs font-mono font-bold flex items-center justify-center gap-1 transition-all"
+                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-accent text-xs font-bold flex items-center justify-center gap-1 transition-all"
                           >
                             <Crosshair className="w-3 h-3" />
                             Follow
@@ -688,15 +688,15 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
           {/* TAB 3: TRACKER SETUP & ROLE */}
           {activeTab === 'SETTINGS' && (
             <div className="space-y-4">
-              <div className="p-4 bg-lb-0f172a border border-ll-1e293b rounded-2xl space-y-4">
-                <h3 className="text-sm font-bold text-lt-white border-b border-ll-1e293b pb-2">
+              <div className="p-4 bg-surface border border-line rounded-2xl space-y-4">
+                <h3 className="text-sm font-bold text-ink border-b border-line pb-2">
                   My Device Tracker Profile
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Tracker Name */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-lt-94a3b8 block">
+                    <label className="text-xs text-ink-muted block">
                       Device Call-Sign / Display Name
                     </label>
                     <input
@@ -704,55 +704,55 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                       value={deviceName}
                       onChange={(e) => setDeviceName(e.target.value)}
                       placeholder="e.g. Capt. Sarah (iPhone 15)"
-                      className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl px-3.5 py-2 text-xs font-mono text-lt-white focus:outline-none focus:border-ll-00d4ff"
+                      className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-accent"
                     />
                   </div>
 
                   {/* Device Hardware Type */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-lt-94a3b8 block">
+                    <label className="text-xs text-ink-muted block">
                       Hardware Tracker Type
                     </label>
                     <select
                       value={deviceType}
                       onChange={(e) => setDeviceType(e.target.value as TrackerDeviceType)}
-                      className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl px-3.5 py-2 text-xs font-mono text-lt-white focus:outline-none focus:border-ll-00d4ff"
+                      className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-accent"
                     >
-                      <option value="PHONE">📱 Smartphone (iPhone / Android)</option>
-                      <option value="TABLET">📱 Marine Tablet (iPad / Galaxy Tab)</option>
-                      <option value="PC">💻 Laptop / PC Nav Station</option>
-                      <option value="LORA_TECHO">📡 LoRa Device</option>
+                      <option value="PHONE">Smartphone (iPhone / Android)</option>
+                      <option value="TABLET">Marine Tablet (iPad / Galaxy Tab)</option>
+                      <option value="PC">Laptop / PC Nav Station</option>
+                      <option value="LORA_TECHO">LoRa Device</option>
                     </select>
                   </div>
 
                   {/* Fleet Role */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-lt-94a3b8 block">
+                    <label className="text-xs text-ink-muted block">
                       Regatta / Marine Role
                     </label>
                     <select
                       value={deviceRole}
                       onChange={(e) => setDeviceRole(e.target.value as TrackerVesselRole)}
-                      className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl px-3.5 py-2 text-xs font-mono text-lt-white focus:outline-none focus:border-ll-00d4ff"
+                      className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-accent"
                     >
-                      <option value="COMPETITOR">🏁 Race Competitor (Sailing Boat)</option>
-                      <option value="SAFETY_BOAT">🛟 Safety / Rescue RIB</option>
-                      <option value="RACE_COMMITTEE">⚓ Race Committee (RC Signal Boat)</option>
-                      <option value="SPECTATOR">👥 Spectator / Supporter</option>
-                      <option value="VIP_CHASE">🏆 VIP Chase Boat</option>
-                      <option value="MEDIA">📹 Media / Drone Vessel</option>
+                      <option value="COMPETITOR">Race Competitor (Sailing Boat)</option>
+                      <option value="SAFETY_BOAT">Safety / Rescue RIB</option>
+                      <option value="RACE_COMMITTEE">Race Committee (RC Signal Boat)</option>
+                      <option value="SPECTATOR">Spectator / Supporter</option>
+                      <option value="VIP_CHASE">VIP Chase Boat</option>
+                      <option value="MEDIA">Media / Drone Vessel</option>
                     </select>
                   </div>
 
                   {/* Bound Boat Assignment */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-lt-94a3b8 block">
+                    <label className="text-xs text-ink-muted block">
                       Bind to Registered Race Boat
                     </label>
                     <select
                       value={boundBoatId}
                       onChange={(e) => setBoundBoatId(e.target.value)}
-                      className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl px-3.5 py-2 text-xs font-mono text-lt-white focus:outline-none focus:border-ll-00d4ff"
+                      className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-accent"
                     >
                       <option value="">-- None (Independent Tracker) --</option>
                       {boats.map((b) => (
@@ -766,7 +766,7 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
 
                 {/* Marker Color */}
                 <div className="space-y-1.5 pt-2">
-                  <label className="text-xs font-mono text-lt-94a3b8 block">
+                  <label className="text-xs text-ink-muted block">
                     Map Marker Color
                   </label>
                   <div className="flex items-center gap-2">
@@ -775,7 +775,7 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                         key={c}
                         onClick={() => setColor(c)}
                         className={`w-7 h-7 rounded-full border-2 transition-transform ${
-                          color === c ? 'scale-125 border-ll-white shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                          color === c ? 'scale-125 border-line shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                         style={{ backgroundColor: c }}
                       />
@@ -784,13 +784,13 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                 </div>
 
                 {/* Broadcasting Checkbox */}
-                <div className="pt-2 border-t border-ll-1e293b">
-                  <label className="flex items-center gap-3 cursor-pointer text-xs font-mono text-lt-white select-none">
+                <div className="pt-2 border-t border-line">
+                  <label className="flex items-center gap-3 cursor-pointer text-xs text-ink select-none">
                     <input
                       type="checkbox"
                       checked={isBroadcasting}
                       onChange={(e) => setIsBroadcasting(e.target.checked)}
-                      className="w-4 h-4 rounded text-lt-00d4ff focus:ring-0 focus:outline-none"
+                      className="w-4 h-4 rounded text-accent focus:ring-0 focus:outline-none"
                     />
                     <span>Broadcast my GPS position to all race participants and spectators</span>
                   </label>
@@ -800,15 +800,15 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                 <div className="pt-2 flex items-center justify-between">
                   <button
                     onClick={handleSaveProfile}
-                    className="px-6 py-2.5 bg-lb-00d4ff hover:bg-lb-cyan-300 text-lt-020408 font-bold text-xs rounded-xl font-mono transition-all shadow-md flex items-center gap-2"
+                    className="px-6 py-2.5 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2"
                   >
                     <Check className="w-4 h-4" />
                     Save & Update Profile
                   </button>
 
                   {saveMessage && (
-                    <span className="text-xs font-mono text-lt-00ff9d animate-fadeIn">
-                      ✓ Profile Updated Live
+                    <span className="text-xs text-success-ink animate-fadeIn">
+                      Profile Updated Live
                     </span>
                   )}
                 </div>
@@ -819,10 +819,10 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
           {/* TAB 4: SIMULATOR */}
           {!isSpectator && activeTab === 'SIMULATOR' && (
             <div className="space-y-4">
-              <div className="p-4 bg-lb-0f172a border border-ll-1e293b rounded-2xl space-y-3">
+              <div className="p-4 bg-surface border border-line rounded-2xl space-y-3">
                 <div>
-                  <h3 className="text-sm font-bold text-lt-white">Inject Simulated Hybrid Devices</h3>
-                  <p className="text-xs text-lt-94a3b8 font-mono mt-0.5">
+                  <h3 className="text-sm font-bold text-ink">Inject Simulated Hybrid Devices</h3>
+                  <p className="text-xs text-ink-muted mt-0.5">
                     Instantly simulate multiple phones, tablets, and safety vessels active in the regatta area.
                   </p>
                 </div>
@@ -830,44 +830,44 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                   <button
                     onClick={() => handleAddSimulation('COMPETITOR')}
-                    className="p-3.5 bg-lb-060b16 hover:bg-lb-101a2e border border-ll-00d4ff/30 rounded-xl text-left font-mono transition-all group"
+                    className="p-3.5 bg-canvas hover:bg-surface border border-accent/30 rounded-xl text-left transition-all group"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-lt-white font-google flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-lt-00d4ff" />
+                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-accent" />
                         Phone Competitor
                       </span>
-                      <PlusCircle className="w-4 h-4 text-lt-00d4ff group-hover:scale-110 transition-transform" />
+                      <PlusCircle className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
                     </div>
-                    <p className="text-xs text-lt-94a3b8">iPhone 15 sailor GPS tracker</p>
+                    <p className="text-xs text-ink-muted">iPhone 15 sailor GPS tracker</p>
                   </button>
 
                   <button
                     onClick={() => handleAddSimulation('SAFETY_BOAT')}
-                    className="p-3.5 bg-lb-060b16 hover:bg-lb-101a2e border border-ll-ff9900/30 rounded-xl text-left font-mono transition-all group"
+                    className="p-3.5 bg-canvas hover:bg-surface border border-warning-ink/30 rounded-xl text-left transition-all group"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-lt-white font-google flex items-center gap-1.5">
-                        <Tablet className="w-4 h-4 text-lt-ff9900" />
+                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                        <Tablet className="w-4 h-4 text-warning-ink" />
                         Safety RIB (iPad)
                       </span>
-                      <PlusCircle className="w-4 h-4 text-lt-ff9900 group-hover:scale-110 transition-transform" />
+                      <PlusCircle className="w-4 h-4 text-warning-ink group-hover:scale-110 transition-transform" />
                     </div>
-                    <p className="text-xs text-lt-94a3b8">Patrol & Marshal rescue boat</p>
+                    <p className="text-xs text-ink-muted">Patrol & Marshal rescue boat</p>
                   </button>
 
                   <button
                     onClick={() => handleAddSimulation('RACE_COMMITTEE')}
-                    className="p-3.5 bg-lb-060b16 hover:bg-lb-101a2e border border-ll-ff4d4d/30 rounded-xl text-left font-mono transition-all group"
+                    className="p-3.5 bg-canvas hover:bg-surface border border-danger-ink/30 rounded-xl text-left transition-all group"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-lt-white font-google flex items-center gap-1.5">
-                        <Laptop className="w-4 h-4 text-lt-ff4d4d" />
+                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                        <Laptop className="w-4 h-4 text-danger-ink" />
                         RC Signal (PC)
                       </span>
-                      <PlusCircle className="w-4 h-4 text-lt-ff4d4d group-hover:scale-110 transition-transform" />
+                      <PlusCircle className="w-4 h-4 text-danger-ink group-hover:scale-110 transition-transform" />
                     </div>
-                    <p className="text-xs text-lt-94a3b8">Race Committee station PC</p>
+                    <p className="text-xs text-ink-muted">Race Committee station PC</p>
                   </button>
                 </div>
               </div>
@@ -877,16 +877,16 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="px-5 py-3.5 border-t border-ll-1e293b bg-lb-060b16/90 flex items-center justify-between shrink-0 font-mono text-xs flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-lt-94a3b8">
-            <Radio className="w-3.5 h-3.5 text-lt-00ff9d" />
+        <div className="px-5 py-3.5 border-t border-line bg-canvas/90 flex items-center justify-between shrink-0 text-xs flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-ink-muted">
+            <Radio className="w-3.5 h-3.5 text-success-ink" />
             <span className="hidden sm:inline">Hybrid Telemetry: BLE / Serial / Phone GPS / MQTT</span>
             <span className="sm:hidden">Hybrid Telemetry Active</span>
           </div>
 
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-lb-1e293b hover:bg-lb-334155 text-lt-white font-bold rounded-xl transition-colors font-google"
+            className="px-5 py-2 bg-raised hover:bg-raised text-ink font-bold rounded-xl transition-colors"
           >
             Close
           </button>

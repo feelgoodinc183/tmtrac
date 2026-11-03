@@ -17,6 +17,8 @@
 
   html, body, button, input, select, textarea {
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Fixed-width digits so live times, speeds and scores don't jitter as they update */
+    font-variant-numeric: tabular-nums;
   }
 
   .font-mono, code, pre, .font-mono * {

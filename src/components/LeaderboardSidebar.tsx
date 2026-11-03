@@ -34,6 +34,7 @@ import {
   SlidersHorizontal,
   Check,
   QrCode,
+  Settings,
 } from 'lucide-react';
 import { formatLastHeard, safeFixed } from '../utils/formatters';
 import { deduplicateNodes, isNodeWithin240Hours } from '../services/meshtasticBleMqttService';
@@ -546,7 +547,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                         </span>
                       ) : boat.status === 'FINISHED' ? (
                         <span className="text-xs font-bold text-ink bg-raised/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-line/40">
-                          🏁 FINISHED
+                          FINISHED
                         </span>
                       ) : isOcs ? (
                         <span className="text-xs font-bold text-danger-ink bg-danger/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-danger-ink/40">
@@ -799,8 +800,9 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                       onClick={onOpenHybridTrackers}
                       className="p-1 rounded bg-raised hover:bg-raised text-accent text-xs"
                       title="Manage Hybrid Fleet Trackers"
+                      aria-label="Manage fleet trackers"
                     >
-                      ⚙️
+                      <Settings className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
@@ -816,7 +818,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
               {deviceGps?.error && (
                 <p className="text-xs text-danger-ink pt-1 border-t border-danger-ink/30">
-                  ⚠️ {deviceGps.error}
+                  {deviceGps.error}
                 </p>
               )}
             </div>
@@ -1092,17 +1094,17 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                       </div>
                       {node.barometricPressure !== undefined && node.barometricPressure !== null && (
                         <span title="Barometric Atmospheric Pressure">
-                          🧭 {safeFixed(node.barometricPressure, 1)} hPa
+                          {safeFixed(node.barometricPressure, 1)} hPa
                         </span>
                       )}
                       {node.temperature !== undefined && node.temperature !== null && (
                         <span title="Ambient Temperature">
-                          🌡️ {safeFixed(node.temperature, 1)}°C
+                          {safeFixed(node.temperature, 1)}°C
                         </span>
                       )}
                       {node.humidity !== undefined && node.humidity !== null && (
                         <span title="Relative Humidity">
-                          💧 {safeFixed(node.humidity, 1)}% RH
+                          {safeFixed(node.humidity, 1)}% RH
                         </span>
                       )}
                       {node.iaq !== undefined && (
@@ -1123,12 +1125,12 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                       <div className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: boundBoat.color || '#00D4FF' }} />
                         <span className="text-success-ink font-bold truncate max-w-[130px]">
-                          ⚓ {boundBoat.name} ({boundBoat.sailNumber})
+                          {boundBoat.name} ({boundBoat.sailNumber})
                         </span>
                       </div>
                     ) : (
                       <span className="text-warning-ink font-semibold italic bg-warning-ink/10 px-1.5 py-0.2 rounded border border-warning-ink/20">
-                        ⚠️ Unbound Tracker
+                        Unbound Tracker
                       </span>
                     )}
                   </div>

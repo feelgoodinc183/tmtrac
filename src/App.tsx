@@ -90,7 +90,7 @@ import {
   replayBatchThroughCourseProgress,
   calculateBearingDeg,
 } from './services/courseService';
-import { MapPin, Navigation, Trophy, Compass, ArrowLeft, Radio, Zap } from 'lucide-react';
+import { MapPin, Navigation, Trophy, Compass, ArrowLeft, Radio, Zap, X } from 'lucide-react';
 
 const isValidNumber = (val: any): boolean => typeof val === 'number' && Number.isFinite(val) && !Number.isNaN(val);
 
@@ -2855,9 +2855,9 @@ export default function App() {
             type="button"
             aria-label="Dismiss"
             onClick={() => setSaveRejection(null)}
-            className="shrink-0 px-2 py-1.5 rounded-lg text-danger-ink hover:brightness-110 text-xs cursor-pointer"
+            className="shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-control text-danger-ink hover:brightness-110 cursor-pointer"
           >
-            ✕
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -3438,7 +3438,7 @@ export default function App() {
                             className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-canvas text-xs"
                             style={{ backgroundColor: member.color || '#00D4FF' }}
                           >
-                            {member.deviceType === 'PHONE' ? '📱' : member.deviceType === 'TABLET' ? '📟' : '💻'}
+                            {member.deviceType === 'PHONE' ? 'Ph' : member.deviceType === 'TABLET' ? 'Tab' : 'PC'}
                           </div>
                           <div>
                             <h5 className="text-xs font-bold text-ink">

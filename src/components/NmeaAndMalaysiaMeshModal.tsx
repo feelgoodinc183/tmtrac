@@ -368,87 +368,87 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-lb-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 landscape:p-1.5 font-google">
-      <div className="bg-lb-202124 border border-ll-3c4043 w-full max-w-3xl h-[85vh] max-h-[750px] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-[300px] sm:min-h-[520px] rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-lt-e8eaed">
+    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 landscape:p-1.5">
+      <div className="bg-raised border border-line w-full max-w-3xl h-[85vh] max-h-[750px] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-[300px] sm:min-h-[520px] rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink">
         {/* Header */}
-        <div className="p-4 landscape:py-2.5 bg-lb-28292a border-b border-ll-3c4043 flex items-center justify-between shrink-0">
+        <div className="p-4 landscape:py-2.5 bg-raised border-b border-line flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-lb-1a73e8 flex items-center justify-center text-lt-white shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-on-accent shadow-sm">
               <Globe className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-lt-white flex items-center gap-2 font-google">
+              <h2 className="text-sm sm:text-base font-bold text-ink flex items-center gap-2">
                 Malaysia LoRa MQTT Stream & NMEA Instruments
-                <span className="text-xs bg-lb-1a73e8/20 text-lt-8ab4f8 px-2 py-0.5 rounded-full font-mono border border-ll-1a73e8/30">
+                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full border border-accent/30">
                   MY_919 / MY_433 & NMEA
                 </span>
               </h2>
-              <p className="text-xs text-lt-9aa0a6 font-mono">
+              <p className="text-xs text-ink-muted">
                 Customizable Public Malaysian Meshtastic Stream & Instrument Bridging
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-lt-9aa0a6 hover:text-lt-white hover:bg-lb-3c4043 transition-all"
+            className="p-1.5 rounded-full text-ink-muted hover:text-ink hover:bg-raised transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-ll-3c4043 bg-lb-28292a/60 p-2 gap-1.5 shrink-0 overflow-x-auto custom-scrollbar">
+        <div className="flex border-b border-line bg-raised/60 p-2 gap-1.5 shrink-0 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('MALAYSIA_LORA')}
-            className={`py-2 px-3.5 rounded-2xl font-google text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+            className={`py-2 px-3.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'MALAYSIA_LORA'
-                ? 'bg-lb-1a73e8 text-lt-white shadow-sm'
-                : 'bg-lb-202124 text-lt-9aa0a6 hover:text-lt-white border border-ll-3c4043'
+                ? 'bg-accent text-on-accent shadow-sm'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
             LoRa &amp; MQTT
             {hardwareConn.malaysiaPublicMeshActive && (
-              <span className="w-2 h-2 rounded-full bg-lb-34a853 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-success-ink" />
             )}
           </button>
 
           <button
             onClick={() => setActiveTab('LORA_COMMAND_FLAGS')}
-            className={`py-2 px-3.5 rounded-2xl font-google text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+            className={`py-2 px-3.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'LORA_COMMAND_FLAGS'
-                ? 'bg-lb-e37400 text-lt-white shadow-sm'
-                : 'bg-lb-202124 text-lt-9aa0a6 hover:text-lt-white border border-ll-3c4043'
+                ? 'bg-warning-ink text-canvas shadow-sm'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
             }`}
           >
-            <Flag className="w-3.5 h-3.5 text-lt-fbbc04" />
+            <Flag className="w-3.5 h-3.5 text-warning-ink" />
             RC Command Flags ({broadcastMessages.length})
           </button>
 
           <button
             onClick={() => setActiveTab('ADAPTIVE_THROTTLE')}
-            className={`py-2 px-3.5 rounded-2xl font-google text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+            className={`py-2 px-3.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'ADAPTIVE_THROTTLE'
-                ? 'bg-lb-00d4ff text-lt-020408 font-black shadow-sm'
-                : 'bg-lb-202124 text-lt-9aa0a6 hover:text-lt-white border border-ll-3c4043'
+                ? 'bg-accent text-on-accent font-black shadow-sm'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
             }`}
           >
-            <BatteryCharging className="w-3.5 h-3.5 text-lt-00ff9d" />
+            <BatteryCharging className="w-3.5 h-3.5 text-success-ink" />
             Adaptive Throttle (MCMC 1%)
           </button>
 
           <button
             onClick={() => setActiveTab('NMEA_INSTRUMENTS')}
-            className={`py-2 px-3.5 rounded-2xl font-google text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+            className={`py-2 px-3.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'NMEA_INSTRUMENTS'
-                ? 'bg-lb-1a73e8 text-lt-white shadow-sm'
-                : 'bg-lb-202124 text-lt-9aa0a6 hover:text-lt-white border border-ll-3c4043'
+                ? 'bg-accent text-on-accent shadow-sm'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
             NMEA 2000 / 0183
             {hardwareConn.nmeaBridgeActive && (
-              <span className="w-2 h-2 rounded-full bg-lb-34a853 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-success-ink" />
             )}
           </button>
         </div>
@@ -459,39 +459,39 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
           {activeTab === 'MALAYSIA_LORA' && (
             <div className="space-y-4">
               {/* CUSTOMIZABLE MQTT CONFIGURATION FORM */}
-              <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-3">
-                <div className="flex items-center justify-between border-b border-ll-3c4043 pb-2">
-                  <span className="text-xs font-google font-bold text-lt-white flex items-center gap-2">
-                    <Server className="w-4 h-4 text-lt-8ab4f8" />
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-bold text-ink flex items-center gap-2">
+                    <Server className="w-4 h-4 text-accent" />
                     Customizable MQTT Broker & Stream Topics
                   </span>
-                  <span className="text-xs font-mono text-lt-81c995 font-bold">
+                  <span className="text-xs text-success-ink font-bold">
                     OFFICIAL MALAYSIA DEFAULT
                   </span>
                 </div>
 
                 {/* Preset Band Buttons */}
                 <div>
-                  <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                  <label className="text-xs text-ink-muted block mb-1">
                     Select Frequency Band Preset
                   </label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleSelectBandPreset('MY_919')}
-                      className={`flex-1 py-2 px-3 rounded-xl border text-xs font-mono font-bold transition-all ${
+                      className={`flex-1 py-2 px-3 rounded-xl border text-xs  font-bold transition-all ${
                         frequencyBand === 'MY_919'
-                          ? 'bg-lb-1a73e8 text-lt-white border-ll-1a73e8'
-                          : 'bg-lb-202124 text-lt-9aa0a6 border-ll-3c4043'
+                          ? 'bg-accent text-on-accent border-accent'
+                          : 'bg-raised text-ink-muted border-line'
                       }`}
                     >
                       MY_919 (919-923 MHz General 500mW)
                     </button>
                     <button
                       onClick={() => handleSelectBandPreset('MY_433')}
-                      className={`flex-1 py-2 px-3 rounded-xl border text-xs font-mono font-bold transition-all ${
+                      className={`flex-1 py-2 px-3 rounded-xl border text-xs  font-bold transition-all ${
                         frequencyBand === 'MY_433'
-                          ? 'bg-lb-1a73e8 text-lt-white border-ll-1a73e8'
-                          : 'bg-lb-202124 text-lt-9aa0a6 border-ll-3c4043'
+                          ? 'bg-accent text-on-accent border-accent'
+                          : 'bg-raised text-ink-muted border-line'
                       }`}
                     >
                       MY_433 (433-435 MHz HAM Band)
@@ -501,7 +501,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
 
                 {/* Broker Preset Quick Buttons */}
                 <div>
-                  <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                  <label className="text-xs text-ink-muted block mb-1">
                     Broker Server Presets
                   </label>
                   <div className="flex flex-wrap gap-1.5">
@@ -523,10 +523,10 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                             mqttPassword: b.pass,
                           });
                         }}
-                        className={`text-xs font-mono px-2 py-1 rounded-lg border transition-all ${
+                        className={`text-xs  px-2 py-1 rounded-lg border transition-all ${
                           mqttBroker === b.url || (b.url === 'mqtt.meshtastic.org' && mqttBroker.includes('mqtt.meshtastic.org'))
-                            ? 'bg-lb-1a73e8/20 text-lt-8ab4f8 border-ll-1a73e8 font-bold'
-                            : 'bg-lb-202124 text-lt-9aa0a6 border-ll-3c4043 hover:border-ll-5f6368'
+                            ? 'bg-accent/20 text-accent border-accent font-bold'
+                            : 'bg-raised text-ink-muted border-line hover:border-line'
                         }`}
                       >
                         {b.name}
@@ -538,7 +538,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                 {/* Broker URL, Auth Credentials & Custom Topic Input */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       MQTT Broker Host & Port
                     </label>
                     <input
@@ -548,12 +548,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                         setMqttBroker(e.target.value);
                         persistMeshSettings({ mqttBroker: e.target.value });
                       }}
-                      className="w-full bg-lb-202124 border border-ll-3c4043 text-lt-white rounded-xl p-2.5 text-xs font-mono focus:border-ll-1a73e8 outline-none"
+                      className="w-full bg-raised border border-line text-ink rounded-xl p-2.5 text-xs focus:border-accent outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       MQTT Topic String (Wildcard Supported)
                     </label>
                     <input
@@ -563,12 +563,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                         setMqttTopic(e.target.value);
                         persistMeshSettings({ mqttTopic: e.target.value });
                       }}
-                      className="w-full bg-lb-202124 border border-ll-3c4043 text-lt-8ab4f8 font-bold rounded-xl p-2.5 text-xs font-mono focus:border-ll-1a73e8 outline-none"
+                      className="w-full bg-raised border border-line text-accent font-bold rounded-xl p-2.5 text-xs focus:border-accent outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       MQTT Username (Official Public Default)
                     </label>
                     <input
@@ -578,12 +578,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                         setMqttUsername(e.target.value);
                         persistMeshSettings({ mqttUsername: e.target.value });
                       }}
-                      className="w-full bg-lb-202124 border border-ll-3c4043 text-lt-81c995 font-mono font-bold rounded-xl p-2.5 text-xs focus:border-ll-1a73e8 outline-none"
+                      className="w-full bg-raised border border-line text-success-ink font-bold rounded-xl p-2.5 text-xs focus:border-accent outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       MQTT Password (Official Public Default)
                     </label>
                     <input
@@ -593,27 +593,27 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                         setMqttPassword(e.target.value);
                         persistMeshSettings({ mqttPassword: e.target.value });
                       }}
-                      className="w-full bg-lb-202124 border border-ll-3c4043 text-lt-81c995 font-mono font-bold rounded-xl p-2.5 text-xs focus:border-ll-1a73e8 outline-none"
+                      className="w-full bg-raised border border-line text-success-ink font-bold rounded-xl p-2.5 text-xs focus:border-accent outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Dynamic Regatta & Maritime Event Manager */}
-              <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-3">
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-xs font-mono uppercase tracking-wider text-lt-9aa0a6 block">
+                    <label className="text-xs text-ink-muted block">
                       Select Active Regatta & Maritime Event
                     </label>
-                    <p className="text-xs text-lt-8ab4f8 font-mono mt-0.5">
+                    <p className="text-xs text-accent mt-0.5">
                       Current Event: <strong>{selectedLocation.name}</strong> ({selectedLocation.organizer || 'Official Organiser'})
                     </p>
                   </div>
 
                   <button
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lb-1a73e8 hover:bg-lb-blue-600 text-lt-white text-xs font-bold transition-all shadow-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent hover:brightness-110 text-on-accent text-xs font-bold transition-all shadow-sm"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{showAddForm ? 'Close Form' : 'Add Event'}</span>
@@ -622,15 +622,15 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
 
                 {/* Inline Add Custom Regatta Form */}
                 {showAddForm && (
-                  <div className="p-3.5 bg-lb-202124 rounded-xl border border-ll-1a73e8/60 space-y-3 animate-fadeIn">
-                    <h5 className="text-xs font-bold text-lt-white flex items-center gap-1.5 font-google">
-                      <Building2 className="w-4 h-4 text-lt-8ab4f8" />
+                  <div className="p-3.5 bg-raised rounded-xl border border-accent/60 space-y-3 animate-fadeIn">
+                    <h5 className="text-xs font-bold text-ink flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-accent" />
                       Add Custom Regatta / Yacht Club Event
                     </h5>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                        <label className="text-xs text-ink-muted block mb-1">
                           Regatta / Event Name
                         </label>
                         <input
@@ -638,12 +638,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           placeholder="e.g. Raja Muda Selangor Regatta 2026"
                           value={newRegattaName}
                           onChange={(e) => setNewRegattaName(e.target.value)}
-                          className="w-full bg-lb-292a2d border border-ll-3c4043 text-lt-white rounded-lg p-2 text-xs font-mono outline-none focus:border-ll-1a73e8"
+                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                        <label className="text-xs text-ink-muted block mb-1">
                           Organizing Body / Yacht Club
                         </label>
                         <input
@@ -651,12 +651,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           placeholder="e.g. Royal Selangor Yacht Club (RSYC)"
                           value={newOrganizer}
                           onChange={(e) => setNewOrganizer(e.target.value)}
-                          className="w-full bg-lb-292a2d border border-ll-3c4043 text-lt-white rounded-lg p-2 text-xs font-mono outline-none focus:border-ll-1a73e8"
+                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                        <label className="text-xs text-ink-muted block mb-1">
                           Region / Maritime Waters
                         </label>
                         <input
@@ -664,12 +664,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           placeholder="e.g. Port Klang / Selat Klang Waters"
                           value={newRegion}
                           onChange={(e) => setNewRegion(e.target.value)}
-                          className="w-full bg-lb-292a2d border border-ll-3c4043 text-lt-white rounded-lg p-2 text-xs font-mono outline-none focus:border-ll-1a73e8"
+                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                        <label className="text-xs text-ink-muted block mb-1">
                           MQTT Stream Topic
                         </label>
                         <input
@@ -677,12 +677,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           placeholder="msh/MY_919/2/e/RSYC_Custom/#"
                           value={newTopic}
                           onChange={(e) => setNewTopic(e.target.value)}
-                          className="w-full bg-lb-292a2d border border-ll-3c4043 text-lt-8ab4f8 font-mono rounded-lg p-2 text-xs outline-none focus:border-ll-1a73e8"
+                          className="w-full bg-raised border border-line text-accent rounded-lg p-2 text-xs outline-none focus:border-accent"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                        <label className="text-xs text-ink-muted block mb-1">
                           Center Latitude
                         </label>
                         <input
@@ -690,12 +690,12 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           placeholder="3.001"
                           value={newLat}
                           onChange={(e) => setNewLat(e.target.value)}
-                          className="w-full bg-lb-292a2d border border-ll-3c4043 text-lt-white rounded-lg p-2 text-xs font-mono outline-none focus:border-ll-1a73e8"
+                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                        <label className="text-xs text-ink-muted block mb-1">
                           Center Longitude
                         </label>
                         <input
@@ -703,7 +703,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           placeholder="101.378"
                           value={newLng}
                           onChange={(e) => setNewLng(e.target.value)}
-                          className="w-full bg-lb-292a2d border border-ll-3c4043 text-lt-white rounded-lg p-2 text-xs font-mono outline-none focus:border-ll-1a73e8"
+                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
                         />
                       </div>
                     </div>
@@ -711,14 +711,14 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                     <div className="flex justify-end gap-2 pt-1">
                       <button
                         onClick={() => setShowAddForm(false)}
-                        className="px-3 py-1.5 rounded-lg bg-lb-3c4043 hover:bg-lb-5f6368 text-lt-white text-xs font-mono"
+                        className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleAddCustomRegatta}
                         disabled={!newRegattaName.trim()}
-                        className="px-4 py-1.5 rounded-lg bg-lb-34a853 hover:bg-lb-green-600 disabled:opacity-50 text-lt-white text-xs font-bold font-mono"
+                        className="px-4 py-1.5 rounded-lg bg-success-ink hover:brightness-110 disabled:opacity-50 text-canvas text-xs font-bold"
                       >
                         Save & Activate Regatta
                       </button>
@@ -740,15 +740,15 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           setMqttTopic(loc.publicMqttTopic);
                           persistMeshSettings({ mqttTopic: loc.publicMqttTopic });
                         }}
-                        className={`p-3 rounded-xl border text-left text-xs font-mono transition-all flex flex-col gap-1.5 cursor-pointer relative ${
+                        className={`p-3 rounded-xl border text-left text-xs  transition-all flex flex-col gap-1.5 cursor-pointer relative ${
                           isSelected
-                            ? 'bg-lb-1a73e8/20 border-ll-1a73e8 text-lt-white shadow-sm ring-1 ring-ll-1a73e8'
-                            : 'bg-lb-202124 border-ll-3c4043 text-lt-9aa0a6 hover:text-lt-white hover:border-ll-5f6368'
+                            ? 'bg-accent/20 border-accent text-ink shadow-sm ring-1 ring-accent'
+                            : 'bg-raised border-line text-ink-muted hover:text-ink hover:border-line'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1">
-                          <span className="font-bold text-lt-white flex items-center gap-1.5 font-google text-xs leading-tight">
-                            <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-lt-8ab4f8' : 'text-lt-9aa0a6'}`} />
+                          <span className="font-bold text-ink flex items-center gap-1.5 text-xs leading-tight">
+                            <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-accent' : 'text-ink-muted'}`} />
                             {loc.name}
                           </span>
 
@@ -756,20 +756,20 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                             {isCustom && (
                               <button
                                 onClick={(e) => handleDeleteCustomRegatta(loc.id, e)}
-                                className="p-1 hover:bg-lb-ea4335/20 text-lt-ea4335 rounded transition-colors"
+                                className="p-1 hover:bg-danger/20 text-danger-ink rounded transition-colors"
                                 title="Delete Custom Event"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
                             {isSelected && (
-                              <Check className="w-4 h-4 text-lt-81c995 shrink-0" />
+                              <Check className="w-4 h-4 text-success-ink shrink-0" />
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-xs text-lt-9aa0a6">
-                          <span className="text-lt-8ab4f8 font-semibold">{loc.organizer || 'RSYC Organised'}</span>
+                        <div className="flex items-center justify-between text-xs text-ink-muted">
+                          <span className="text-accent font-semibold">{loc.organizer || 'RSYC Organised'}</span>
                           <span>{loc.region}</span>
                         </div>
                       </div>
@@ -779,29 +779,29 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
               </div>
 
               {/* Toggle Public Stream */}
-              <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 flex items-center justify-between">
+              <div className="p-4 bg-raised rounded-2xl border border-line flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-lt-white flex items-center gap-2 font-google">
+                  <h4 className="text-xs font-bold text-ink flex items-center gap-2">
                     Malaysia Public LoRa MQTT Stream
                     {hardwareConn.malaysiaPublicMeshActive ? (
-                      <span className="text-xs bg-lb-34a853/20 text-lt-81c995 px-2 py-0.5 rounded-full font-mono font-bold">
+                      <span className="text-xs bg-success-ink/20 text-success-ink px-2 py-0.5 rounded-full font-bold">
                         STREAMING LIVE
                       </span>
                     ) : (
-                      <span className="text-xs text-lt-9aa0a6 font-mono">PAUSED</span>
+                      <span className="text-xs text-ink-muted">PAUSED</span>
                     )}
                   </h4>
-                  <p className="text-xs text-lt-9aa0a6 font-mono">
-                    Topic: <strong className="text-lt-8ab4f8">{mqttTopic}</strong>
+                  <p className="text-xs text-ink-muted">
+                    Topic: <strong className="text-accent">{mqttTopic}</strong>
                   </p>
                 </div>
 
                 <button
                   onClick={handleToggleMalaysiaMesh}
-                  className={`py-2 px-4 rounded-full font-google text-xs font-bold transition-all ${
+                  className={`py-2 px-4 rounded-full text-xs font-bold transition-all ${
                     hardwareConn.malaysiaPublicMeshActive
-                      ? 'bg-lb-34a853 text-lt-white shadow-md'
-                      : 'bg-lb-1a73e8 text-lt-white shadow-md'
+                      ? 'bg-success-ink text-canvas shadow-md'
+                      : 'bg-accent text-on-accent shadow-md'
                   }`}
                 >
                   {hardwareConn.malaysiaPublicMeshActive ? 'Connected (Disconnect)' : 'Start Public Stream'}
@@ -810,7 +810,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
 
               {/* Active Malaysian Mesh Nodes */}
               <div>
-                <label className="text-xs font-mono uppercase tracking-wider text-lt-9aa0a6 block mb-2">
+                <label className="text-xs text-ink-muted block mb-2">
                   Malaysian Maritime Public Nodes Discovered ({nodes.filter((n) => n.connectionType === 'MALAYSIA_PUBLIC_LORA').length})
                 </label>
 
@@ -820,27 +820,27 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                     .map((node) => (
                       <div
                         key={node.id}
-                        className="p-3 bg-lb-292a2d rounded-xl border border-ll-3c4043 flex items-center justify-between"
+                        className="p-3 bg-raised rounded-xl border border-line flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-lb-202124 text-lt-81c995 border border-ll-3c4043">
+                          <div className="p-2 rounded-full bg-raised text-success-ink border border-line">
                             <Globe className="w-4 h-4" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-lt-white font-google">{node.longName}</span>
-                              <span className="text-xs font-mono text-lt-81c995 bg-lb-34a853/10 px-1.5 py-0.5 rounded-full">
+                              <span className="text-xs font-bold text-ink">{node.longName}</span>
+                              <span className="text-xs text-success-ink bg-success-ink/10 px-1.5 py-0.5 rounded-full">
                                 {node.id}
                               </span>
                             </div>
-                            <p className="text-xs text-lt-9aa0a6 font-mono">
-                              Region: <strong className="text-lt-white">{node.locationRegion}</strong> • RSSI:{' '}
-                              <strong className="text-lt-81c995">{node.rssi} dBm</strong>
+                            <p className="text-xs text-ink-muted">
+                              Region: <strong className="text-ink">{node.locationRegion}</strong> • RSSI:{' '}
+                              <strong className="text-success-ink">{node.rssi} dBm</strong>
                             </p>
                           </div>
                         </div>
 
-                        <span className="text-xs font-mono bg-lb-34a853/20 text-lt-81c995 px-2.5 py-0.5 rounded-full border border-ll-81c995/30 font-bold">
+                        <span className="text-xs bg-success-ink/20 text-success-ink px-2.5 py-0.5 rounded-full border border-success-ink/30 font-bold">
                           MALAYSIA MESH
                         </span>
                       </div>
@@ -849,9 +849,9 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
               </div>
 
               {/* Live Terminal */}
-              <div className="bg-lb-141518 border border-ll-3c4043 rounded-2xl p-3 font-mono text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between text-xs text-lt-9aa0a6 border-b border-ll-3c4043 pb-1 mb-2">
-                  <span className="flex items-center gap-1.5 text-lt-81c995">
+              <div className="bg-surface border border-line rounded-2xl p-3 text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between text-xs text-ink-muted border-b border-line pb-1 mb-2">
+                  <span className="flex items-center gap-1.5 text-success-ink">
                     <Terminal className="w-3.5 h-3.5" />
                     MALAYSIA PUBLIC LORA TELEMETRY STREAM
                   </span>
@@ -859,9 +859,9 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                 </div>
 
                 {myMqttLogs.map((log, idx) => (
-                  <div key={idx} className="text-lt-e8eaed text-xs truncate">
-                    <span className="text-lt-9aa0a6 select-none">&gt; </span>
-                    <span className={log.includes('Connected') ? 'text-lt-81c995 font-bold' : 'text-lt-9aa0a6'}>
+                  <div key={idx} className="text-ink text-xs truncate">
+                    <span className="text-ink-muted select-none">&gt; </span>
+                    <span className={log.includes('Connected') ? 'text-success-ink font-bold' : 'text-ink-muted'}>
                       {log}
                     </span>
                   </div>
@@ -874,49 +874,49 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
           {activeTab === 'LORA_COMMAND_FLAGS' && (
             <div className="space-y-4">
               {/* Broadcast Command Banner */}
-              <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-4">
-                <div className="flex items-center justify-between border-b border-ll-3c4043 pb-2">
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-4">
+                <div className="flex items-center justify-between border-b border-line pb-2">
                   <div className="flex items-center gap-2">
-                    <Flag className="w-4 h-4 text-lt-fbbc04" />
-                    <span className="text-xs font-google font-bold text-lt-white">
+                    <Flag className="w-4 h-4 text-warning-ink" />
+                    <span className="text-xs font-bold text-ink">
                       Bidirectional RC Flag Command Broadcaster
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-lt-81c995 bg-lb-81c995/10 px-2 py-0.5 rounded-full border border-ll-81c995/30">
+                  <span className="text-xs text-success-ink bg-success-ink/10 px-2 py-0.5 rounded-full border border-success-ink/30">
                     LORA DIRECT &bull; 919.0 MHz
                   </span>
                 </div>
 
                 {/* Flag Preset Grid */}
                 <div>
-                  <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-2">
+                  <label className="text-xs text-ink-muted block mb-2">
                     Select World Sailing Flag Signal
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { id: 'AP_POSTPONE', label: 'AP Postpone', glyph: '🚩', sounds: '2 Sounds', color: 'border-ll-red-500/60 bg-lb-red-500/10' },
-                      { id: 'GENERAL_RECALL', label: 'General Recall', glyph: '🏁', sounds: '2 Sounds', color: 'border-ll-amber-500/60 bg-lb-amber-500/10' },
-                      { id: 'INDIVIDUAL_RECALL', label: 'Flag X (OCS)', glyph: '🔲', sounds: '1 Sound', color: 'border-ll-blue-500/60 bg-lb-blue-500/10' },
-                      { id: 'BLACK_FLAG', label: 'Black Flag', glyph: '🏴', sounds: '1 Sound', color: 'border-ll-purple-500/60 bg-lb-purple-500/10' },
-                      { id: 'P_FLAG', label: 'Flag P (Prep)', glyph: '🟦', sounds: '1 Sound', color: 'border-ll-blue-400/60 bg-lb-blue-400/10' },
-                      { id: 'S_SHORTEN', label: 'Flag S (Shorten)', glyph: '🟨', sounds: '2 Sounds', color: 'border-ll-amber-400/60 bg-lb-amber-400/10' },
-                      { id: 'N_ABANDON', label: 'Flag N (Abandon)', glyph: '🛑', sounds: '3 Sounds', color: 'border-ll-red-600/60 bg-lb-red-600/10' },
-                      { id: 'SAFETY_RETURN', label: 'Safety Recall', glyph: '🦺', sounds: 'Horn Blast', color: 'border-ll-orange-500/60 bg-lb-orange-500/10' },
+                      { id: 'AP_POSTPONE', label: 'AP Postpone', glyph: 'AP', sounds: '2 Sounds', color: 'border-danger-ink/60 bg-danger/10' },
+                      { id: 'GENERAL_RECALL', label: 'General Recall', glyph: '1st', sounds: '2 Sounds', color: 'border-warning-ink/60 bg-warning-ink/10' },
+                      { id: 'INDIVIDUAL_RECALL', label: 'Flag X (OCS)', glyph: 'X', sounds: '1 Sound', color: 'border-accent/60 bg-accent/10' },
+                      { id: 'BLACK_FLAG', label: 'Black Flag', glyph: 'Blk', sounds: '1 Sound', color: 'border-line/60 bg-raised/10' },
+                      { id: 'P_FLAG', label: 'Flag P (Prep)', glyph: 'P', sounds: '1 Sound', color: 'border-accent/60 bg-accent/10' },
+                      { id: 'S_SHORTEN', label: 'Flag S (Shorten)', glyph: 'S', sounds: '2 Sounds', color: 'border-warning-ink/60 bg-warning-ink/10' },
+                      { id: 'N_ABANDON', label: 'Flag N (Abandon)', glyph: 'N', sounds: '3 Sounds', color: 'border-danger-ink/60 bg-danger/10' },
+                      { id: 'SAFETY_RETURN', label: 'Safety Recall', glyph: 'SR', sounds: 'Horn Blast', color: 'border-warning-ink/60 bg-warning-ink/10' },
                     ].map((f) => (
                       <button
                         key={f.id}
                         onClick={() => setSelectedFlag(f.id as LoraCommandFlag)}
                         className={`p-2.5 rounded-2xl border text-left transition-all ${
                           selectedFlag === f.id
-                            ? `${f.color} ring-2 ring-ll-white/40 shadow-md`
-                            : 'border-ll-3c4043 bg-lb-202124 hover:bg-lb-303134'
+                            ? `${f.color} ring-2 ring-line/40 shadow-md`
+                            : 'border-line bg-raised hover:bg-raised'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xl">{f.glyph}</span>
-                          <span className="text-xs font-mono text-lt-9aa0a6">{f.sounds}</span>
+                          <span className="text-sm font-bold font-mono min-w-8 text-center">{f.glyph}</span>
+                          <span className="text-xs text-ink-muted">{f.sounds}</span>
                         </div>
-                        <div className="text-xs font-bold text-lt-white font-google truncate">{f.label}</div>
+                        <div className="text-xs font-bold text-ink truncate">{f.label}</div>
                       </button>
                     ))}
                   </div>
@@ -925,13 +925,13 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                 {/* Target Fleet Class & Custom Announcement */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       Target Fleet Division
                     </label>
                     <select
                       value={targetFleetClass}
                       onChange={(e) => setTargetFleetClass(e.target.value)}
-                      className="w-full bg-lb-202124 border border-ll-3c4043 rounded-xl p-2 text-xs text-lt-8ab4f8 font-mono focus:border-ll-1a73e8 outline-none"
+                      className="w-full bg-raised border border-line rounded-xl p-2 text-xs text-accent focus:border-accent outline-none"
                     >
                       <option value="ALL">All Divisions (Fleetwide)</option>
                       <option value="Class 1">Class 1 (IRC Racing)</option>
@@ -941,7 +941,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-1">
+                    <label className="text-xs text-ink-muted block mb-1">
                       Optional Instruction Note
                     </label>
                     <input
@@ -949,15 +949,15 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                       placeholder="e.g. Finish line set at Mark 2 Wing Mark"
                       value={customFlagNote}
                       onChange={(e) => setCustomFlagNote(e.target.value)}
-                      className="w-full bg-lb-202124 border border-ll-3c4043 rounded-xl p-2 text-xs text-lt-white font-mono focus:border-ll-1a73e8 outline-none"
+                      className="w-full bg-raised border border-line rounded-xl p-2 text-xs text-ink focus:border-accent outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Transmit Command Button */}
                 <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2 text-xs text-lt-9aa0a6 font-mono">
-                    <Volume2 className="w-4 h-4 text-lt-fbbc04" />
+                  <div className="flex items-center gap-2 text-xs text-ink-muted">
+                    <Volume2 className="w-4 h-4 text-warning-ink" />
                     <span>Triggers automatic RC acoustic horn sound sequence</span>
                   </div>
 
@@ -989,7 +989,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                       setBroadcastMessages((prev) => [newMsg, ...prev]);
                       setCustomFlagNote('');
                     }}
-                    className="px-5 py-2.5 rounded-2xl bg-lb-amber-500 hover:bg-lb-amber-400 text-lt-black font-bold text-xs font-mono flex items-center gap-2 shadow-lg transition-all"
+                    className="px-5 py-2.5 rounded-2xl bg-warning-ink hover:brightness-110 text-canvas font-bold text-xs flex items-center gap-2 shadow-lg transition-all"
                   >
                     <Send className="w-4 h-4" />
                     <span>Transmit Flag Over LoRa</span>
@@ -998,35 +998,35 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
               </div>
 
               {/* Simulated Sailor Mast Unit Display Preview */}
-              <div className="p-4 bg-lb-202124 rounded-2xl border border-ll-3c4043 space-y-3">
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-google font-bold text-lt-white flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4 text-lt-8ab4f8" />
+                  <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Smartphone className="w-4 h-4 text-accent" />
                     Simulated Competitor Mast / OLED Telemetry Receiver
                   </span>
-                  <span className="text-xs font-mono text-lt-81c995 flex items-center gap-1">
+                  <span className="text-xs text-success-ink flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     2-Way ACK Active
                   </span>
                 </div>
 
-                <div className="bg-lb-0a0f1e border-2 border-ll-1e293b rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono shadow-inner">
+                <div className="bg-surface border-2 border-line rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-lb-amber-500/20 border-2 border-ll-amber-500 flex items-center justify-center text-3xl shrink-0 animate-pulse">
+                    <div className="w-16 h-16 rounded-2xl bg-warning-ink/20 border-2 border-warning-ink flex items-center justify-center text-3xl shrink-0">
                       {{
-                        AP_POSTPONE: '🚩',
-                        GENERAL_RECALL: '🏁',
-                        INDIVIDUAL_RECALL: '🔲',
-                        BLACK_FLAG: '🏴',
-                        P_FLAG: '🟦',
-                        S_SHORTEN: '🟨',
-                        N_ABANDON: '🛑',
-                        SAFETY_RETURN: '🦺',
+                        AP_POSTPONE: '',
+                        GENERAL_RECALL: '',
+                        INDIVIDUAL_RECALL: '',
+                        BLACK_FLAG: '',
+                        P_FLAG: '',
+                        S_SHORTEN: '',
+                        N_ABANDON: '',
+                        SAFETY_RETURN: '',
                       }[selectedFlag]}
                     </div>
                     <div>
-                      <div className="text-sm font-black text-lt-white">{selectedFlag.replace('_', ' ')}</div>
-                      <div className="text-xs text-lt-fbbc04">
+                      <div className="text-sm font-black text-ink">{selectedFlag.replace('_', ' ')}</div>
+                      <div className="text-xs text-warning-ink">
                         {{
                           AP_POSTPONE: '2 SOUNDS • RACES POSTPONED',
                           GENERAL_RECALL: '2 SOUNDS • START RECALLED',
@@ -1038,46 +1038,46 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           SAFETY_RETURN: 'CONTINUOUS HORN • RETURN TO PORT',
                         }[selectedFlag]}
                       </div>
-                      <div className="text-xs text-lt-slate-400 mt-1">
+                      <div className="text-xs text-ink-muted mt-1">
                         Node Target: {targetFleetClass} &bull; Channel: 919 MHz Mesh
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-right sm:border-l border-ll-1e293b sm:pl-4">
-                    <div className="text-xs text-lt-00ff9d font-bold uppercase">Telemetry Mast Unit</div>
-                    <div className="text-xs text-lt-white">ACK Sent: 18ms</div>
-                    <div className="text-xs text-lt-slate-500">SNR: +5.2 dB &bull; RSSI: -72 dBm</div>
+                  <div className="text-right sm:border-l border-line sm:pl-4">
+                    <div className="text-xs text-success-ink font-bold">Telemetry Mast Unit</div>
+                    <div className="text-xs text-ink">ACK Sent: 18ms</div>
+                    <div className="text-xs text-ink-muted">SNR: +5.2 dB &bull; RSSI: -72 dBm</div>
                   </div>
                 </div>
               </div>
 
               {/* Transmitted Messages & Acknowledgment Feed */}
               <div className="space-y-2">
-                <span className="text-xs font-mono uppercase text-lt-9aa0a6 block">
+                <span className="text-xs text-ink-muted block">
                   Broadcast Command Log ({broadcastMessages.length})
                 </span>
                 {broadcastMessages.map((msg) => (
                   <div
                     key={msg.id}
-                    className="p-3 bg-lb-292a2d rounded-2xl border border-ll-3c4043 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono"
+                    className="p-3 bg-raised rounded-2xl border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-lt-white">{msg.title}</span>
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-lb-amber-500/20 text-lt-fbbc04 border border-ll-amber-500/30">
+                        <span className="font-bold text-ink">{msg.title}</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-warning-ink/20 text-warning-ink border border-warning-ink/30">
                           {msg.targetClass}
                         </span>
-                        <span className="text-xs text-lt-9aa0a6">
+                        <span className="text-xs text-ink-muted">
                           {new Date(msg.sentAt).toLocaleTimeString()}
                         </span>
                       </div>
-                      <p className="text-xs text-lt-9aa0a6 mt-0.5">{msg.meaning}</p>
+                      <p className="text-xs text-ink-muted mt-0.5">{msg.meaning}</p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-lt-81c995 bg-lb-81c995/10 px-2.5 py-1 rounded-xl border border-ll-81c995/20 font-bold flex items-center gap-1">
-                        <Check className="w-3 h-3 text-lt-81c995" />
+                      <span className="text-xs text-success-ink bg-success-ink/10 px-2.5 py-1 rounded-xl border border-success-ink/20 font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3 text-success-ink" />
                         {msg.acknowledgedNodeIds.length} Nodes ACK&apos;d
                       </span>
                     </div>
@@ -1091,26 +1091,26 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
           {activeTab === 'ADAPTIVE_THROTTLE' && (
             <div className="space-y-4">
               {/* Top Overview & Compliance Card */}
-              <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-3">
-                <div className="flex items-center justify-between border-b border-ll-3c4043 pb-2">
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
                   <div className="flex items-center gap-2">
-                    <BatteryCharging className="w-4 h-4 text-lt-00ff9d" />
-                    <span className="text-xs font-google font-bold text-lt-white">
+                    <BatteryCharging className="w-4 h-4 text-success-ink" />
+                    <span className="text-xs font-bold text-ink">
                       Adaptive Battery &amp; Bandwidth Throttling Engine
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-lt-00d4ff bg-lb-00d4ff/10 px-2.5 py-0.5 rounded-full border border-ll-00d4ff/30 font-bold">
+                  <span className="text-xs text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/30 font-bold">
                     MCMC MALAYSIA COMPLIANT
                   </span>
                 </div>
 
-                <p className="text-xs text-lt-9aa0a6 leading-relaxed">
+                <p className="text-xs text-ink-muted leading-relaxed">
                   Dynamic Smart Proximity automatically ramps node GPS burst frequency near rounding marks and the starting line to capture critical tactical overlaps, while dropping to an ultra-low power heartbeat on long open-water reaches.
                 </p>
 
                 {/* Preset Profiles */}
                 <div>
-                  <label className="text-xs font-mono uppercase text-lt-9aa0a6 block mb-2">
+                  <label className="text-xs text-ink-muted block mb-2">
                     Operational Mode Presets
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -1161,22 +1161,22 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                         }
                         className={`p-3 rounded-2xl border text-left transition-all ${
                           throttleConfig.mode === p.mode
-                            ? 'border-ll-00d4ff bg-lb-00d4ff/10 ring-2 ring-ll-00d4ff/30'
-                            : 'border-ll-3c4043 bg-lb-202124 hover:bg-lb-303134'
+                            ? 'border-accent bg-accent/10 ring-2 ring-accent/30'
+                            : 'border-line bg-raised hover:bg-raised'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-lt-white font-google">{p.title}</span>
+                          <span className="text-xs font-bold text-ink">{p.title}</span>
                           {p.rec && (
-                            <span className="text-xs font-mono px-1.5 py-0.2 rounded-full bg-lb-00ff9d/20 text-lt-00ff9d font-bold">
+                            <span className="text-xs px-1.5 py-0.2 rounded-full bg-success-ink/20 text-success-ink font-bold">
                               REC
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-lt-9aa0a6 mb-2">{p.desc}</p>
-                        <div className="flex items-center justify-between text-xs font-mono text-lt-slate-300">
+                        <p className="text-xs text-ink-muted mb-2">{p.desc}</p>
+                        <div className="flex items-center justify-between text-xs text-ink">
                           <span>Bat: {p.battery}</span>
-                          <span className="text-lt-00d4ff">{p.duty} Tx</span>
+                          <span className="text-accent">{p.duty} Tx</span>
                         </div>
                       </button>
                     ))}
@@ -1185,17 +1185,17 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
               </div>
 
               {/* Dynamic Rates Sliders */}
-              <div className="p-4 bg-lb-202124 rounded-2xl border border-ll-3c4043 space-y-4">
-                <span className="text-xs font-google font-bold text-lt-white block">
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-4">
+                <span className="text-xs font-bold text-ink block">
                   Fine-Tune Dynamic Proximity Parameters
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Near Mark Burst Rate */}
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-lt-9aa0a6">Near-Mark Burst:</span>
-                      <span className="text-lt-00ff9d font-bold">{throttleConfig.nearMarkRateHz.toFixed(1)} Hz</span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-ink-muted">Near-Mark Burst:</span>
+                      <span className="text-success-ink font-bold">{throttleConfig.nearMarkRateHz.toFixed(1)} Hz</span>
                     </div>
                     <input
                       type="range"
@@ -1209,18 +1209,18 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           nearMarkRateHz: parseFloat(e.target.value),
                         }))
                       }
-                      className="w-full accent-ll-00ff9d"
+                      className="w-full accent-success-ink"
                     />
-                    <span className="text-xs text-lt-slate-500 font-mono">
+                    <span className="text-xs text-ink-muted">
                       1 packet every {(1 / throttleConfig.nearMarkRateHz).toFixed(1)}s
                     </span>
                   </div>
 
                   {/* Open Water Conservation Rate */}
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-lt-9aa0a6">Open Water Rate:</span>
-                      <span className="text-lt-00d4ff font-bold">{throttleConfig.openWaterRateHz.toFixed(1)} Hz</span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-ink-muted">Open Water Rate:</span>
+                      <span className="text-accent font-bold">{throttleConfig.openWaterRateHz.toFixed(1)} Hz</span>
                     </div>
                     <input
                       type="range"
@@ -1234,18 +1234,18 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           openWaterRateHz: parseFloat(e.target.value),
                         }))
                       }
-                      className="w-full accent-ll-00d4ff"
+                      className="w-full accent-accent"
                     />
-                    <span className="text-xs text-lt-slate-500 font-mono">
+                    <span className="text-xs text-ink-muted">
                       1 packet every {(1 / throttleConfig.openWaterRateHz).toFixed(0)}s
                     </span>
                   </div>
 
                   {/* Proximity Radius */}
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-lt-9aa0a6">Proximity Boundary:</span>
-                      <span className="text-lt-fbbc04 font-bold">{throttleConfig.proximityThresholdMeters}m</span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-ink-muted">Proximity Boundary:</span>
+                      <span className="text-warning-ink font-bold">{throttleConfig.proximityThresholdMeters}m</span>
                     </div>
                     <input
                       type="range"
@@ -1259,9 +1259,9 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                           proximityThresholdMeters: parseInt(e.target.value),
                         }))
                       }
-                      className="w-full accent-ll-fbbc04"
+                      className="w-full accent-warning-ink"
                     />
-                    <span className="text-xs text-lt-slate-500 font-mono">Radius around marks &amp; start line</span>
+                    <span className="text-xs text-ink-muted">Radius around marks &amp; start line</span>
                   </div>
                 </div>
               </div>
@@ -1269,51 +1269,51 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
               {/* MCMC Airtime Duty Cycle Gauge & Battery Projections */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Gauge 1: MCMC Duty Cycle */}
-                <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-2 font-mono">
+                <div className="p-4 bg-raised rounded-2xl border border-line space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-lt-white font-bold flex items-center gap-1.5">
-                      <Gauge className="w-4 h-4 text-lt-8ab4f8" />
+                    <span className="text-ink font-bold flex items-center gap-1.5">
+                      <Gauge className="w-4 h-4 text-accent" />
                       Airtime Duty Cycle (MCMC Standard)
                     </span>
-                    <span className="text-lt-81c995 font-bold">
+                    <span className="text-success-ink font-bold">
                       {throttleConfig.currentDutyCycle.toFixed(2)}% / 1.00%
                     </span>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full bg-lb-141518 rounded-full h-3 overflow-hidden p-0.5 border border-ll-3c4043">
+                  <div className="w-full bg-surface rounded-full h-3 overflow-hidden p-0.5 border border-line">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${
-                        throttleConfig.currentDutyCycle > 0.9 ? 'bg-lb-red-500' : 'bg-lb-34a853'
+                        throttleConfig.currentDutyCycle > 0.9 ? 'bg-danger' : 'bg-success-ink'
                       }`}
                       style={{ width: `${Math.min(100, (throttleConfig.currentDutyCycle / 1.0) * 100)}%` }}
                     />
                   </div>
 
-                  <div className="flex justify-between text-xs text-lt-9aa0a6">
+                  <div className="flex justify-between text-xs text-ink-muted">
                     <span>Compliant with Class Assignment 919-923 MHz</span>
-                    <span className="text-lt-81c995 font-bold">SAFETY MARGIN: OK</span>
+                    <span className="text-success-ink font-bold">SAFETY MARGIN: OK</span>
                   </div>
                 </div>
 
                 {/* Gauge 2: Estimated Battery Run-times */}
-                <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-2 font-mono">
+                <div className="p-4 bg-raised rounded-2xl border border-line space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-lt-white font-bold flex items-center gap-1.5">
-                      <BatteryCharging className="w-4 h-4 text-lt-00ff9d" />
+                    <span className="text-ink font-bold flex items-center gap-1.5">
+                      <BatteryCharging className="w-4 h-4 text-success-ink" />
                       Projected Hardware Battery Autonomy
                     </span>
-                    <span className="text-lt-00ff9d font-bold">OPTIMIZED</span>
+                    <span className="text-success-ink font-bold">OPTIMIZED</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-lb-202124 p-2 rounded-xl border border-ll-3c4043">
-                      <span className="text-xs text-lt-9aa0a6 block">18650 Cell (3000mAh)</span>
-                      <span className="text-base font-black text-lt-white">~28.5 Hours</span>
+                    <div className="bg-raised p-2 rounded-xl border border-line">
+                      <span className="text-xs text-ink-muted block">18650 Cell (3000mAh)</span>
+                      <span className="text-base font-black text-ink">~28.5 Hours</span>
                     </div>
-                    <div className="bg-lb-202124 p-2 rounded-xl border border-ll-3c4043">
-                      <span className="text-xs text-lt-9aa0a6 block">LiPo (1000mAh T-Echo)</span>
-                      <span className="text-base font-black text-lt-white">~11.8 Hours</span>
+                    <div className="bg-raised p-2 rounded-xl border border-line">
+                      <span className="text-xs text-ink-muted block">LiPo (1000mAh T-Echo)</span>
+                      <span className="text-base font-black text-ink">~11.8 Hours</span>
                     </div>
                   </div>
                 </div>
@@ -1324,9 +1324,9 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
           {/* TAB 2: NMEA INSTRUMENTS BRIDGING */}
           {activeTab === 'NMEA_INSTRUMENTS' && (
             <div className="space-y-4">
-              <div className="p-4 bg-lb-292a2d rounded-2xl border border-ll-3c4043 space-y-4">
-                <div className="flex items-center justify-between border-b border-ll-3c4043 pb-2">
-                  <h4 className="text-xs font-bold text-lt-white flex items-center gap-2 font-google">
+              <div className="p-4 bg-raised rounded-2xl border border-line space-y-4">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <h4 className="text-xs font-bold text-ink flex items-center gap-2">
                     Onboard NMEA 2000 / 0183 Marine Instrument Ingestion
                   </h4>
                   <button
@@ -1335,10 +1335,10 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                         nmeaBridgeActive: !hardwareConn.nmeaBridgeActive,
                       })
                     }
-                    className={`px-3 py-1.5 rounded-full text-xs font-google font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                       hardwareConn.nmeaBridgeActive
-                        ? 'bg-lb-1a73e8 text-lt-white shadow-sm'
-                        : 'bg-lb-202124 text-lt-9aa0a6 border border-ll-3c4043'
+                        ? 'bg-accent text-on-accent shadow-sm'
+                        : 'bg-raised text-ink-muted border border-line'
                     }`}
                   >
                     {hardwareConn.nmeaBridgeActive ? 'NMEA BRIDGE ACTIVE' : 'ACTIVATE NMEA BRIDGE'}
@@ -1349,9 +1349,9 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* True Wind Speed */}
                   <div>
-                    <div className="flex justify-between text-xs font-mono mb-1">
-                      <span className="text-lt-9aa0a6">True Wind Speed (TWS):</span>
-                      <span className="text-lt-8ab4f8 font-bold">{nmeaData.twsKt} knots</span>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-ink-muted">True Wind Speed (TWS):</span>
+                      <span className="text-accent font-bold">{nmeaData.twsKt} knots</span>
                     </div>
                     <input
                       type="range"
@@ -1360,15 +1360,15 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                       step="0.5"
                       value={nmeaData.twsKt}
                       onChange={(e) => handleUpdateNmea('twsKt', parseFloat(e.target.value))}
-                      className="w-full accent-ll-1a73e8"
+                      className="w-full accent-accent"
                     />
                   </div>
 
                   {/* True Wind Direction */}
                   <div>
-                    <div className="flex justify-between text-xs font-mono mb-1">
-                      <span className="text-lt-9aa0a6">True Wind Angle (TWD):</span>
-                      <span className="text-lt-81c995 font-bold">{nmeaData.twdDeg}°</span>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-ink-muted">True Wind Angle (TWD):</span>
+                      <span className="text-success-ink font-bold">{nmeaData.twdDeg}°</span>
                     </div>
                     <input
                       type="range"
@@ -1376,15 +1376,15 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                       max="359"
                       value={nmeaData.twdDeg}
                       onChange={(e) => handleUpdateNmea('twdDeg', parseInt(e.target.value))}
-                      className="w-full accent-ll-34a853"
+                      className="w-full accent-success-ink"
                     />
                   </div>
 
                   {/* Depth */}
                   <div>
-                    <div className="flex justify-between text-xs font-mono mb-1">
-                      <span className="text-lt-9aa0a6">Water Depth ($SDDPT):</span>
-                      <span className="text-lt-fbbc04 font-bold">{nmeaData.depthMeters} meters</span>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-ink-muted">Water Depth ($SDDPT):</span>
+                      <span className="text-warning-ink font-bold">{nmeaData.depthMeters} meters</span>
                     </div>
                     <input
                       type="range"
@@ -1393,15 +1393,15 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                       step="0.5"
                       value={nmeaData.depthMeters}
                       onChange={(e) => handleUpdateNmea('depthMeters', parseFloat(e.target.value))}
-                      className="w-full accent-ll-fbbc04"
+                      className="w-full accent-warning-ink"
                     />
                   </div>
 
                   {/* Compass Heading */}
                   <div>
-                    <div className="flex justify-between text-xs font-mono mb-1">
-                      <span className="text-lt-9aa0a6">Magnetic Heading ($HCHDG):</span>
-                      <span className="text-lt-c084fc font-bold">{nmeaData.headingDeg}°</span>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-ink-muted">Magnetic Heading ($HCHDG):</span>
+                      <span className="text-ink-muted font-bold">{nmeaData.headingDeg}°</span>
                     </div>
                     <input
                       type="range"
@@ -1409,24 +1409,24 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                       max="359"
                       value={nmeaData.headingDeg}
                       onChange={(e) => handleUpdateNmea('headingDeg', parseInt(e.target.value))}
-                      className="w-full accent-ll-c084fc"
+                      className="w-full accent-line"
                     />
                   </div>
                 </div>
 
                 {/* Raw NMEA Output */}
-                <div className="bg-lb-141518 border border-ll-3c4043 rounded-2xl p-3 font-mono text-xs space-y-1">
-                  <span className="text-xs text-lt-9aa0a6 block mb-1">
+                <div className="bg-surface border border-line rounded-2xl p-3 text-xs space-y-1">
+                  <span className="text-xs text-ink-muted block mb-1">
                     ACTIVE GENERATED NMEA 0183 SENTENCE ($MWWV):
                   </span>
-                  <span className="text-lt-8ab4f8 font-bold tracking-wider">{nmeaData.rawSentence}</span>
+                  <span className="text-accent font-bold">{nmeaData.rawSentence}</span>
                 </div>
               </div>
 
               {/* NMEA Bridge Terminal Log */}
-              <div className="bg-lb-141518 border border-ll-3c4043 rounded-2xl p-3 font-mono text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between text-xs text-lt-9aa0a6 border-b border-ll-3c4043 pb-1 mb-2">
-                  <span className="flex items-center gap-1.5 text-lt-8ab4f8">
+              <div className="bg-surface border border-line rounded-2xl p-3 text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between text-xs text-ink-muted border-b border-line pb-1 mb-2">
+                  <span className="flex items-center gap-1.5 text-accent">
                     <Terminal className="w-3.5 h-3.5" />
                     NMEA 2000 CAN-BUS / RS-422 SERIAL LOG
                   </span>
@@ -1434,9 +1434,9 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                 </div>
 
                 {nmeaLogs.map((log, idx) => (
-                  <div key={idx} className="text-lt-e8eaed text-xs truncate">
-                    <span className="text-lt-9aa0a6 select-none">&gt; </span>
-                    <span className="text-lt-9aa0a6">{log}</span>
+                  <div key={idx} className="text-ink text-xs truncate">
+                    <span className="text-ink-muted select-none">&gt; </span>
+                    <span className="text-ink-muted">{log}</span>
                   </div>
                 ))}
               </div>
@@ -1445,14 +1445,14 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-lb-28292a border-t border-ll-3c4043 flex items-center justify-between">
-          <span className="text-xs text-lt-81c995 font-mono flex items-center gap-1.5">
+        <div className="p-4 bg-raised border-t border-line flex items-center justify-between">
+          <span className="text-xs text-success-ink flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Auto-saved to device storage
           </span>
           <button
             onClick={handleDone}
-            className="px-6 py-2 rounded-full bg-lb-1a73e8 text-lt-white font-google font-bold text-xs shadow-md hover:bg-lb-blue-600 transition-all flex items-center gap-1.5"
+            className="px-6 py-2 rounded-full bg-accent text-on-accent font-bold text-xs shadow-md hover:brightness-110 transition-all flex items-center gap-1.5"
           >
             <Check className="w-3.5 h-3.5" />
             Done

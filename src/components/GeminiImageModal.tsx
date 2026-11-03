@@ -72,29 +72,29 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-lb-020408/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-lb-0a0f1e border border-ll-1e293b w-full max-w-2xl h-[650px] rounded-2xl shadow-2xl overflow-hidden flex flex-col text-lt-e0e6ed">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-surface border border-line w-full max-w-2xl h-[650px] rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink">
         {/* Header */}
-        <div className="p-4 bg-lb-060b16 border-b border-ll-1e293b flex items-center justify-between shrink-0">
+        <div className="p-4 bg-canvas border-b border-line flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-lb-00ff9d/20 border border-ll-00ff9d/40 flex items-center justify-center text-lt-00ff9d">
+            <div className="w-8 h-8 rounded-lg bg-success-ink/20 border border-success-ink/40 flex items-center justify-center text-success-ink">
               <ImageIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight text-lt-white flex items-center gap-2">
+              <h2 className="text-sm font-bold tracking-tight text-ink flex items-center gap-2">
                 Gemini Vision Photo Intelligence
-                <span className="text-xs bg-lb-00ff9d/20 text-lt-00ff9d px-2 py-0.5 rounded font-mono border border-ll-00ff9d/30">
+                <span className="text-xs bg-success-ink/20 text-success-ink px-2 py-0.5 rounded border border-success-ink/30">
                   {selectedModel}
                 </span>
               </h2>
-              <p className="text-xs text-lt-64748b font-mono">
+              <p className="text-xs text-ink-muted">
                 Multimodal Image Analysis for Hardware & Regattas
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-lt-64748b hover:text-lt-white transition-all"
+            className="p-1.5 rounded-lg text-ink-muted hover:text-ink transition-all"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,7 +104,7 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
         <div className="flex-1 p-5 overflow-y-auto space-y-4 custom-scrollbar">
           {/* Sample selector & Upload button */}
           <div>
-            <label className="text-xs font-mono uppercase tracking-widest text-lt-64748b block mb-2">
+            <label className="text-xs text-ink-muted block mb-2">
               Select Sample Marine Image or Upload File
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -112,10 +112,10 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
                 <button
                   key={sample.id}
                   onClick={() => handleSelectSample(sample)}
-                  className={`p-2 rounded-lg border text-left text-xs font-mono transition-all flex flex-col items-center gap-1 ${
+                  className={`p-2 rounded-lg border text-left text-xs  transition-all flex flex-col items-center gap-1 ${
                     selectedImage === sample.preview
-                      ? 'bg-lb-00d4ff/20 border-ll-00d4ff text-lt-white'
-                      : 'bg-lb-060b16 border-ll-1e293b text-lt-94a3b8 hover:text-lt-white'
+                      ? 'bg-accent/20 border-accent text-ink'
+                      : 'bg-canvas border-line text-ink-muted hover:text-ink'
                   }`}
                 >
                   <img src={sample.preview} alt={sample.name} className="w-full h-16 object-cover rounded" />
@@ -125,8 +125,8 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
             </div>
 
             <div className="mt-3">
-              <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-ll-1e293b hover:border-ll-00d4ff bg-lb-060b16 rounded-xl cursor-pointer text-xs font-mono text-lt-94a3b8 hover:text-lt-white transition-all">
-                <Upload className="w-4 h-4 text-lt-00d4ff" />
+              <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-line hover:border-accent bg-canvas rounded-xl cursor-pointer text-xs text-ink-muted hover:text-ink transition-all">
+                <Upload className="w-4 h-4 text-accent" />
                 Upload Custom Boat Photo / Camera Frame
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
               </label>
@@ -136,13 +136,13 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
           {/* Model Selector & Prompt Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-mono uppercase tracking-widest text-lt-64748b">
+              <label className="text-xs text-ink-muted">
                 Prompt & Model Selection
               </label>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="bg-lb-060b16 border border-ll-1e293b rounded px-2 py-0.5 text-xs font-mono text-lt-00ff9d"
+                className="bg-canvas border border-line rounded px-2 py-0.5 text-xs text-success-ink"
               >
                 <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (High Reasoning)</option>
                 <option value="gemini-3.6-flash">gemini-3.6-flash (Fast)</option>
@@ -153,7 +153,7 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               rows={2}
-              className="w-full bg-lb-060b16 border border-ll-1e293b rounded-xl p-3 text-xs text-lt-white placeholder-lt-64748b focus:border-ll-00ff9d outline-none font-sans"
+              className="w-full bg-canvas border border-line rounded-xl p-3 text-xs text-ink placeholder-ink-muted focus:border-success-ink outline-none font-sans"
               placeholder="Describe what you want Gemini to analyze in this photo..."
             />
           </div>
@@ -162,7 +162,7 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
           <button
             onClick={handleAnalyze}
             disabled={isLoading}
-            className="w-full py-3 bg-lb-00ff9d hover:bg-lb-emerald-300 disabled:opacity-40 text-lt-020408 font-bold text-xs rounded-xl transition-all shadow-[0_0_12px_#00FF9D] flex items-center justify-center gap-2"
+            className="w-full py-3 bg-success-ink hover:brightness-110 disabled:opacity-40 text-canvas font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -179,12 +179,12 @@ export const GeminiImageModal: React.FC<GeminiImageModalProps> = ({
 
           {/* Analysis Result Box */}
           {analysisResult && (
-            <div className="p-4 bg-lb-060b16 border border-ll-00ff9d/40 rounded-xl space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-lt-00ff9d">
+            <div className="p-4 bg-canvas border border-success-ink/40 rounded-xl space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-success-ink">
                 <CheckCircle className="w-4 h-4" />
                 Gemini Vision Analysis
               </div>
-              <p className="text-xs text-lt-e0e6ed leading-relaxed whitespace-pre-wrap font-sans">
+              <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap font-sans">
                 {analysisResult}
               </p>
             </div>
