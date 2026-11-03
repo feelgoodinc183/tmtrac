@@ -56,8 +56,9 @@ with zipfile.ZipFile(fullstack_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) 
     # package.json
     z.write(prod_pkg_path, 'package.json')
     
-    # .htaccess
-    htaccess_path = os.path.join(PUBLIC_DIR, '.htaccess')
+    # Root .htaccess lives in deploy/, not public/: a copy inside dist/ would switch on rewriting
+    # there and cancel the root rules that keep dist/ private
+    htaccess_path = os.path.join(ROOT_DIR, 'deploy', 'root.htaccess')
     if os.path.exists(htaccess_path):
         z.write(htaccess_path, '.htaccess')
     

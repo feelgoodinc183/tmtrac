@@ -137,6 +137,19 @@ HTTPS is required by modern browsers for Web Bluetooth and Geolocation APIs:
 
 ---
 
+## 🔒 Keep the app folder private
+
+The app folder is inside `public_html`, so LiteSpeed will serve any file in it unless `.htaccess` forbids it. The root `.htaccess` (from `deploy/root.htaccess`) blocks `data/`, `dist/`, `tmp/`, `node_modules/` and internal files such as `package.json`, `app.js`, logs and zips. After every install or update, check:
+
+- `https://tmtrac.my/data/tmtrac_store.json` must return **403**
+- `https://tmtrac.my/dist/server.cjs` must return **403**
+- There must be **no** `.htaccess` inside `dist/` (it would cancel the root rules for that folder)
+- Delete uploaded zips and `stderr.log` copies you downloaded or moved
+
+For stronger isolation, set `DATA_DIR` in **Setup Node.js App** to a folder outside `public_html` (for example `/home/tmtecq00/tmtrac-data`) and move `data/` there.
+
+---
+
 ## 🛠️ Troubleshooting & Database Path Notes
 
 ### Why did my server show `/data/regatta.db` instead of `tmtrac.db`?
