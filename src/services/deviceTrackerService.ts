@@ -163,6 +163,8 @@ class HybridDeviceTrackerService {
 
   // Live WebSocket Connection to Server
   private ws: WebSocket | null = null;
+  // The login the current socket was opened with; the server decides room rights from it
+  private wsToken = '';
   private wsConnected = false;
   private wsReconnectTimer: any = null;
   private pingTimer: any = null;
@@ -632,6 +634,7 @@ class HybridDeviceTrackerService {
       try {
         const activeRoom = roomService.getActiveRoomCode();
         const token = typeof localStorage !== 'undefined' ? (localStorage.getItem('tmtrac_auth_token_v1') || '') : '';
+        this.wsToken = token;
         const wsUrl = `${protocol}//${host}/ws?room=${encodeURIComponent(activeRoom)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
         const socket = new WebSocket(wsUrl);
 
@@ -836,6 +839,27 @@ class HybridDeviceTrackerService {
     };
 
     connect();
+
+    // Signing in or out after the page loaded must reach the server, or the room keeps treating
+    // this device as the old identity (e.g. an owner who signed in would have edits rejected).
+    authService.onAuthChange(() => {
+      const token = typeof localStorage !== 'undefined' ? (localStorage.getItem('tmtrac_auth_token_v1') || '') : '';
+      if (token === this.wsToken) return;
+      const old = this.ws;
+      if (old) {
+        old.onclose = null;
+        old.close();
+        this.ws = null;
+        this.wsConnected = false;
+        this.requeuePendingBatches();
+        if (this.pingTimer) clearInterval(this.pingTimer);
+      }
+      if (this.wsReconnectTimer) {
+        clearTimeout(this.wsReconnectTimer);
+        this.wsReconnectTimer = null;
+      }
+      connect();
+    });
   }
 
   // Broadcast helper to Server WebSocket (returns boolean for Store-and-Forward offline detection)
