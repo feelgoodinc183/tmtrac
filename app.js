@@ -11,7 +11,9 @@ try {
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.APP_DIR = __dirname;
-process.env.DATA_DIR = require('path').join(__dirname, 'data');
+// DATA_DIR may point outside public_html (set it in cPanel > Setup Node.js App) so the web
+// server can never serve the database; defaults to ./data next to this file.
+process.env.DATA_DIR = process.env.DATA_DIR || require('path').join(__dirname, 'data');
 
 console.log('=== [TMTRAC] Starting on cPanel Phusion Passenger ===');
 console.log('Node version:', process.version);
