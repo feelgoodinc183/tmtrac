@@ -54,7 +54,7 @@ export const Footer: React.FC<FooterProps> = ({
   const meshNodes = nodes.filter(isMeshRadio);
   const now = Date.now();
   const heard = meshNodes.filter((n) => n.lastPingTime && now - n.lastPingTime < NODE_HEARD_WINDOW_MS).length;
-  const meshDot = meshNodes.length === 0 ? 'bg-accent' : heard > 0 ? 'bg-success-ink' : 'bg-warning-ink';
+  const meshDot = meshNodes.length === 0 ? 'bg-raised' : heard > 0 ? 'bg-success-ink' : 'bg-warning-ink';
   const meshLabel = meshNodes.length === 0 ? 'Mesh: no nodes' : `Mesh: ${heard}/${meshNodes.length} heard`;
 
   return (

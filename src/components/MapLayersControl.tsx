@@ -131,7 +131,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
               setIsBarExpanded(false);
               setIsOpen(false);
             }}
-            className="p-1.5 sm:p-2 rounded-lg bg-canvas hover:bg-raised text-accent hover:text-ink transition-all flex items-center justify-center ml-0.5"
+            className="p-1.5 sm:p-2 rounded-lg bg-canvas hover:bg-raised text-ink-muted hover:text-ink transition-all flex items-center justify-center ml-0.5"
             title="Hide / Collapse Controls into Icon"
           >
             <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -149,7 +149,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
             </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded hover:bg-raised text-accent hover:text-ink"
+              className="p-1 rounded hover:bg-raised text-ink-muted hover:text-ink"
             >
               <X className="w-4 h-4" />
             </button>
@@ -157,7 +157,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
 
           {/* SECTION 1: OPEN MAP BASELAYERS */}
           <div className="space-y-1.5">
-            <label className="text-xs sm:text-xs text-accent block">
+            <label className="text-xs sm:text-xs text-ink-muted block">
               Open Maps Basemap
             </label>
 
@@ -174,7 +174,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                   <span className="w-2 h-2 rounded-full bg-accent" />
                   Dark Vector
                 </span>
-                <span className="text-xs text-accent">Tactical grid</span>
+                <span className="text-xs text-ink-muted">Tactical grid</span>
               </button>
 
               <button
@@ -189,7 +189,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                   <span className="w-2 h-2 rounded-full bg-success-ink" />
                   OpenSeaMap
                 </span>
-                <span className="text-xs text-accent">Nautical soundings</span>
+                <span className="text-xs text-ink-muted">Nautical soundings</span>
               </button>
 
               <button
@@ -204,7 +204,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                   <span className="w-2 h-2 rounded-full bg-warning-ink" />
                   OpenStreetMap
                 </span>
-                <span className="text-xs text-accent">Topographic land</span>
+                <span className="text-xs text-ink-muted">Topographic land</span>
               </button>
 
               <button
@@ -219,14 +219,14 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                   <span className="w-2 h-2 rounded-full bg-ink" />
                   Bathymetry
                 </span>
-                <span className="text-xs text-accent">Depth contours</span>
+                <span className="text-xs text-ink-muted">Depth contours</span>
               </button>
             </div>
           </div>
 
           {/* SECTION 2: WEATHER & WIND OVERLAY TOGGLES */}
           <div className="space-y-1.5">
-            <label className="text-xs sm:text-xs text-accent block">
+            <label className="text-xs sm:text-xs text-ink-muted block">
               Weather Overlays
             </label>
 
@@ -237,14 +237,14 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                 className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.windParticles
                     ? 'bg-accent/10 border-accent text-ink'
-                    : 'bg-canvas border-line text-accent'
+                    : 'bg-canvas border-line text-ink-muted'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
                   <Wind className="w-3.5 h-3.5 text-accent" />
                   Wind Streamlines
                 </span>
-                <span className={`text-xs font-bold ${overlays.windParticles ? 'text-accent' : 'text-accent'}`}>
+                <span className={`text-xs font-bold ${overlays.windParticles ? 'text-accent' : 'text-ink-muted'}`}>
                   {overlays.windParticles ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -255,14 +255,14 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                 className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.windBarbs
                     ? 'bg-success-ink/10 border-success-ink text-ink'
-                    : 'bg-canvas border-line text-accent'
+                    : 'bg-canvas border-line text-ink-muted'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
                   <Compass className="w-3.5 h-3.5 text-success-ink" />
                   Wind Direction Vectors
                 </span>
-                <span className={`text-xs font-bold ${overlays.windBarbs ? 'text-success-ink' : 'text-accent'}`}>
+                <span className={`text-xs font-bold ${overlays.windBarbs ? 'text-success-ink' : 'text-ink-muted'}`}>
                   {overlays.windBarbs ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -273,14 +273,14 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                 className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.isobars
                     ? 'bg-warning-ink/10 border-warning-ink text-ink'
-                    : 'bg-canvas border-line text-accent'
+                    : 'bg-canvas border-line text-ink-muted'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
                   <CloudRain className="w-3.5 h-3.5 text-warning-ink" />
                   Isobar Pressure (hPa)
                 </span>
-                <span className={`text-xs font-bold ${overlays.isobars ? 'text-warning-ink' : 'text-accent'}`}>
+                <span className={`text-xs font-bold ${overlays.isobars ? 'text-warning-ink' : 'text-ink-muted'}`}>
                   {overlays.isobars ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -291,14 +291,14 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                 className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.oceanCurrents
                     ? 'bg-ink/10 border-line text-ink'
-                    : 'bg-canvas border-line text-accent'
+                    : 'bg-canvas border-line text-ink-muted'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
                   <Waves className="w-3.5 h-3.5 text-ink-muted" />
                   Ocean Currents
                 </span>
-                <span className={`text-xs font-bold ${overlays.oceanCurrents ? 'text-ink-muted' : 'text-accent'}`}>
+                <span className={`text-xs font-bold ${overlays.oceanCurrents ? 'text-ink-muted' : 'text-ink-muted'}`}>
                   {overlays.oceanCurrents ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -309,14 +309,14 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
                 className={`w-full p-2 rounded-xl border text-xs  transition-all flex items-center justify-between ${
                   overlays.waveHeatmap
                     ? 'bg-danger/10 border-danger-ink text-ink'
-                    : 'bg-canvas border-line text-accent'
+                    : 'bg-canvas border-line text-ink-muted'
                 }`}
               >
                 <span className="flex items-center gap-1.5 text-xs">
                   <Eye className="w-3.5 h-3.5 text-danger-ink" />
                   Wave & Swell Height
                 </span>
-                <span className={`text-xs font-bold ${overlays.waveHeatmap ? 'text-danger-ink' : 'text-accent'}`}>
+                <span className={`text-xs font-bold ${overlays.waveHeatmap ? 'text-danger-ink' : 'text-ink-muted'}`}>
                   {overlays.waveHeatmap ? 'ON' : 'OFF'}
                 </span>
               </button>

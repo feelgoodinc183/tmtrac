@@ -2728,7 +2728,7 @@ export default function App() {
 
   if (showLandingPage) {
     return (
-      <div className="min-h-screen w-screen bg-ink text-accent font-sans">
+      <div className="min-h-screen w-screen bg-white text-slate-900 font-sans">
         <FrontLandingPage
           onLoginClick={() => {
             setAuthModalInitialMode('login');
@@ -3373,7 +3373,7 @@ export default function App() {
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-ink">This Device (My Phone)</h4>
-                      <p className="text-xs text-accent">
+                      <p className="text-xs text-ink-muted">
                         {deviceGps.active ? 'Broadcasting live GPS coordinates' : 'Tracking inactive'}
                       </p>
                     </div>
@@ -3393,19 +3393,19 @@ export default function App() {
                 {deviceGps.active && (
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-line text-center">
                     <div className="p-2 rounded-xl bg-canvas border border-line">
-                      <span className="text-xs text-accent block">SOG Speed</span>
+                      <span className="text-xs text-ink-muted block">SOG Speed</span>
                       <span className="text-xs font-bold text-success-ink">
                         {Number(deviceGps?.speedKt ?? 0).toFixed(1)} kt
                       </span>
                     </div>
                     <div className="p-2 rounded-xl bg-canvas border border-line">
-                      <span className="text-xs text-accent block">COG Heading</span>
+                      <span className="text-xs text-ink-muted block">COG Heading</span>
                       <span className="text-xs font-bold text-accent">
                         {Math.round(deviceGps.headingDeg || 0)}°
                       </span>
                     </div>
                     <div className="p-2 rounded-xl bg-canvas border border-line">
-                      <span className="text-xs text-accent block">Accuracy</span>
+                      <span className="text-xs text-ink-muted block">Accuracy</span>
                       <span className="text-xs font-bold text-ink">
                         ±{Math.round(deviceGps.accuracy || 5)}m
                       </span>
@@ -3422,7 +3422,7 @@ export default function App() {
 
                 {fleetMembers.length === 0 && !deviceGps.active ? (
                   <div className="p-4 rounded-xl bg-surface border border-dashed border-line text-center">
-                    <p className="text-xs text-accent">
+                    <p className="text-xs text-ink-muted">
                       No other devices connected yet. Open this URL on other phones or tablets to view together in real-time.
                     </p>
                   </div>
@@ -3444,7 +3444,7 @@ export default function App() {
                             <h5 className="text-xs font-bold text-ink">
                               {member.deviceName}
                             </h5>
-                            <p className="text-xs text-accent">
+                            <p className="text-xs text-ink-muted">
                               Role: {member.role} • Battery: {member.battery ?? 85}%
                             </p>
                           </div>

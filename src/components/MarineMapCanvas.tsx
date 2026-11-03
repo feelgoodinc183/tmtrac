@@ -1058,7 +1058,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           </div>
           <button
             onClick={() => setCourseEditMode('NONE')}
-            className="ml-2 px-2.5 py-1 bg-raised hover:brightness-110 text-ink-muted hover:text-ink rounded-lg text-xs font-bold transition-colors"
+            className="ml-2 px-2.5 py-1 bg-raised hover:bg-raised text-ink-muted hover:text-ink rounded-lg text-xs font-bold transition-colors"
           >
             Cancel (ESC)
           </button>
@@ -1265,7 +1265,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold flex items-center gap-1 transition-all ${
                 courseEditMode === 'SET_START_PIN'
                   ? 'bg-accent text-on-accent '
-                  : 'bg-raised text-accent hover:brightness-110'
+                  : 'bg-raised text-accent hover:bg-raised'
               }`}
               title="Click map to relocate Start Line Pin"
             >
@@ -1279,7 +1279,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold flex items-center gap-1 transition-all ${
                 courseEditMode === 'SET_FINISH_PIN'
                   ? 'bg-success-ink text-canvas '
-                  : 'bg-raised text-success-ink hover:brightness-110'
+                  : 'bg-raised text-success-ink hover:bg-raised'
               }`}
               title="Click map to relocate Finish Line Pin"
             >
@@ -1293,7 +1293,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               className={`px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold  transition-all ${
                 showCourseLegs
                   ? 'bg-raised text-warning-ink border border-warning-ink/40'
-                  : 'bg-surface text-accent hover:text-ink'
+                  : 'bg-surface text-ink-muted hover:text-ink'
               }`}
               title="Toggle Course Legs & Distance Badges"
             >
@@ -1305,21 +1305,21 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               <div className="hidden sm:flex items-center gap-1 border-l border-line pl-1.5 ml-0.5">
                 <button
                   onClick={() => onApplyCoursePreset('WINDWARD_LEEWARD')}
-                  className="px-2 py-1 rounded-lg bg-raised hover:brightness-110 text-ink-muted hover:text-ink text-xs transition-colors"
+                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
                   title="Apply Windward-Leeward Preset Course"
                 >
                   W/L
                 </button>
                 <button
                   onClick={() => onApplyCoursePreset('TRIANGLE')}
-                  className="px-2 py-1 rounded-lg bg-raised hover:brightness-110 text-ink-muted hover:text-ink text-xs transition-colors"
+                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
                   title="Apply Olympic Triangle Preset Course"
                 >
                   Triangle
                 </button>
                 <button
                   onClick={() => onApplyCoursePreset('TRAPEZOID')}
-                  className="px-2 py-1 rounded-lg bg-raised hover:brightness-110 text-ink-muted hover:text-ink text-xs transition-colors"
+                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
                   title="Apply 4-Mark Trapezoid Preset Course"
                 >
                   Trapezoid

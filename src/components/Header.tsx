@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenLandingPage && (
           <button
             onClick={onOpenLandingPage}
-            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-surface/80 hover:brightness-110 text-ink hover:text-ink text-xs font-medium border border-accent transition-colors"
+            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-raised/80 hover:bg-raised text-ink hover:text-ink text-xs font-medium border border-line transition-colors"
             title="Return to Front Landing Page"
           >
             <Home className="w-3.5 h-3.5 text-accent" />
@@ -155,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
           className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs  font-bold transition-all cursor-pointer ${
             connectedPeerCount > 1
               ? 'bg-success-ink/15 text-success-ink border border-success-ink/40 hover:bg-success-ink/25'
-              : 'bg-raised text-ink border border-accent hover:text-ink'
+              : 'bg-raised text-ink border border-line hover:text-ink'
           }`}
           title={`${connectedPeerCount} device(s) live. Tap to share regatta QR link.`}
         >
@@ -173,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Radio className="w-3 h-3 text-accent shrink-0" />
           <span className="font-bold max-w-[65px] sm:max-w-[100px] truncate">#{activeRoomCode}</span>
-          <ChevronDown className="w-2.5 h-2.5 text-accent shrink-0" />
+          <ChevronDown className="w-2.5 h-2.5 text-ink-muted shrink-0" />
         </button>
 
 
@@ -233,12 +233,12 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-ink'
                     : isCountdown
                     ? 'bg-warning-ink '
-                    : 'bg-accent'
+                    : 'bg-ink'
                 }`}
               />
               <span className="text-ink-muted">Class</span>
               <span className="text-ink font-bold">{raceState.activeClass}</span>
-              <span className="text-accent">·</span>
+              <span className="text-ink-muted">·</span>
               <span
                 className={`font-bold ${
                   displayStatus === 'RACING'

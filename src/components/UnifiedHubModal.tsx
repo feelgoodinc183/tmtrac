@@ -220,7 +220,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 e.stopPropagation();
                 onClose();
               }}
-              className="group p-1.5 sm:p-2 rounded-lg text-accent hover:text-ink hover:bg-raised active:scale-95 transition-all cursor-pointer shrink-0"
+              className="group p-1.5 sm:p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-raised active:scale-95 transition-all cursor-pointer shrink-0"
               title="Close Hub (Esc)"
               aria-label="Close Hub"
             >
@@ -272,7 +272,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                   ? 'bg-success-ink '
                   : raceState.startSequenceActive
                   ? 'bg-warning-ink '
-                  : 'bg-accent'
+                  : 'bg-ink'
               }`}
             />
           </button>
@@ -306,21 +306,21 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-accent font-bold">
+                      <span className="text-xs text-ink-muted font-bold">
                         Phone / Tablet GPS
                       </span>
                       <span
                         className={`text-xs  font-bold px-1.5 py-0.2 rounded ${
                           deviceGps.active
                             ? 'bg-success-ink/20 text-success-ink border border-success-ink/40'
-                            : 'bg-surface text-accent'
+                            : 'bg-raised text-ink-muted'
                         }`}
                       >
                         {deviceGps.active ? 'ACTIVE' : 'OFFLINE'}
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-ink mt-1">Device Tracker</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       {deviceGps.active
                         ? `${safeFixed(deviceGps.speedKt, 1, '0.0')} kt · ${deviceGps.headingDeg ?? 0}°`
                         : `${hybridTrackerCount} hybrid devices live`}
@@ -342,11 +342,11 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 {/* 3. Fleet QR Cards */}
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-xs text-accent font-bold">
+                    <span className="text-xs text-ink-muted font-bold">
                       Check-In Cards
                     </span>
                     <h3 className="text-sm font-bold text-ink mt-1">Boat QRs</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       Printable 1-tap QR cards for regatta registration
                     </p>
                   </div>
@@ -366,7 +366,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-accent font-bold">
+                      <span className="text-xs text-ink-muted font-bold">
                         Hardware Mesh
                       </span>
                       <span className="text-xs text-accent font-bold">
@@ -374,7 +374,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-ink mt-1">LoRa / BLE Mesh</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       Meshtastic radio binding & Bluetooth scanner
                     </p>
                   </div>
@@ -412,7 +412,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     <BarChart2 className="w-4 h-4 text-accent" />
                     <div>
                       <span className="text-xs font-bold text-ink">Head-to-Head Telemetry Analysis</span>
-                      <p className="text-xs text-accent">Compare VMG, speeds, heading and tactical delta side-by-side</p>
+                      <p className="text-xs text-ink-muted">Compare VMG, speeds, heading and tactical delta side-by-side</p>
                     </div>
                   </div>
                   <button
@@ -449,13 +449,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {boats.length === 0 ? (
-                  <div className="p-8 text-center text-accent text-xs">
+                  <div className="p-8 text-center text-ink-muted text-xs">
                     No boats registered yet. Use "Add boat", or skippers can join themselves with Track in the header.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-surface/50 text-accent border-b border-line text-xs">
+                      <thead className="bg-surface/50 text-ink-muted border-b border-line text-xs">
                         <tr>
                           <th className="px-3 py-2">Vessel</th>
                           <th className="px-3 py-2">Class</th>
@@ -479,9 +479,9 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                   <div>
                                     <div className="font-bold text-ink flex items-center gap-1.5">
                                       <span>{boat.name}</span>
-                                      <span className="text-accent text-xs">#{boat.sailNumber}</span>
+                                      <span className="text-ink-muted text-xs">#{boat.sailNumber}</span>
                                     </div>
-                                    <div className="text-xs text-accent">
+                                    <div className="text-xs text-ink-muted">
                                       {boat.skipper || 'Skipper Unassigned'}
                                     </div>
                                   </div>
@@ -499,7 +499,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                 <span className="font-bold text-ink">
                                   {safeFixed(boat.speedKt ?? boat.sog, 1, '0.0')} kt
                                 </span>
-                                <span className="text-xs text-accent ml-1">
+                                <span className="text-xs text-ink-muted ml-1">
                                   {safeFixed(boat.headingDeg ?? boat.heading ?? boat.cog, 0, '0')}°
                                 </span>
                               </td>
@@ -512,7 +512,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                 ) : boat.nodeId ? (
                                   <span className="text-xs text-accent">GPS Mesh</span>
                                 ) : (
-                                  <span className="text-xs text-accent">Sim / Unbound</span>
+                                  <span className="text-xs text-ink-muted">Sim / Unbound</span>
                                 )}
                               </td>
                               <td className="px-3 py-2.5 text-right">
@@ -566,7 +566,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       Jury & Bulletins
                     </span>
                     <h3 className="text-sm font-bold text-ink mt-1">VHF & Protests</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       VHF radio bulletins, jury notices & protest hearings
                     </p>
                   </div>
@@ -589,7 +589,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       Tactical Intelligence
                     </span>
                     <h3 className="text-sm font-bold text-ink mt-1">AI Tactician</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       AI race strategist, wind oscillation & layline analysis
                     </p>
                   </div>
@@ -632,7 +632,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       <h3 className="text-sm font-bold text-ink mt-0.5 truncate">
                         {tenantName || 'Royal Langkawi Yacht Club (RLYC)'}
                       </h3>
-                      <p className="text-xs text-accent mt-0.5">
+                      <p className="text-xs text-ink-muted mt-0.5">
                         Manage club regattas, members, officer seats, audit logs & subscription tier
                       </p>
                     </div>
@@ -660,7 +660,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       Mesh diagnostics
                     </span>
                     <h3 className="text-sm font-bold text-ink">Packet inspector</h3>
-                    <p className="text-xs text-accent mt-1">Live MQTT and LoRa packets from the mesh</p>
+                    <p className="text-xs text-ink-muted mt-1">Live MQTT and LoRa packets from the mesh</p>
                   </div>
                   <button
                     onClick={() => {
@@ -681,7 +681,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       Spectator Invite
                     </span>
                     <h3 className="text-sm font-bold text-ink mt-1">Spectator QR</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       QR code & shareable link for live regatta viewing
                     </p>
                   </div>
@@ -704,7 +704,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       Marine Telemetry
                     </span>
                     <h3 className="text-sm font-bold text-ink mt-1">Malaysia LoRa & NMEA</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       433/919 MHz presets, NMEA 0183/2000 gateway & MQTT
                     </p>
                   </div>
@@ -724,7 +724,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-accent font-bold">
+                      <span className="text-xs text-ink-muted font-bold">
                         Offline Cache
                       </span>
                       <span className="text-xs text-success-ink font-bold">
@@ -732,7 +732,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-ink mt-1">SQLite Database</h3>
-                    <p className="text-xs text-accent mt-0.5 leading-snug">
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       Local SQLite caching & zero-loss cloud synchronization
                     </p>
                   </div>
@@ -763,7 +763,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     <Info className="w-5 h-5 shrink-0 text-accent" />
                     <div className="text-left">
                       <div className="text-xs font-bold">About TMTRAC</div>
-                      <div className="text-xs text-accent">Tom Manas Technologies</div>
+                      <div className="text-xs text-ink-muted">Tom Manas Technologies</div>
                     </div>
                   </button>
                 </div>
@@ -773,7 +773,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="px-4 sm:px-6 py-2 border-t border-line bg-canvas/80 flex items-center justify-between text-xs text-accent shrink-0">
+        <div className="px-4 sm:px-6 py-2 border-t border-line bg-canvas/80 flex items-center justify-between text-xs text-ink-muted shrink-0">
           <div className="flex items-center gap-2">
             <span>TMTRAC v{APP_VERSION}</span>
             <span>·</span>

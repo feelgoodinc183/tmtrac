@@ -251,7 +251,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
 
   const renderPublicRoomsList = (titlePrefix?: string) => (
     <div id="lobby-public-rooms-list" className="space-y-3 pt-2">
-      <div className="text-xs text-accent flex items-center justify-between">
+      <div className="text-xs text-ink-muted flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-ink font-semibold">
           <Users className="w-3.5 h-3.5 text-accent" />
           <span>{titlePrefix || 'Live Regattas'} ({publicRooms.length})</span>
@@ -268,11 +268,11 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
       </div>
 
       {isLoadingRooms ? (
-        <div className="p-8 text-center text-accent text-xs bg-surface/50 border border-line rounded-xl">
+        <div className="p-8 text-center text-ink-muted text-xs bg-surface/50 border border-line rounded-xl">
           Loading active regatta directory...
         </div>
       ) : publicRooms.length === 0 ? (
-        <div className="p-8 text-center text-accent text-xs bg-surface/50 border border-line rounded-xl">
+        <div className="p-8 text-center text-ink-muted text-xs bg-surface/50 border border-line rounded-xl">
           No public regattas listed currently. Create one to get started!
         </div>
       ) : (
@@ -286,7 +286,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
               className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
                 isCurrent
                   ? 'bg-accent/10 border-accent/50 '
-                  : 'bg-surface border-line hover:border-accent'
+                  : 'bg-surface border-line hover:border-line'
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -307,17 +307,17 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-accent text-xs">
+                  <div className="flex items-center gap-3 text-ink-muted text-xs">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-accent" />
                       {room.locationName}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Ship className="w-3 h-3 text-accent" />
+                      <Ship className="w-3 h-3 text-ink-muted" />
                       {room.boatCount} Boats
                     </span>
                     <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3 text-accent" />
+                      <Users className="w-3 h-3 text-ink-muted" />
                       {room.activeClients} Online
                     </span>
                   </div>
@@ -384,7 +384,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
               e.stopPropagation();
               onClose();
             }}
-            className="group p-2 sm:p-2.5 rounded-xl bg-raised/70 hover:bg-danger/20 active:bg-danger/30 border border-accent/60 hover:border-danger-ink/40 text-accent hover:text-danger-ink active:scale-95 transition-all duration-150 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-accent/50"
+            className="group p-2 sm:p-2.5 rounded-xl bg-raised/70 hover:bg-danger/20 active:bg-danger/30 border border-line/60 hover:border-danger-ink/40 text-ink-muted hover:text-danger-ink active:scale-95 transition-all duration-150 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-accent/50"
             title="Close menu (Esc)"
             aria-label="Close menu"
           >
@@ -393,12 +393,12 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
         </div>
 
         {/* User Account Bar in Lobby */}
-        <div className="px-3 sm:px-4 py-2 bg-surface border-b border-accent/80 flex items-center justify-between gap-2 text-xs">
+        <div className="px-3 sm:px-4 py-2 bg-canvas border-b border-line/80 flex items-center justify-between gap-2 text-xs">
           {currentUser ? (
             <div className="flex items-center justify-between w-full gap-2">
               <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 <span className="w-2 h-2 rounded-full bg-success-ink shrink-0"></span>
-                <span className="text-accent shrink-0">Logged in:</span>
+                <span className="text-ink-muted shrink-0">Logged in:</span>
                 <span className="text-accent font-bold truncate max-w-[150px] sm:max-w-[220px]">
                   {currentUser.fullName}
                 </span>
@@ -413,7 +413,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
             </div>
           ) : (
             <div className="flex items-center justify-between w-full gap-2">
-              <div className="flex items-center gap-2 text-accent">
+              <div className="flex items-center gap-2 text-ink-muted">
                 <span className="w-2 h-2 rounded-full bg-warning-ink shrink-0"></span>
                 <span>Guest Mode (Spectator access to all live rooms)</span>
               </div>
@@ -423,7 +423,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                   onClose();
                   onOpenAuth?.('login');
                 }}
-                className="px-2.5 py-1 rounded-lg bg-surface hover:brightness-110 border border-accent text-ink text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-2.5 py-1 rounded-lg bg-raised hover:bg-raised border border-line text-ink text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <LogIn className="w-3 h-3 text-accent" />
                 <span>Sign In to Host</span>
@@ -435,17 +435,17 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
         {/* Current Active Room Banner */}
         <div className="px-3 sm:px-4 py-2.5 bg-surface border-b border-line/70 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-accent text-xs">ACTIVE:</span>
+            <span className="text-ink-muted text-xs">ACTIVE:</span>
             <span className="px-2 py-0.5 rounded bg-accent/10 text-accent border border-accent/30 font-bold text-xs">
               #{activeRoomCode}
             </span>
-            <span className="text-accent text-xs hidden sm:inline">
+            <span className="text-ink-muted text-xs hidden sm:inline">
               ({connectedPeerCount} device{connectedPeerCount > 1 ? 's' : ''} online)
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-accent bg-surface/80 text-xs">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-line bg-raised/80 text-xs">
               {isOrganizer ? (
                 <>
                   <ShieldCheck className="w-3 h-3 text-success-ink" />
@@ -462,7 +462,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
             <button
               id="lobby-share-link-btn"
               onClick={handleCopySpectatorLink}
-              className="px-2 py-0.5 rounded bg-raised hover:brightness-110 text-accent border border-accent flex items-center gap-1 text-xs transition-all"
+              className="px-2 py-0.5 rounded bg-raised hover:bg-raised text-accent border border-line flex items-center gap-1 text-xs transition-all"
               title="Copy public spectator link"
             >
               {copiedLink ? <Check className="w-3 h-3 text-success-ink" /> : <Copy className="w-3 h-3" />}
@@ -482,7 +482,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
             className={`pb-2.5 px-3  text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'JOIN'
                 ? 'border-accent text-accent'
-                : 'border-transparent text-accent hover:text-ink'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -498,7 +498,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
             className={`pb-2.5 px-3  text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'CREATE'
                 ? 'border-accent text-accent'
-                : 'border-transparent text-accent hover:text-ink'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
             <PlusCircle className="w-3.5 h-3.5" />
@@ -544,15 +544,15 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                     value={joinCodeInput}
                     onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
                     placeholder={activeRoomCode ? `Current: ${activeRoomCode}` : "e.g. REGATTA123"}
-                    className="w-full bg-canvas border border-line focus:border-accent rounded-lg px-3.5 py-2.5 text-base font-bold text-ink placeholder:text-accent focus:outline-none"
+                    className="w-full bg-canvas border border-line focus:border-accent rounded-lg px-3.5 py-2.5 text-base font-bold text-ink placeholder:text-ink-muted focus:outline-none"
                     maxLength={16}
                   />
-                  <div className="absolute right-2.5 top-2.5 text-accent text-xs">
+                  <div className="absolute right-2.5 top-2.5 text-ink-muted text-xs">
                     {joinCodeInput.length}/16
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-2 text-xs">
-                  <span className="text-accent">
+                  <span className="text-ink-muted">
                     {activeRoomCode && joinCodeInput === activeRoomCode
                       ? `Displaying your current room #${activeRoomCode}. Enter a different room code to switch.`
                       : 'Tip: Ask your club race committee or check your registration sheet for the 6-character room code.'}
@@ -581,9 +581,9 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                       onChange={(e) => setJoinPinInput(e.target.value)}
                       placeholder="e.g. 1234"
                       maxLength={12}
-                      className="w-full bg-canvas border border-warning-ink/50 focus:border-warning-ink rounded-lg px-3.5 py-2 text-sm text-ink placeholder:text-accent focus:outline-none"
+                      className="w-full bg-canvas border border-warning-ink/50 focus:border-warning-ink rounded-lg px-3.5 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
                     />
-                    <p className="text-xs text-accent mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                       Required only for Race Committee to drag marks, fire guns, and issue penalties.
                     </p>
                   </div>
@@ -603,7 +603,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                   <button
                     id="join-as-rc-btn"
                     onClick={() => handleJoinOrganizer()}
-                    className="w-full px-4 py-3 rounded-xl bg-raised hover:brightness-110 border border-accent text-ink hover:text-ink font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-raised hover:bg-raised border border-line text-ink hover:text-ink font-bold text-xs flex items-center justify-center gap-2 transition-all"
                   >
                     <KeyRound className="w-4 h-4 text-warning-ink" />
                     <span>{showPinInput ? 'Verify PIN & Unlock RC' : 'RC Officer Admin (PIN)'}</span>
@@ -655,7 +655,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                         onClose();
                         onOpenAuth?.('login');
                       }}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-surface hover:bg-slate-750 text-ink border border-accent font-semibold text-xs rounded-xl transition"
+                      className="w-full sm:w-auto px-5 py-2.5 bg-raised hover:bg-slate-750 text-ink border border-line font-semibold text-xs rounded-xl transition"
                     >
                       Already registered? Sign In
                     </button>
@@ -683,7 +683,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
                         placeholder="e.g. Raja Muda Regatta"
-                        className="w-full bg-canvas border border-line focus:border-accent focus:ring-1 focus:ring-accent/40 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder:text-accent focus:outline-none transition-all"
+                        className="w-full bg-canvas border border-line focus:border-accent focus:ring-1 focus:ring-accent/40 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none transition-all"
                       />
                     </div>
 
@@ -698,7 +698,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                           value={newLocation}
                           onChange={(e) => setNewLocation(e.target.value)}
                           placeholder="e.g. Port Klang, Selangor"
-                          className="w-full bg-canvas border border-line focus:border-accent focus:ring-1 focus:ring-accent/40 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder:text-accent focus:outline-none transition-all"
+                          className="w-full bg-canvas border border-line focus:border-accent focus:ring-1 focus:ring-accent/40 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none transition-all"
                         />
                       </div>
 
@@ -724,7 +724,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                           onChange={(e) => setNewCode(e.target.value.toUpperCase())}
                           placeholder="e.g. REGATTA123"
                           maxLength={12}
-                          className="w-full bg-canvas border border-line focus:border-accent focus:ring-1 focus:ring-accent/40 rounded-xl px-3.5 py-2.5 text-sm font-bold text-accent placeholder:text-accent focus:outline-none transition-all"
+                          className="w-full bg-canvas border border-line focus:border-accent focus:ring-1 focus:ring-accent/40 rounded-xl px-3.5 py-2.5 text-sm font-bold text-accent placeholder:text-ink-muted focus:outline-none transition-all"
                         />
                       </div>
                     </div>
@@ -743,9 +743,9 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                           onChange={(e) => setNewPin(e.target.value)}
                           placeholder="e.g. 1234"
                           maxLength={8}
-                          className="w-full bg-canvas border border-warning-ink/50 hover:border-warning-ink/70 focus:border-warning-ink focus:ring-2 focus:ring-warning-ink/25 rounded-xl px-3.5 py-2.5 text-sm font-bold text-warning-ink placeholder:text-accent placeholder:font-normal placeholder:tracking-normal focus:outline-none transition-all shadow-inner"
+                          className="w-full bg-canvas border border-warning-ink/50 hover:border-warning-ink/70 focus:border-warning-ink focus:ring-2 focus:ring-warning-ink/25 rounded-xl px-3.5 py-2.5 text-sm font-bold text-warning-ink placeholder:text-ink-muted placeholder:font-normal placeholder:tracking-normal focus:outline-none transition-all shadow-inner"
                         />
-                        <p className="text-xs text-accent mt-1.5">
+                        <p className="text-xs text-ink-muted mt-1.5">
                           You can edit this PIN anytime from your dashboard.
                         </p>
                       </div>
@@ -757,7 +757,7 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
                             type="checkbox"
                             checked={newIsPublic}
                             onChange={(e) => setNewIsPublic(e.target.checked)}
-                            className="w-4 h-4 rounded bg-canvas border-accent text-accent focus:ring-0 cursor-pointer"
+                            className="w-4 h-4 rounded bg-canvas border-line text-accent focus:ring-0 cursor-pointer"
                           />
                           <span className="text-xs text-ink">
                             List in Public Regattas Directory
@@ -783,12 +783,12 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 bg-surface border-t border-line flex items-center justify-between text-xs text-accent">
+        <div className="p-3 bg-surface border-t border-line flex items-center justify-between text-xs text-ink-muted">
           <span>TMTRAC v{APP_VERSION}</span>
           <button
             id="close-lobby-footer-btn"
             onClick={onClose}
-            className="px-3 py-1 rounded bg-raised hover:brightness-110 text-ink transition-colors"
+            className="px-3 py-1 rounded bg-raised hover:bg-raised text-ink transition-colors"
           >
             Close
           </button>
