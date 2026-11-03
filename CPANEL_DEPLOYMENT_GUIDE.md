@@ -143,9 +143,12 @@ HTTPS is required by modern browsers for Web Bluetooth and Geolocation APIs:
 On cPanel (Phusion Passenger / CloudLinux Node.js Selector), worker processes stay resident in RAM. When you upload new files via File Manager or extract a zip, **Passenger does not automatically terminate the running worker in memory**. The old worker continues running with the old code and cached environment variables from before the upload!
 
 **How to fix immediately:**
-1. **Option A (Instant URL trigger):** In your browser, open `https://tmtrac.my/restart.php`. This writes a fresh timestamp to `tmp/restart.txt` and automatically replaces any lingering `regatta.db` references with `tmtrac.db` in `.env`.
-2. **Option B (cPanel Interface):** Open cPanel > **Setup Node.js App** and click the orange **"Restart"** button.
-3. **Option C (In-App Troubleshooter):** In TMTRAC, open **Super Admin > Troubleshooter** tab and click the red **"Restart Node Server"** button.
+1. **Option A (cPanel Interface):** Open cPanel > **Setup Node.js App** and click the orange **"Restart"** button.
+2. **Option B (In-App Troubleshooter):** In TMTRAC, open **Super Admin > Troubleshooter** tab and click the red **"Restart Node Server"** button.
+
+Extracting an update zip also restarts the app, because it carries a fresh `tmp/restart.txt`.
+
+`restart.php` is no longer shipped: anyone could open it to restart the app, and it rewrote `.env`. If an older install still has `restart.php` in `/home/tmtecq00/public_html/tmtrac.my`, delete it.
 
 Once recycled, the Active Runtime Database path will immediately display:
 `/home/tmtecq00/public_html/tmtrac.my/data/tmtrac.db`

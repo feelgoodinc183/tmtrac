@@ -373,9 +373,9 @@ class RoomService {
       const data = await res.json();
       if (res.ok && data.success) {
         localStorage.removeItem(ROOM_PINS_KEY_PREFIX + code);
-        // If current room was deleted, fallback to REGATTA
+        // If the current room was deleted, fall back to LOBBY
         if (this.activeRoomCode === code) {
-          await this.switchRoom('REGATTA', undefined, true);
+          await this.switchRoom('LOBBY', undefined, true);
         }
         return { success: true };
       }

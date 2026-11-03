@@ -445,20 +445,13 @@ export const CpanelDeployModal: React.FC<CpanelDeployModalProps> = ({
                   </p>
                   
                   <div className="space-y-2">
-                    <p className="font-semibold text-white">Choose any of these 3 easy ways to restart:</p>
+                    <p className="font-semibold text-white">Choose either way to restart:</p>
                     <ul className="list-disc pl-5 space-y-1.5 text-slate-300">
                       <li>
-                        <strong>Option A (One-click Web Hit):</strong> Open{' '}
-                        <a href="https://tmtrac.my/restart.php" target="_blank" rel="noreferrer" className="text-cyan-400 font-mono underline font-bold">
-                          https://tmtrac.my/restart.php
-                        </a>{' '}
-                        in a browser tab. This instantly signals Passenger to recycle the Node.js process and sanitize any legacy paths.
+                        <strong>Option A (cPanel Interface):</strong> Open cPanel &gt; <strong>Setup Node.js App</strong> and click the orange <strong>&quot;Restart&quot;</strong> button.
                       </li>
                       <li>
-                        <strong>Option B (cPanel Interface):</strong> Open cPanel &gt; <strong>Setup Node.js App</strong> and click the orange <strong>&quot;Restart&quot;</strong> button.
-                      </li>
-                      <li>
-                        <strong>Option C (Inside TMTRAC UI):</strong> Go to <strong>Super Admin &gt; Troubleshooter</strong> tab and click the red <strong>&quot;Restart Node Server&quot;</strong> button.
+                        <strong>Option B (Inside TMTRAC UI):</strong> Go to <strong>Super Admin &gt; Troubleshooter</strong> tab and click the red <strong>&quot;Restart Node Server&quot;</strong> button.
                       </li>
                     </ul>
                   </div>

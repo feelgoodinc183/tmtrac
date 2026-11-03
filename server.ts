@@ -1501,6 +1501,107 @@ async function startServer() {
   });
 
   /**
+   * Public room list for the landing page. Filters in code because the JSON fallback store
+   * ignores WHERE clauses when listing rows.
+   */
+  app.get('/api/rooms/summary', (req, res) => {
+    const rows = (db.prepare('SELECT * FROM events WHERE is_public = 1').all() as any[]).filter((r) => !!r.is_public);
+    const rooms = rows
+      .map((r) => {
+        const live = activeRooms.get(r.code);
+        let boatCount = live ? live.boats.length : 0;
+        if (!live) {
+          try {
+            boatCount = r.boats_json ? JSON.parse(r.boats_json).length : 0;
+          } catch (e) {}
+        }
+        return {
+          code: r.code,
+          title: r.title,
+          locationName: r.location_name,
+          boatCount,
+          raceStatus: live?.raceState?.status || r.status || 'PRE_START',
+          lastActive: live?.lastActive || r.last_active || 0,
+        };
+      })
+      .sort((a, b) => b.lastActive - a.lastActive);
+    res.json({ success: true, rooms });
+  });
+
+  /**
+   * Admin rights for room management: owner, own-club admin, Super Admin, or the current admin PIN
+   */
+  function roomManagementRole(req: express.Request, room: ActiveRoomState, pin: string): RoomRole {
+    return resolveRoomRole(roomRoleUserFromGate(req), room, checkedPin(clientAddress(req.headers, req.socket.remoteAddress), room, pin));
+  }
+
+  app.put('/api/rooms/:code/pin', (req, res) => {
+    const room = getOrLoadRoom(req.params.code.trim().toUpperCase(), false);
+    if (!room) {
+      return res.status(404).json({ success: false, error: 'Room not found.' });
+    }
+    const currentPin = typeof req.body?.currentPin === 'string' ? req.body.currentPin : '';
+    if (roomManagementRole(req, room, currentPin) !== 'ADMIN') {
+      return res.status(403).json({ success: false, error: 'Only the room owner, a club admin, or someone with the current Race Officer PIN can change it.' });
+    }
+    const newPin = typeof req.body?.newPin === 'string' ? req.body.newPin.trim() : '';
+    if (!/^[A-Za-z0-9]{4,12}$/.test(newPin)) {
+      return res.status(400).json({ success: false, error: 'The new PIN must be 4 to 12 letters or digits.' });
+    }
+    if (newPin === room.participantPin) {
+      return res.status(400).json({ success: false, error: 'The Race Officer PIN must be different from the skipper PIN.' });
+    }
+    room.adminPin = newPin;
+    persistRoom(room);
+    insertAuditLog({
+      tenantId: room.tenantId,
+      roomCode: room.code,
+      userId: req.gate?.user?.id,
+      userEmail: req.gate?.user?.email,
+      action: 'ROOM_ADMIN_PIN_CHANGED',
+      details: {},
+    });
+    res.json({ success: true, roomCode: room.code });
+  });
+
+  app.delete('/api/rooms/:code', (req, res) => {
+    const room = getOrLoadRoom(req.params.code.trim().toUpperCase(), false);
+    if (!room) {
+      return res.status(404).json({ success: false, error: 'Room not found.' });
+    }
+    if (room.code === 'LOBBY') {
+      return res.status(400).json({ success: false, error: 'The LOBBY room is shared by everyone and cannot be deleted.' });
+    }
+    const pin = (req.headers['x-admin-pin'] as string) || (typeof req.body?.pin === 'string' ? req.body.pin : '');
+    if (roomManagementRole(req, room, pin) !== 'ADMIN') {
+      return res.status(403).json({ success: false, error: 'Only the room owner, a club admin, or someone with the Race Officer PIN can delete this room.' });
+    }
+    try {
+      db.prepare('DELETE FROM events WHERE code = ?').run(room.code);
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: 'Failed to delete room: ' + (e.message || 'database error') });
+    }
+    activeRooms.delete(room.code);
+    // Disconnect devices still in the room; they reconnect and land in LOBBY
+    wss.clients.forEach((client) => {
+      if ((client as any).roomCode === room.code) {
+        try {
+          client.close(4000, 'Room deleted');
+        } catch (e) {}
+      }
+    });
+    insertAuditLog({
+      tenantId: room.tenantId,
+      roomCode: room.code,
+      userId: req.gate?.user?.id,
+      userEmail: req.gate?.user?.email,
+      action: 'ROOM_DELETED',
+      details: { title: room.title },
+    });
+    res.json({ success: true, roomCode: room.code });
+  });
+
+  /**
    * Create Event with Plan Quota Check
    */
   app.post('/api/rooms', requireAuth(['ADMIN']), enforcePlanQuota('CREATE_EVENT'), (req, res) => {
@@ -1750,6 +1851,9 @@ async function startServer() {
    */
   app.post('/api/session/gps/batch', (req, res) => {
     const room = resolveRoom(req);
+    if (requestRoomRole(req, room) === 'SPECTATOR') {
+      return res.status(403).json({ error: 'Send the room\'s skipper PIN (x-admin-pin header) or sign in to send positions.' });
+    }
     const payload = req.body;
     const platform = extractPlatform(req);
 

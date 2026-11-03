@@ -33,8 +33,8 @@ export const RoomPinModal: React.FC<RoomPinModalProps> = ({
     setError(null);
     setSuccess(null);
 
-    if (newPin.trim().length < 3) {
-      setError('New PIN must be at least 3 digits or characters.');
+    if (newPin.trim().length < 4) {
+      setError('New PIN must be 4 to 12 letters or digits.');
       return;
     }
 

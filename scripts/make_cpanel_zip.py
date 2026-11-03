@@ -84,10 +84,7 @@ with zipfile.ZipFile(fullstack_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) 
     # No data/ files: extracting them would overwrite the live database. The server creates and
     # seeds data/ on first start.
 
-    # restart.php helper
-    restart_php_path = os.path.join(PUBLIC_DIR, 'restart.php')
-    if os.path.exists(restart_php_path):
-        z.write(restart_php_path, 'restart.php')
+    # No restart.php: it was public and rewrote .env. tmp/restart.txt below restarts the app.
 
     # Automatic Phusion Passenger reload trigger
     import time
@@ -134,8 +131,6 @@ with zipfile.ZipFile(update_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as 
             rel_f = os.path.relpath(abs_f, ROOT_DIR)
             z.write(abs_f, rel_f)
 
-    if os.path.exists(restart_php_path):
-        z.write(restart_php_path, 'restart.php')
 
     # Automatic Phusion Passenger reload trigger
     z.writestr('tmp/restart.txt', restart_stamp)
