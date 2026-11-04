@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Wifi, Terminal, Play, Pause, Trash2, Cpu, Radio, ShieldCheck, Smartphone, Send } from 'lucide-react';
+import { X, Wifi, Terminal, Play, Pause, Trash2, Cpu, Radio, Smartphone, Send } from 'lucide-react';
 import { meshtasticService } from '../services/meshtasticBleMqttService';
 import { deviceTrackerService } from '../services/deviceTrackerService';
 
@@ -13,8 +13,8 @@ export interface MqttPacket {
   fromNode: string;
   toNode: string;
   portnum: 'POSITION_APP' | 'TELEMETRY_APP' | 'TEXT_MESSAGE_APP' | 'ROUTING_APP' | 'NODEINFO_APP' | 'DEVICE_GPS';
-  snr: number;
-  rssi: number;
+  snr?: number;
+  rssi?: number;
   payload: string;
   source?: 'BLE_RADIO' | 'USB_SERIAL' | 'MQTT_BROKER' | 'PHONE_GPS' | 'DIAGNOSTIC_TEST';
 }
@@ -58,8 +58,8 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
         fromNode: pkt.fromNode || '!UNKNOWN',
         toNode: pkt.toNode || '^all',
         portnum: pkt.portnum || 'POSITION_APP',
-        snr: typeof pkt.snr === 'number' ? pkt.snr : 0,
-        rssi: typeof pkt.rssi === 'number' ? pkt.rssi : -75,
+        snr: typeof pkt.snr === 'number' ? pkt.snr : undefined,
+        rssi: typeof pkt.rssi === 'number' ? pkt.rssi : undefined,
         payload: typeof pkt.payload === 'string' ? pkt.payload : JSON.stringify(pkt.payload),
         source: pkt.source || (meshtasticService.isBleActive() ? 'BLE_RADIO' : meshtasticService.isUsbActive() ? 'USB_SERIAL' : 'MQTT_BROKER'),
       };
@@ -76,15 +76,13 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
         fromNode: gpsState.profile?.deviceId || '!PHONE-GPS',
         toNode: '^all',
         portnum: 'DEVICE_GPS',
-        snr: 12.0,
-        rssi: -45,
         payload: JSON.stringify({
           name: gpsState.profile?.deviceName || 'Phone GPS',
           lat: +(Number(gpsState.lat).toFixed(6)),
           lng: +(Number(gpsState.lng).toFixed(6)),
           sog: +(Number(gpsState.speedKt || 0).toFixed(1)),
           cog: +(Number(gpsState.headingDeg || 0).toFixed(0)),
-          acc: +(Number(gpsState.accuracy || 5).toFixed(1)),
+          acc: typeof gpsState.accuracy === 'number' ? +gpsState.accuracy.toFixed(1) : undefined,
           role: gpsState.profile?.role || 'COMPETITOR',
         }),
         source: 'PHONE_GPS',
@@ -139,26 +137,26 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
     connStatus.bleConnected || connStatus.usbConnected || connStatus.mqttConnected || connStatus.phoneGpsActive;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200 font-google">
-      <div className="bg-[#0A0F1E]/95 backdrop-blur-md border border-[#334155]/80 w-full max-w-4xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-[#E0E6ED]">
+    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200">
+      <div className="bg-surface/95 backdrop-blur-md border border-line/80 w-full max-w-4xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink">
         {/* Header */}
-        <div className="px-5 py-4 landscape:py-2.5 bg-[#060B16]/90 border-b border-[#1E293B] flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 landscape:py-2.5 bg-canvas/90 border-b border-line flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#00FF9D]/15 border border-[#00FF9D]/40 flex items-center justify-center text-[#00FF9D] shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-success-ink/15 border border-success-ink/40 flex items-center justify-center text-success-ink shadow-sm shrink-0">
               <Terminal className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2 truncate">
+              <h2 className="text-base font-bold tracking-tight text-ink flex items-center gap-2 truncate">
                 MQTT & LoRa Mesh Packet Stream
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono border ${
+                <span className={`text-xs px-2 py-0.5 rounded-full  border ${
                   isAnyHardwareConnected
-                    ? 'bg-[#00FF9D]/20 text-[#00FF9D] border-[#00FF9D]/30'
-                    : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                    ? 'bg-success-ink/20 text-success-ink border-success-ink/30'
+                    : 'bg-warning-ink/20 text-warning-ink border-warning-ink/30'
                 }`}>
                   {isAnyHardwareConnected ? 'LIVE STREAM' : 'LISTENING'}
                 </span>
               </h2>
-              <p className="text-[11px] text-[#64748B] font-mono truncate">
+              <p className="text-xs text-ink-muted truncate">
                 Real-time Protobuf & Telemetry Packet Inspector (BLE / USB / Phone GPS / MQTT)
               </p>
             </div>
@@ -167,7 +165,7 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleInjectDiagnosticPacket}
-              className="p-1.5 px-2.5 rounded-xl bg-[#1E293B] hover:bg-[#334155] text-cyan-400 transition-all text-xs flex items-center gap-1.5 font-mono"
+              className="p-1.5 px-2.5 rounded-xl bg-raised hover:bg-raised text-accent transition-all text-xs flex items-center gap-1.5"
               title="Inject a manual diagnostic packet to verify console rendering"
             >
               <Send className="w-3.5 h-3.5" />
@@ -175,21 +173,21 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
             </button>
             <button
               onClick={() => setIsPaused(!isPaused)}
-              className="p-1.5 px-2.5 rounded-xl bg-[#060B16] border border-[#1E293B] text-[#94A3B8] hover:text-white transition-all text-xs flex items-center gap-1 font-mono"
+              className="p-1.5 px-2.5 rounded-xl bg-canvas border border-line text-ink-muted hover:text-ink transition-all text-xs flex items-center gap-1"
             >
-              {isPaused ? <Play className="w-3.5 h-3.5 text-[#00FF9D]" /> : <Pause className="w-3.5 h-3.5 text-[#FFB800]" />}
+              {isPaused ? <Play className="w-3.5 h-3.5 text-success-ink" /> : <Pause className="w-3.5 h-3.5 text-warning-ink" />}
               <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
             </button>
             <button
               onClick={() => setPackets([])}
-              className="p-2 rounded-xl bg-[#060B16] border border-[#1E293B] text-[#64748B] hover:text-[#FF4D4D] transition-all"
+              className="p-2 rounded-xl bg-canvas border border-line text-ink-muted hover:text-danger-ink transition-all"
               title="Clear Console"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/80 transition-all"
+              className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-all"
             >
               <X className="w-5 h-5" />
             </button>
@@ -197,37 +195,37 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
         </div>
 
         {/* Live Hardware Connection Status Bar */}
-        <div className="px-4 py-2 bg-[#080E1A] border-b border-[#1E293B] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+        <div className="px-4 py-2 bg-canvas border-b border-line flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-3">
-            <span className="text-[#64748B] font-bold">ACTIVE BRIDGES:</span>
+            <span className="text-ink-muted font-bold">ACTIVE BRIDGES:</span>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
               connStatus.bleConnected
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold'
-                : 'bg-slate-800 text-slate-500 border-slate-700'
+                ? 'bg-success-ink/20 text-success-ink border-success-ink/30 font-bold'
+                : 'bg-raised text-ink-muted border-line'
             }`}>
               <Radio className="w-3 h-3" /> Web BLE {connStatus.bleConnected ? 'ONLINE' : 'OFFLINE'}
             </span>
 
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
               connStatus.usbConnected
-                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 font-bold'
-                : 'bg-slate-800 text-slate-500 border-slate-700'
+                ? 'bg-accent/20 text-accent border-accent/30 font-bold'
+                : 'bg-raised text-ink-muted border-line'
             }`}>
               <Cpu className="w-3 h-3" /> USB Serial {connStatus.usbConnected ? 'ONLINE' : 'OFFLINE'}
             </span>
 
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
               connStatus.mqttConnected
-                ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 font-bold'
-                : 'bg-slate-800 text-slate-500 border-slate-700'
+                ? 'bg-raised/20 text-ink-muted border-line/30 font-bold'
+                : 'bg-raised text-ink-muted border-line'
             }`}>
               <Wifi className="w-3 h-3" /> MQTT WS {connStatus.mqttConnected ? 'CONNECTED' : 'DISCONNECTED'}
             </span>
 
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
               connStatus.phoneGpsActive
-                ? 'bg-sky-500/20 text-sky-400 border-sky-500/30 font-bold'
-                : 'bg-slate-800 text-slate-500 border-slate-700'
+                ? 'bg-accent/20 text-accent border-accent/30 font-bold'
+                : 'bg-raised text-ink-muted border-line'
             }`}>
               <Smartphone className="w-3 h-3" /> Phone GPS {connStatus.phoneGpsActive ? 'BROADCASTING' : 'IDLE'}
             </span>
@@ -239,10 +237,10 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
               <button
                 key={f}
                 onClick={() => setActiveFilter(f)}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono transition-all ${
+                className={`px-2 py-0.5 rounded text-xs font-bold  transition-all ${
                   activeFilter === f
-                    ? 'bg-[#00D4FF] text-[#020408]'
-                    : 'bg-[#1E293B] text-[#94A3B8] hover:text-white'
+                    ? 'bg-accent text-on-accent'
+                    : 'bg-raised text-ink-muted hover:text-ink'
                 }`}
               >
                 {f}
@@ -252,19 +250,19 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
         </div>
 
         {/* Console Output */}
-        <div className="flex-1 p-4 overflow-y-auto font-mono text-xs bg-[#020408] space-y-2 custom-scrollbar">
+        <div className="flex-1 p-4 overflow-y-auto text-xs bg-canvas space-y-2 custom-scrollbar">
           {filteredPackets.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500">
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-ink-muted space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-surface border border-line flex items-center justify-center text-ink-muted">
                 <Terminal className="w-6 h-6" />
               </div>
               <div className="max-w-md space-y-1">
-                <div className="text-white font-bold text-sm">No Packets Received Yet</div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  This console stream displays <strong className="text-slate-200">genuine live packets</strong> arriving from connected LoRa hardware (LoRa Device via BLE or USB), live Phone GPS broadcasts, or your MQTT Broker topic.
+                <div className="text-ink font-bold text-sm">No Packets Received Yet</div>
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  This console stream displays <strong className="text-ink">genuine live packets</strong> arriving from connected LoRa hardware (LoRa Device via BLE or USB), live Phone GPS broadcasts, or your MQTT Broker topic.
                 </p>
-                <p className="text-[11px] text-slate-500 pt-2">
-                  To test reception immediately, you can click <strong className="text-cyan-400">"Test Ping"</strong> above or turn on <strong className="text-sky-400">"Enable Live GPS"</strong> in the tracker drawer.
+                <p className="text-xs text-ink-muted pt-2">
+                  To test reception immediately, you can click <strong className="text-accent">"Test Ping"</strong> above or turn on <strong className="text-accent">"Enable Live GPS"</strong> in the tracker drawer.
                 </p>
               </div>
             </div>
@@ -272,47 +270,47 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
             filteredPackets.map((pkt) => (
               <div
                 key={pkt.id}
-                className="p-2.5 rounded bg-[#060B16] border border-[#1E293B] hover:border-[#00D4FF]/40 transition-all flex flex-col gap-1"
+                className="p-2.5 rounded bg-canvas border border-line hover:border-accent/40 transition-all flex flex-col gap-1"
               >
-                <div className="flex items-center justify-between text-[10px] text-[#64748B]">
+                <div className="flex items-center justify-between text-xs text-ink-muted">
                   <div className="flex items-center gap-2">
-                    <span className="text-[#00D4FF] font-bold">{pkt.timestamp}</span>
+                    <span className="text-accent font-bold">{pkt.timestamp}</span>
                     {pkt.source && (
-                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                      <span className={`px-1.5 py-0.2 rounded text-xs font-bold border ${
                         pkt.source === 'BLE_RADIO'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-success-ink/10 text-success-ink border-success-ink/30'
                           : pkt.source === 'PHONE_GPS'
-                          ? 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+                          ? 'bg-accent/10 text-accent border-accent/30'
                           : pkt.source === 'USB_SERIAL'
-                          ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                          ? 'bg-accent/10 text-accent border-accent/30'
                           : pkt.source === 'DIAGNOSTIC_TEST'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                          : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                          ? 'bg-warning-ink/10 text-warning-ink border-warning-ink/30'
+                          : 'bg-raised/10 text-ink-muted border-line/30'
                       }`}>
                         {pkt.source}
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2 font-mono">
-                    <span className="text-white">FROM: <strong className="text-[#00FF9D]">{pkt.fromNode}</strong></span>
+                  <div className="flex gap-2">
+                    <span className="text-ink">FROM: <strong className="text-success-ink">{pkt.fromNode}</strong></span>
                     <span>TO: {pkt.toNode}</span>
-                    <span className={pkt.snr > 0 ? 'text-[#00FF9D]' : 'text-[#FF4D4D]'}>
-                      SNR: {pkt.snr}dB ({pkt.rssi}dBm)
+                    <span className={pkt.snr === undefined ? 'text-ink-muted' : pkt.snr > 0 ? 'text-success-ink' : 'text-danger-ink'}>
+                      SNR: {pkt.snr ?? '—'} dB ({pkt.rssi ?? '—'} dBm)
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2 pt-0.5">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${
                     pkt.portnum === 'POSITION_APP' || pkt.portnum === 'DEVICE_GPS'
-                      ? 'bg-cyan-950 text-cyan-400 border border-cyan-800/60'
+                      ? 'bg-surface text-accent border border-accent/60'
                       : pkt.portnum === 'TELEMETRY_APP'
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
-                      : 'bg-[#1E293B] text-[#FFB800]'
+                      ? 'bg-surface text-success-ink border border-success-ink/60'
+                      : 'bg-raised text-warning-ink'
                   }`}>
                     {pkt.portnum}
                   </span>
-                  <span className="text-xs text-[#E0E6ED] break-all font-mono">
+                  <span className="text-xs text-ink break-all">
                     {pkt.payload}
                   </span>
                 </div>

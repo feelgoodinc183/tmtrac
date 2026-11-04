@@ -4,9 +4,7 @@ import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import Stripe from 'stripe';
 import { WebSocketServer, WebSocket } from 'ws';
-import mqtt, { MqttClient } from 'mqtt';
 import {
   db,
   initDatabase,
@@ -17,34 +15,30 @@ import {
   insertAuditLog,
   PLAN_CONFIG,
   getAllPackages,
-  getPackageById,
   updatePackage,
   createPackage,
   deletePackage,
   getDatabaseStats,
   importDatabaseJson,
   syncStoreJson,
-  updateTenantSubscription,
-  adjustTenantEventPasses,
   getComprehensiveDiagnostics,
   repairDatabase,
   dbDiagnosticsState,
 } from './src/server/db';
 import {
   serverGateMiddleware,
-  resolveGateContext,
   requireAuth,
   requireTenantAdmin,
   requireSuperAdmin,
   enforcePlanQuota,
   extractPlatform,
+  extractRequestToken,
 } from './src/server/gate';
+import { createSession, endSession, endAllSessionsForUser, findActiveUserByToken } from './src/server/sessions';
 import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
 
-const rawPort = process.env.PORT;
 const isDevMode = process.env.NODE_ENV !== 'production';
-const PORT: number | string = isDevMode ? 3000 : ((rawPort && !isNaN(Number(rawPort))) ? Number(rawPort) : (rawPort || 3000));
 
 // Initialize SQLite database and run migrations/seeds
 initDatabase();
@@ -256,12 +250,11 @@ export function resolveRoomRole(user: RoomRoleUser | null, room: ActiveRoomState
 
 function roomRoleUserFromRow(row: any): RoomRoleUser | null {
   if (!row) return null;
-  const email = (row.email || '').toLowerCase().trim();
   return {
     id: row.id,
     role: row.role,
     tenantId: row.tenant_id || null,
-    isSuperAdmin: !!row.is_super_admin || (email === 'irsyadismail@gmail.com' && row.role === 'ADMIN'),
+    isSuperAdmin: !!row.is_super_admin,
   };
 }
 
@@ -437,17 +430,10 @@ async function startServer() {
 
     // Gate check via token in SQLite
     let authUser: any = null;
-    let authTenant: any = null;
     if (token) {
-      const userRow = db.prepare(`
-        SELECT u.*, t.name as tenant_name, t.plan_tier 
-        FROM users u 
-        LEFT JOIN tenants t ON u.tenant_id = t.id 
-        WHERE u.token = ? AND u.status = 'ACTIVE'
-      `).get(token) as any;
+      const userRow = findActiveUserByToken(token);
       if (userRow) {
         authUser = userRow;
-        authTenant = { id: userRow.tenant_id, name: userRow.tenant_name, planTier: userRow.plan_tier };
       }
     }
 
@@ -966,7 +952,7 @@ async function startServer() {
         'RACE_OFFICER',
         'ACTIVE',
         token,
-        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90, winRate: 0 }),
+        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
         JSON.stringify([]),
         now
       );
@@ -1101,7 +1087,7 @@ async function startServer() {
         assignedPartType,
         'ACTIVE',
         token,
-        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90.0, winRate: 0 }),
+        JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
         JSON.stringify([]),
         now
       );
@@ -1198,21 +1184,23 @@ async function startServer() {
     }
 
     // Password hash validation
-    const isUnivAdmin = userRow.email.toLowerCase().trim() === 'irsyadismail@gmail.com';
+    // Super Admin access comes from the account's flag only; the owner's flag is re-applied at startup.
+    const isUnivAdmin = !!userRow.is_super_admin;
     if (userRow.password_hash !== targetHash) {
       return res.status(401).json({ error: 'Invalid credentials. Please check your username/email and password.' });
     }
 
-    // Generate fresh cryptographic session token upon successful password verification
-    const token = generateToken();
+    // New session for this device; other devices stay signed in
+    let token: string;
     try {
-      db.prepare('UPDATE users SET token = ? WHERE id = ?').run(token, userRow.id);
-    } catch (tokenErr) {
-      console.warn('Failed to update session token on login:', tokenErr);
+      token = createSession(userRow.id, req.headers['user-agent'] || null);
+    } catch (tokenErr: any) {
+      console.error('Failed to create session on login:', tokenErr);
+      return res.status(500).json({ error: 'Could not start a session. Please try again.' });
     }
     userRow.token = token;
 
-    let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90, winRate: 0 };
+    let stats = { racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 };
     let raceHistory = [];
     try {
       if (userRow.stats_json) stats = JSON.parse(userRow.stats_json);
@@ -1281,11 +1269,8 @@ async function startServer() {
   });
 
   app.post('/api/auth/logout', (req, res) => {
-    if (req.gate?.user) {
-      try {
-        db.prepare('UPDATE users SET token = NULL WHERE id = ?').run(req.gate.user.id);
-      } catch (e) {}
-    }
+    // Signs out this device only
+    endSession(extractRequestToken(req));
     res.json({ success: true });
   });
 
@@ -1502,7 +1487,7 @@ async function startServer() {
       storedRole === 'RACE_OFFICER' ? 'RACE_OFFICER' : 'SKIPPER',
       'ACTIVE',
       null,
-      JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 90.0, winRate: 0 }),
+      JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
       JSON.stringify([]),
       now
     );
@@ -1537,6 +1522,7 @@ async function startServer() {
     // Suspending also signs the user out
     if (status === 'SUSPENDED') {
       db.prepare('UPDATE users SET status = ?, token = NULL WHERE id = ?').run(status, target.id);
+      endAllSessionsForUser(target.id);
     } else {
       db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, target.id);
     }
@@ -1553,6 +1539,7 @@ async function startServer() {
     }
     // Signs the user out everywhere; they sign in again with the new password
     db.prepare('UPDATE users SET password_hash = ?, token = NULL WHERE id = ?').run(hashPassword(newPassword), target.id);
+    endAllSessionsForUser(target.id);
     insertAuditLog({ tenantId: target.tenant_id, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_PASSWORD_RESET', details: { userId: target.id } });
     res.json({ success: true, message: 'Password reset. The user has been signed out.' });
   });
@@ -1561,6 +1548,7 @@ async function startServer() {
     const target = loadManagedUser(req, res);
     if (!target) return;
     db.prepare('DELETE FROM users WHERE id = ?').run(target.id);
+    endAllSessionsForUser(target.id);
     insertAuditLog({ tenantId: target.tenant_id, userId: req.gate!.user!.id, userEmail: req.gate!.user!.email, action: 'CLUB_USER_DELETED', details: { userId: target.id, email: target.email } });
     res.json({ success: true, message: 'User deleted.' });
   });
@@ -2404,6 +2392,12 @@ async function startServer() {
         db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...values);
       }
 
+      // A new password or a non-active status signs the user out everywhere
+      // (keeping this device signed in when admins change their own password).
+      if ((newPassword && newPassword.trim()) || (status !== undefined && status !== 'ACTIVE')) {
+        endAllSessionsForUser(userId, req.gate?.user?.id === userId ? extractRequestToken(req) : undefined);
+      }
+
       const updatedRow = db.prepare(`
         SELECT u.*, t.name as tenant_name, t.plan_tier 
         FROM users u 
@@ -2455,6 +2449,7 @@ async function startServer() {
       }
 
       db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+      endAllSessionsForUser(userId);
 
       insertAuditLog({
         tenantId: existing.tenant_id || 'system',

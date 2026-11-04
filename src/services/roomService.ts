@@ -10,6 +10,9 @@ class RoomService {
   private activeRoomCode: string = 'LOBBY';
   private isOrganizerRole: boolean = false;
   private isParticipantRole: boolean = false;
+  // Set when the user deliberately joins as a spectator, so the app doesn't switch them into
+  // the race console just because their account could edit the room.
+  private spectatorByChoice: boolean = false;
   // PIN that unlocked the active room; the real-time socket needs it to get the same role as the UI
   private activeRoomPin: string = '';
   private currentRoomSummary: RegattaRoomSummary | null = null;
@@ -38,6 +41,7 @@ class RoomService {
 
     // If explicit mode=spectator, start as spectator
     if (urlMode === 'spectator') {
+      this.spectatorByChoice = true;
       this.isOrganizerRole = false;
       this.isParticipantRole = false;
       return;
@@ -94,6 +98,10 @@ class RoomService {
 
   public getIsOrganizer(): boolean {
     return this.isOrganizerRole;
+  }
+
+  public isSpectatorByChoice(): boolean {
+    return this.spectatorByChoice;
   }
 
   public isOrganizer(): boolean {
@@ -252,6 +260,7 @@ class RoomService {
 
     this.activeRoomCode = cleanCode;
     this.activeRoomPin = '';
+    this.spectatorByChoice = asSpectator;
     localStorage.setItem(ACTIVE_ROOM_KEY, cleanCode);
 
     // Update URL query without page reload

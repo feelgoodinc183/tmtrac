@@ -5,50 +5,27 @@ import {
   Compass,
   Zap,
   Radio,
-  Trophy,
-  Route,
-  Layers,
   ShieldAlert,
   Bot,
-  RotateCcw,
   Database,
-  Sun,
-  Volume2,
-  VolumeX,
-  User,
-  LogIn,
   QrCode,
   Link2,
   Bluetooth,
   Globe,
   Info,
-  CheckCircle2,
-  Play,
-  Square,
-  AlertTriangle,
   Clock,
-  ArrowRight,
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
   BarChart2,
   Signal,
-  Battery,
-  ShieldCheck,
-  Lock,
   Building2,
 } from 'lucide-react';
 import {
   Boat,
   MeshtasticNode,
-  RaceClassDefinition,
   RaceState,
-  CourseMark,
   DeviceGpsState,
-  UserAccount,
-  CompletedRace,
 } from '../types/regatta';
-import { formatTime, safeFixed } from '../utils/formatters';
+import { safeFixed } from '../utils/formatters';
+import { APP_VERSION } from '../appVersion';
 
 export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';
 
@@ -62,7 +39,6 @@ export interface UnifiedHubModalProps {
   deviceGps: DeviceGpsState;
   onToggleDeviceGps: () => void;
   hybridTrackerCount: number;
-  onOpenSkipperCheckIn?: () => void;
   onOpenBoatQr?: () => void;
   onOpenNodeBinding?: () => void;
   onOpenHardwareScan?: () => void;
@@ -71,38 +47,17 @@ export interface UnifiedHubModalProps {
   onOpenHeadToHead?: () => void;
   // Race Props
   raceState: RaceState;
-  raceClasses: RaceClassDefinition[];
-  marks: CourseMark[];
   viewMode: 'RC_CONSOLE' | 'SPECTATOR';
-  onStartSequence?: (minutes?: number) => void;
-  onStopSequence?: () => void;
-  onPostpone?: () => void;
-  onGeneralRecall?: () => void;
-  onAbandon?: () => void;
-  onSelectClass?: (clsName: string) => void;
-  onOpenCourseProfiles?: () => void;
-  onOpenClassManager?: () => void;
   onOpenVhfJuryModal?: () => void;
   onOpenChat?: () => void;
   // Results Props
-  onOpenResults?: () => void;
-  showReplayBar?: boolean;
-  onToggleReplayBar?: () => void;
-  seriesRaces?: CompletedRace[];
   // System Props
   activeRoomCode: string;
   connectedPeerCount: number;
-  onOpenLobby?: () => void;
   onOpenSpectatorQr?: () => void;
   onOpenNmeaMalaysiaModal?: () => void;
   onOpenOfflineCache?: () => void;
-  directSunlightMode: boolean;
-  onToggleSunlightMode: () => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
-  currentUser?: UserAccount | null;
-  onOpenDashboard?: () => void;
-  onOpenAuth?: (mode?: 'login' | 'register') => void;
+  onOpenMqttInspector?: () => void;
   onOpenAbout?: () => void;
   onOpenTenantDashboard?: () => void;
   tenantName?: string;
@@ -118,7 +73,6 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   deviceGps,
   onToggleDeviceGps,
   hybridTrackerCount,
-  onOpenSkipperCheckIn,
   onOpenBoatQr,
   onOpenNodeBinding,
   onOpenHardwareScan,
@@ -126,47 +80,28 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   onSelectBoat,
   onOpenHeadToHead,
   raceState,
-  raceClasses,
-  marks,
   viewMode,
-  onStartSequence,
-  onStopSequence,
-  onPostpone,
-  onGeneralRecall,
-  onAbandon,
-  onSelectClass,
-  onOpenCourseProfiles,
-  onOpenClassManager,
   onOpenVhfJuryModal,
   onOpenChat,
-  onOpenResults,
-  showReplayBar,
-  onToggleReplayBar,
-  seriesRaces = [],
   activeRoomCode,
   connectedPeerCount,
-  onOpenLobby,
   onOpenSpectatorQr,
   onOpenNmeaMalaysiaModal,
   onOpenOfflineCache,
-  directSunlightMode,
-  onToggleSunlightMode,
-  isMuted,
-  onToggleMute,
-  currentUser,
-  onOpenDashboard,
-  onOpenAuth,
+  onOpenMqttInspector,
   onOpenAbout,
   onOpenTenantDashboard,
   tenantName,
   planTier,
 }) => {
-  const [activeTab, setActiveTab] = useState<HubTab>(initialHub);
+  // Results moved out of the hub (race console / sidebar); old callers land on Fleet
+  const normalizeTab = (t: HubTab): HubTab => (t === 'RESULTS' ? 'FLEET' : t);
+  const [activeTab, setActiveTab] = useState<HubTab>(normalizeTab(initialHub as HubTab));
 
   // Sync initialHub when modal opens
   React.useEffect(() => {
     if (isOpen && initialHub) {
-      setActiveTab(initialHub);
+      setActiveTab(normalizeTab(initialHub as HubTab));
     }
   }, [isOpen, initialHub]);
 
@@ -175,30 +110,28 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   return (
     <div
       id="unified-hub-backdrop"
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-50 bg-canvas/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
         id="unified-hub-card"
         className={`w-full max-w-4xl h-[92vh] max-h-[820px] rounded-2xl flex flex-col overflow-hidden border shadow-2xl transition-all ${
-          directSunlightMode
-            ? 'bg-black text-white border-white'
-            : 'bg-[#0E131F] text-[#E8EAED] border-[#1E293B]'
+          'bg-surface text-ink border-line'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-[#1E293B] shrink-0 bg-[#0A0F1A]/80 gap-2">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-line shrink-0 bg-canvas/80 gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#00D4FF]/15 border border-[#00D4FF]/40 text-[#00D4FF] flex items-center justify-center shrink-0">
-              <Compass className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/15 border border-accent/40 text-accent flex items-center justify-center shrink-0">
+              <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap min-w-0">
-                <h2 className="text-sm sm:text-base font-bold font-google tracking-tight text-white break-words leading-tight">
+                <h2 className="text-sm sm:text-base font-bold tracking-tight text-ink break-words leading-tight">
                   Control Hub
                 </h2>
-                <span className="text-[10px] font-mono font-bold text-[#00D4FF] bg-[#00D4FF]/10 px-2 py-0.5 rounded border border-[#00D4FF]/30 shrink-0">
+                <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded border border-accent/30 shrink-0">
                   #{activeRoomCode}
                 </span>
               </div>
@@ -206,8 +139,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1E293B]/70 text-slate-300 text-xs font-mono shrink-0">
-              <Zap className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-raised/70 text-ink text-xs shrink-0">
+              <Zap className="w-3.5 h-3.5 text-success-ink" />
               <span>{connectedPeerCount} Live Devices</span>
             </div>
             <button
@@ -217,7 +150,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 e.stopPropagation();
                 onClose();
               }}
-              className="group p-1.5 sm:p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1E293B] active:scale-95 transition-all cursor-pointer shrink-0"
+              className="group p-1.5 sm:p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-raised active:scale-95 transition-all cursor-pointer shrink-0"
               title="Close Hub (Esc)"
               aria-label="Close Hub"
             >
@@ -226,22 +159,24 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
           </div>
         </div>
 
-        {/* 4 Primary Segmented Hub Tabs */}
-        <div className="flex items-center px-3 sm:px-6 py-2 border-b border-[#1E293B] bg-[#0A0F1A]/50 gap-1 sm:gap-2 shrink-0 overflow-x-auto custom-scrollbar">
+        {/* Hub tabs */}
+        <div className="flex items-center px-3 sm:px-6 py-2 border-b border-line bg-canvas/50 gap-1 sm:gap-2 shrink-0 overflow-x-auto custom-scrollbar">
           <button
             id="hub-tab-fleet"
+            role="tab"
+            aria-selected={activeTab === 'FLEET'}
             onClick={() => setActiveTab('FLEET')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs  font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'FLEET'
-                ? 'bg-[#00D4FF] text-black shadow-[0_0_12px_rgba(0,212,255,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-accent text-on-accent '
+                : 'bg-raised/60 text-ink hover:text-ink hover:bg-raised'
             }`}
           >
             <Navigation className="w-3.5 h-3.5" />
             <span>Fleet & Tracking</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                activeTab === 'FLEET' ? 'bg-black/20 text-black' : 'bg-[#00D4FF]/20 text-[#00D4FF]'
+              className={`text-xs px-1.5 py-0.2 rounded font-bold ${
+                activeTab === 'FLEET' ? 'bg-on-accent/20 text-on-accent' : 'bg-accent/20 text-accent'
               }`}
             >
               {boats.length}
@@ -250,55 +185,37 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
 
           <button
             id="hub-tab-race"
+            role="tab"
+            aria-selected={activeTab === 'RACE'}
             onClick={() => setActiveTab('RACE')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs  font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'RACE'
-                ? 'bg-[#FBBC04] text-black shadow-[0_0_12px_rgba(251,188,4,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-accent text-on-accent '
+                : 'bg-raised/60 text-ink hover:text-ink hover:bg-raised'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Race & Course</span>
+            <span>Race tools</span>
             <span
               className={`w-2 h-2 rounded-full ${
                 raceState.status === 'RACING'
-                  ? 'bg-emerald-400 animate-pulse'
+                  ? 'bg-success-ink '
                   : raceState.startSequenceActive
-                  ? 'bg-amber-400 animate-pulse'
-                  : 'bg-slate-400'
+                  ? 'bg-warning-ink '
+                  : 'bg-ink'
               }`}
             />
           </button>
 
           <button
-            id="hub-tab-results"
-            onClick={() => setActiveTab('RESULTS')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
-              activeTab === 'RESULTS'
-                ? 'bg-[#FFB800] text-black shadow-[0_0_12px_rgba(255,184,0,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>Results & Scoring</span>
-            {seriesRaces.length > 0 && (
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                  activeTab === 'RESULTS' ? 'bg-black/20 text-black' : 'bg-[#FFB800]/20 text-[#FFB800]'
-                }`}
-              >
-                {seriesRaces.length}R
-              </span>
-            )}
-          </button>
-
-          <button
             id="hub-tab-system"
+            role="tab"
+            aria-selected={activeTab === 'SYSTEM'}
             onClick={() => setActiveTab('SYSTEM')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs  font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'SYSTEM'
-                ? 'bg-cyan-500 text-black shadow-[0_0_12px_rgba(6,182,212,0.35)]'
-                : 'bg-[#1E293B]/60 text-slate-300 hover:text-white hover:bg-[#1E293B]'
+                ? 'bg-accent text-on-accent '
+                : 'bg-raised/60 text-ink hover:text-ink hover:bg-raised'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
@@ -314,52 +231,26 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
           {activeTab === 'FLEET' && (
             <div className="space-y-5 animate-fade-in">
               {/* Top Quick Action Banner */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-                {/* 1. Track My Boat (Auto-bind GPS) */}
-                <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-[#00D4FF]/15 to-[#00D4FF]/5 border border-[#00D4FF]/40 flex flex-col justify-between gap-3">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#00D4FF] font-bold">
-                        Skipper GPS
-                      </span>
-                      <div className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse" />
-                    </div>
-                    <h3 className="text-sm font-bold text-white mt-1">Track Boat</h3>
-                    <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
-                      1-Tap GPS auto-binding for skippers on water
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenSkipperCheckIn?.();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#00D4FF] hover:bg-[#00D4FF]/90 text-black font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>Open Skipper Check-In</span>
-                  </button>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                 {/* 2. Device GPS Broadcast */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs text-ink-muted font-bold">
                         Phone / Tablet GPS
                       </span>
                       <span
-                        className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                        className={`text-xs  font-bold px-1.5 py-0.2 rounded ${
                           deviceGps.active
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                            : 'bg-slate-800 text-slate-400'
+                            ? 'bg-success-ink/20 text-success-ink border border-success-ink/40'
+                            : 'bg-raised text-ink-muted'
                         }`}
                       >
                         {deviceGps.active ? 'ACTIVE' : 'OFFLINE'}
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">Device Tracker</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">Device Tracker</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       {deviceGps.active
                         ? `${safeFixed(deviceGps.speedKt, 1, '0.0')} kt · ${deviceGps.headingDeg ?? 0}°`
                         : `${hybridTrackerCount} hybrid devices live`}
@@ -367,10 +258,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                   </div>
                   <button
                     onClick={onToggleDeviceGps}
-                    className={`w-full py-2 px-3 rounded-lg font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`w-full py-2 px-3 rounded-lg  font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       deviceGps.active
-                        ? 'bg-rose-500/20 border border-rose-500/50 text-rose-300 hover:bg-rose-500/30'
-                        : 'bg-[#1E293B] hover:bg-[#334155] text-slate-200'
+                        ? 'bg-danger/20 border border-danger-ink/50 text-danger-ink hover:bg-danger/30'
+                        : 'bg-raised hover:bg-raised text-ink'
                     }`}
                   >
                     <Navigation className="w-3.5 h-3.5" />
@@ -379,13 +270,13 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 </div>
 
                 {/* 3. Fleet QR Cards */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                    <span className="text-xs text-ink-muted font-bold">
                       Check-In Cards
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Boat QRs</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">Boat QRs</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       Printable 1-tap QR cards for regatta registration
                     </p>
                   </div>
@@ -394,26 +285,26 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenBoatQr?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <QrCode className="w-3.5 h-3.5 text-accent" />
                     <span>Generate & Print QRs</span>
                   </button>
                 </div>
 
                 {/* 4. LoRa & BLE Hardware */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs text-ink-muted font-bold">
                         Hardware Mesh
                       </span>
-                      <span className="text-[10px] font-mono text-[#00D4FF] font-bold">
+                      <span className="text-xs text-accent font-bold">
                         {nodes.length} Nodes
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">LoRa / BLE Mesh</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">LoRa / BLE Mesh</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       Meshtastic radio binding & Bluetooth scanner
                     </p>
                   </div>
@@ -423,10 +314,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenNodeBinding?.();
                       }}
-                      className="flex-1 py-2 px-2 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      className="flex-1 py-2 px-2 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
                       title="Bind Meshtastic nodes to boats"
                     >
-                      <Link2 className="w-3 h-3 text-[#00D4FF]" />
+                      <Link2 className="w-3 h-3 text-accent" />
                       <span>Bind</span>
                     </button>
                     <button
@@ -434,10 +325,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenHardwareScan?.();
                       }}
-                      className="flex-1 py-2 px-2 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      className="flex-1 py-2 px-2 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
                       title="Scan Bluetooth / USB ports"
                     >
-                      <Bluetooth className="w-3 h-3 text-cyan-400" />
+                      <Bluetooth className="w-3 h-3 text-accent" />
                       <span>BLE</span>
                     </button>
                   </div>
@@ -446,12 +337,12 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
 
               {/* Head-to-Head Comparison Button (if available) */}
               {onOpenHeadToHead && boats.length >= 2 && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[#121826] border border-[#1E293B]">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
                   <div className="flex items-center gap-2.5">
-                    <BarChart2 className="w-4 h-4 text-[#00D4FF]" />
+                    <BarChart2 className="w-4 h-4 text-accent" />
                     <div>
-                      <span className="text-xs font-bold text-white font-mono">Head-to-Head Telemetry Analysis</span>
-                      <p className="text-[11px] text-slate-400">Compare VMG, speeds, heading and tactical delta side-by-side</p>
+                      <span className="text-xs font-bold text-ink">Head-to-Head Telemetry Analysis</span>
+                      <p className="text-xs text-ink-muted">Compare VMG, speeds, heading and tactical delta side-by-side</p>
                     </div>
                   </div>
                   <button
@@ -459,7 +350,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenHeadToHead();
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-[#00D4FF]/20 hover:bg-[#00D4FF]/30 border border-[#00D4FF]/50 text-[#00D4FF] font-mono text-xs font-bold transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-accent/20 hover:bg-accent/30 border border-accent/50 text-accent text-xs font-bold transition-all cursor-pointer"
                   >
                     Compare Boats
                   </button>
@@ -467,10 +358,10 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
               )}
 
               {/* Active Fleet List Table */}
-              <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1A]/70 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E293B] bg-[#121826]/70">
+              <div className="rounded-xl border border-line bg-canvas/70 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-surface/70">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
+                    <span className="text-xs font-bold text-ink">
                       Fleet Registry ({boats.length} Vessels)
                     </span>
                   </div>
@@ -480,21 +371,21 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         onClose();
                         onOpenBoatEditor();
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-[#00D4FF] hover:bg-[#00D4FF]/90 text-black text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-accent hover:bg-accent/90 text-on-accent text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
                     >
-                      <span>+ Add Vessel</span>
+                      <span>Add boat</span>
                     </button>
                   )}
                 </div>
 
                 {boats.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 font-mono text-xs">
-                    No boats registered yet. Tap "Add Vessel" or use "Track Boat" to auto-join.
+                  <div className="p-8 text-center text-ink-muted text-xs">
+                    No boats registered yet. Use "Add boat", or skippers can join themselves with Track in the header.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs font-mono">
-                      <thead className="bg-[#121826]/50 text-slate-400 border-b border-[#1E293B] text-[11px]">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-surface/50 text-ink-muted border-b border-line text-xs">
                         <tr>
                           <th className="px-3 py-2">Vessel</th>
                           <th className="px-3 py-2">Class</th>
@@ -504,11 +395,11 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                           <th className="px-3 py-2 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#1E293B]">
+                      <tbody className="divide-y divide-line">
                         {boats.map((boat) => {
                           const boundNode = nodes.find((n) => n.id === boat.nodeId);
                           return (
-                            <tr key={boat.id} className="hover:bg-[#1E293B]/40 transition-colors">
+                            <tr key={boat.id} className="hover:bg-raised/40 transition-colors">
                               <td className="px-3 py-2.5">
                                 <div className="flex items-center gap-2">
                                   <div
@@ -516,42 +407,42 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                     style={{ backgroundColor: boat.color || '#00D4FF' }}
                                   />
                                   <div>
-                                    <div className="font-bold text-white flex items-center gap-1.5">
+                                    <div className="font-bold text-ink flex items-center gap-1.5">
                                       <span>{boat.name}</span>
-                                      <span className="text-slate-400 text-[10px]">#{boat.sailNumber}</span>
+                                      <span className="text-ink-muted text-xs">#{boat.sailNumber}</span>
                                     </div>
-                                    <div className="text-[10px] text-slate-400">
+                                    <div className="text-xs text-ink-muted">
                                       {boat.skipper || 'Skipper Unassigned'}
                                     </div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-2.5 text-slate-300">
-                                {boat.raceClass || 'Class 1'}
+                              <td className="px-3 py-2.5 text-ink">
+                                {boat.class}
                               </td>
                               <td className="px-3 py-2.5">
-                                <span className="font-bold text-[#00D4FF]">
+                                <span className="font-bold text-accent">
                                   {boat.handicapSystem || 'IRC'} {safeFixed(boat.handicapRating, 3, '1.000')}
                                 </span>
                               </td>
                               <td className="px-3 py-2.5">
-                                <span className="font-bold text-white">
+                                <span className="font-bold text-ink">
                                   {safeFixed(boat.speedKt ?? boat.sog, 1, '0.0')} kt
                                 </span>
-                                <span className="text-[10px] text-slate-400 ml-1">
+                                <span className="text-xs text-ink-muted ml-1">
                                   {safeFixed(boat.headingDeg ?? boat.heading ?? boat.cog, 0, '0')}°
                                 </span>
                               </td>
                               <td className="px-3 py-2.5">
                                 {boundNode ? (
-                                  <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                  <span className="text-xs text-success-ink flex items-center gap-1">
                                     <Signal className="w-3 h-3" />
                                     <span>LoRa {boundNode.snr != null ? `${safeFixed(boundNode.snr, 1)}dB` : 'Active'}</span>
                                   </span>
                                 ) : boat.nodeId ? (
-                                  <span className="text-[10px] text-cyan-300">GPS Mesh</span>
+                                  <span className="text-xs text-accent">GPS Mesh</span>
                                 ) : (
-                                  <span className="text-[10px] text-slate-500">Sim / Unbound</span>
+                                  <span className="text-xs text-ink-muted">No tracker</span>
                                 )}
                               </td>
                               <td className="px-3 py-2.5 text-right">
@@ -562,7 +453,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                         onClose();
                                         onSelectBoat(boat.id);
                                       }}
-                                      className="px-2 py-1 rounded bg-[#1E293B] hover:bg-[#334155] text-[#00D4FF] text-[10px] font-bold"
+                                      className="px-2 py-1 rounded bg-raised hover:bg-raised text-accent text-xs font-bold"
                                     >
                                       Locate
                                     </button>
@@ -573,7 +464,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                         onClose();
                                         onOpenBoatEditor(boat);
                                       }}
-                                      className="px-2 py-1 rounded bg-[#1E293B] hover:bg-[#334155] text-slate-300 hover:text-white text-[10px] font-bold"
+                                      className="px-2 py-1 rounded bg-raised hover:bg-raised text-ink hover:text-ink text-xs font-bold"
                                     >
                                       Edit
                                     </button>
@@ -596,176 +487,16 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
              ======================================================== */}
           {activeTab === 'RACE' && (
             <div className="space-y-5 animate-fade-in">
-              {/* Race Committee Live Status & Timer Bar */}
-              <div className="p-4 sm:p-5 rounded-xl bg-[#121826] border border-[#1E293B] space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1E293B]">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full shrink-0 ${
-                        raceState.status === 'RACING'
-                          ? 'bg-emerald-400 animate-pulse'
-                          : raceState.startSequenceActive
-                          ? 'bg-amber-400 animate-pulse'
-                          : 'bg-slate-400'
-                      }`}
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
-                          Active Class:
-                        </span>
-                        <span className="text-sm font-bold text-white font-mono">
-                          {raceState.activeClass}
-                        </span>
-                        <span className="text-slate-600">|</span>
-                        <span
-                          className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${
-                            raceState.status === 'RACING'
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                              : raceState.startSequenceActive
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                              : 'bg-slate-800 text-slate-300'
-                          }`}
-                        >
-                          {raceState.startSequenceActive
-                            ? `COUNTDOWN (${Math.floor(raceState.countdownSeconds / 60)}:${(
-                                raceState.countdownSeconds % 60
-                              )
-                                .toString()
-                                .padStart(2, '0')})`
-                            : raceState.status}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                        Wind: {safeFixed(raceState.windSpeedKt, 1, '12.0')} kt @ {raceState.windDirectionDeg || 210}°
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* ISAF Quick Sequence Buttons (For Race Officer) */}
-                  {viewMode !== 'SPECTATOR' && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {!raceState.startSequenceActive && raceState.status !== 'RACING' ? (
-                        <>
-                          <button
-                            onClick={() => onStartSequence?.(5)}
-                            className="px-3 py-1.5 rounded-lg bg-[#00D4FF] hover:bg-[#00D4FF]/90 text-black font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-current" />
-                            <span>Start 5m ISAF</span>
-                          </button>
-                          <button
-                            onClick={() => onStartSequence?.(3)}
-                            className="px-2.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs transition-all cursor-pointer"
-                          >
-                            3m
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={onStopSequence}
-                          className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <Square className="w-3.5 h-3.5 fill-current" />
-                          <span>Stop Sequence</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={onPostpone}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-amber-300 font-mono font-bold text-xs transition-all cursor-pointer"
-                        title="Flag AP: Postpone Race"
-                      >
-                        AP Postpone
-                      </button>
-                      <button
-                        onClick={onGeneralRecall}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-rose-300 font-mono font-bold text-xs transition-all cursor-pointer"
-                        title="First Repeater: General Recall"
-                      >
-                        Recall
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Class Quick Filter Selector */}
-                {raceClasses.length > 0 && (
-                  <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pt-1">
-                    <span className="text-[11px] font-mono text-slate-400 shrink-0">Switch Class:</span>
-                    {raceClasses.map((cls) => (
-                      <button
-                        key={cls.id || cls.name}
-                        onClick={() => onSelectClass?.(cls.name)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
-                          raceState.activeClass === cls.name
-                            ? 'bg-[#00D4FF] text-black shadow-sm'
-                            : 'bg-[#1E293B] hover:bg-[#283548] text-slate-300'
-                        }`}
-                      >
-                        {cls.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* Race Tools Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* 1. Course Profiles & Mark Layouts */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
-                      Courses & Marks
-                    </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Course Profiles</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                      Windward-leeward, Olympic triangles, gates & marks
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenCourseProfiles?.();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-amber-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Route className="w-3.5 h-3.5" />
-                    <span>Manage Courses ({marks.length} Marks)</span>
-                  </button>
-                </div>
-
-                {/* 2. Race Classes & Handicaps */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#00D4FF] font-bold">
-                      Fleet Divisions
-                    </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Classes & Rating</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                      IRC, ORC, PY & TCF handicap systems (1.000 Default)
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenClassManager?.();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#00D4FF] font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Manage Classes ({raceClasses.length})</span>
-                  </button>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* 3. VHF Radio & Jury Protests */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400 font-bold">
+                    <span className="text-xs text-ink-muted font-bold">
                       Jury & Bulletins
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">VHF & Protests</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">VHF & Protests</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       VHF radio bulletins, jury notices & protest hearings
                     </p>
                   </div>
@@ -774,21 +505,22 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenVhfJuryModal?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-purple-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>VHF / Jury Console</span>
                   </button>
                 </div>
 
-                {/* 4. AI Race Tactician */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                {/* 4. AI Race Tactician (only when the feature is switched on) */}
+                {onOpenChat && (
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400 font-bold">
+                    <span className="text-xs text-accent font-bold">
                       Tactical Intelligence
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">AI Tactician</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">AI Tactician</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       AI race strategist, wind oscillation & layline analysis
                     </p>
                   </div>
@@ -797,141 +529,12 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenChat?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Bot className="w-3.5 h-3.5" />
                     <span>Open AI Tactician</span>
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================
-              HUB 3: RESULTS & SCORING
-             ======================================================== */}
-          {activeTab === 'RESULTS' && (
-            <div className="space-y-5 animate-fade-in">
-              {/* Results Top Banner with Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-[#FFB800]/15 to-[#FFB800]/5 border border-[#FFB800]/40 flex flex-col justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#FFB800] font-bold">
-                      Scoring & Series Standings
-                    </span>
-                    <h3 className="text-base font-bold text-white mt-1">Official Regatta Results</h3>
-                    <p className="text-xs text-slate-300 mt-0.5 leading-snug">
-                      Complete multi-race series leaderboard, IRC/ORC corrected times, Sailwave CSV & World Sailing XML export.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenResults?.();
-                    }}
-                    className="w-full py-2.5 px-4 rounded-lg bg-[#FFB800] hover:bg-[#FFB800]/90 text-black font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
-                  >
-                    <Trophy className="w-4 h-4" />
-                    <span>Launch Full Results & Export Manager</span>
-                  </button>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-                        Historical Scrubber
-                      </span>
-                      <span
-                        className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                          showReplayBar ? 'bg-[#FFB800]/20 text-[#FFB800]' : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {showReplayBar ? 'REPLAY ACTIVE' : 'LIVE MODE'}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold text-white mt-1">Race Track Replay</h3>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-snug">
-                      Scrub through past races at 1x-10x speed, inspect tactical maneuvers and ghost boat comparisons.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onToggleReplayBar?.();
-                    }}
-                    className={`w-full py-2.5 px-4 rounded-lg font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      showReplayBar
-                        ? 'bg-rose-500/20 border border-rose-500/50 text-rose-300 hover:bg-rose-500/30'
-                        : 'bg-[#1E293B] hover:bg-[#334155] text-slate-200'
-                    }`}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>{showReplayBar ? 'Close Replay Bar' : 'Open Race Replay Scrubber'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Standings Preview */}
-              <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1A]/70 overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#1E293B] bg-[#121826]/70 flex items-center justify-between">
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
-                    Live Leaderboard Preview ({boats.length} Competitors)
-                  </span>
-                  <span className="text-[11px] font-mono text-[#00D4FF]">
-                    Handicap Base: 1.000
-                  </span>
-                </div>
-                {boats.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 font-mono text-xs">
-                    No active boats in current race.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs font-mono">
-                      <thead className="bg-[#121826]/50 text-slate-400 border-b border-[#1E293B] text-[11px]">
-                        <tr>
-                          <th className="px-3 py-2">Rank</th>
-                          <th className="px-3 py-2">Boat / Skipper</th>
-                          <th className="px-3 py-2">Rating</th>
-                          <th className="px-3 py-2">Speed</th>
-                          <th className="px-3 py-2">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#1E293B]">
-                        {boats.map((b, idx) => (
-                          <tr key={b.id} className="hover:bg-[#1E293B]/40 transition-colors">
-                            <td className="px-3 py-2.5 font-bold text-white">
-                              {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : `${idx + 1}`}
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <span className="font-bold text-white">{b.name}</span>
-                              <span className="text-slate-400 text-[10px] ml-1.5">#{b.sailNumber}</span>
-                            </td>
-                            <td className="px-3 py-2.5 text-[#00D4FF]">
-                              {b.handicapSystem || 'IRC'} {safeFixed(b.handicapRating, 3, '1.000')}
-                            </td>
-                            <td className="px-3 py-2.5 text-white">
-                              {safeFixed(b.speedKt ?? b.sog, 1, '0.0')} kt
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <span
-                                className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                                  b.status === 'FINISHED'
-                                    ? 'bg-purple-500/20 text-purple-300'
-                                    : b.status === 'RACING'
-                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                    : 'bg-slate-800 text-slate-400'
-                                }`}
-                              >
-                                {b.status || 'PRE_START'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
                 )}
               </div>
             </div>
@@ -944,24 +547,24 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
             <div className="space-y-5 animate-fade-in">
               {/* Organization & Club Tenant Settings (Moved from Header into System Settings) */}
               {onOpenTenantDashboard && (
-                <div className="p-4 rounded-xl bg-[#121826] border border-cyan-500/30 hover:border-cyan-400/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="p-4 rounded-xl bg-surface border border-accent/30 hover:border-accent/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 text-accent flex items-center justify-center shrink-0">
                       <Building2 className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                        <span className="text-xs text-accent font-bold">
                           Club / Organization Tenant
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 uppercase font-mono border border-cyan-500/30">
+                        <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-accent/20 text-accent border border-accent/30">
                           {planTier || 'FREE'} PLAN
                         </span>
                       </div>
-                      <h3 className="text-sm font-bold text-white mt-0.5 truncate">
+                      <h3 className="text-sm font-bold text-ink mt-0.5 truncate">
                         {tenantName || 'Royal Langkawi Yacht Club (RLYC)'}
                       </h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-xs text-ink-muted mt-0.5">
                         Manage club regattas, members, officer seats, audit logs & subscription tier
                       </p>
                     </div>
@@ -971,7 +574,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenTenantDashboard();
                     }}
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-cyan-600/20 shrink-0"
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-accent hover:brightness-110 text-on-accent font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                     title="Open Organization & Plan Manager"
                   >
                     <Building2 className="w-3.5 h-3.5" />
@@ -982,37 +585,35 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
 
               {/* Multi-Tenant & Sharing Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* 1. Rooms Lobby */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                {/* 1. MQTT packet inspector (was only reachable from the status bar) */}
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#00D4FF] font-bold">
-                      Multi-Tenant Sessions
+                    <span className="text-xs text-success-ink font-bold block mb-1">
+                      Mesh diagnostics
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Regatta Rooms</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                      Current: #{activeRoomCode}. Switch room, join PIN, or create event.
-                    </p>
+                    <h3 className="text-sm font-bold text-ink">Packet inspector</h3>
+                    <p className="text-xs text-ink-muted mt-1">Live MQTT and LoRa packets from the mesh</p>
                   </div>
                   <button
                     onClick={() => {
                       onClose();
-                      onOpenLobby?.();
+                      onOpenMqttInspector?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#00D4FF]/20 hover:bg-[#00D4FF]/30 border border-[#00D4FF]/40 text-[#00D4FF] font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 rounded-lg bg-raised hover:bg-raised text-ink text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <Radio className="w-3.5 h-3.5 animate-pulse" />
-                    <span>Rooms Lobby</span>
+                    <Radio className="w-3.5 h-3.5" />
+                    Open inspector
                   </button>
                 </div>
 
                 {/* 2. Spectator QR */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                    <span className="text-xs text-accent font-bold">
                       Spectator Invite
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Spectator QR</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">Spectator QR</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       QR code & shareable link for live regatta viewing
                     </p>
                   </div>
@@ -1021,22 +622,22 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenSpectatorQr?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <QrCode className="w-3.5 h-3.5 text-accent" />
                     <span>Share QR Link</span>
                   </button>
                 </div>
 
-                {/* 3. Malaysia LoRa & NMEA */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                {/* 3. Malaysia LoRa & MQTT */}
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                    <span className="text-xs text-success-ink font-bold">
                       Marine Telemetry
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1">Malaysia LoRa & NMEA</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                      433/919 MHz presets, NMEA 0183/2000 gateway & MQTT
+                    <h3 className="text-sm font-bold text-ink mt-1">Malaysia LoRa & MQTT</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
+                      433/919 MHz presets and the public MQTT stream
                     </p>
                   </div>
                   <button
@@ -1044,26 +645,26 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenNmeaMalaysiaModal?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>NMEA & Mesh Setup</span>
+                    <Globe className="w-3.5 h-3.5 text-success-ink" />
+                    <span>LoRa & MQTT Setup</span>
                   </button>
                 </div>
 
                 {/* 4. SQLite Offline DB */}
-                <div className="p-3 sm:p-4 rounded-xl bg-[#121826] border border-[#1E293B] flex flex-col justify-between gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                      <span className="text-xs text-ink-muted font-bold">
                         Offline Cache
                       </span>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                      <span className="text-xs text-success-ink font-bold">
                         {raceState.syncProgress}%
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-1">SQLite Database</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    <h3 className="text-sm font-bold text-ink mt-1">SQLite Database</h3>
+                    <p className="text-xs text-ink-muted mt-0.5 leading-snug">
                       Local SQLite caching & zero-loss cloud synchronization
                     </p>
                   </div>
@@ -1072,99 +673,29 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       onClose();
                       onOpenOfflineCache?.();
                     }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-slate-200 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <Database className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <Database className="w-3.5 h-3.5 text-accent" />
                     <span>Cache & Buffer</span>
                   </button>
                 </div>
               </div>
 
               {/* Hardware Toggles & Settings Bar */}
-              <div className="p-4 rounded-xl bg-[#121826] border border-[#1E293B] space-y-4">
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
-                  Quick System Toggles
-                </span>
+              <div className="p-4 rounded-xl bg-surface border border-line space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                  {/* Sunlight mode */}
-                  <button
-                    onClick={onToggleSunlightMode}
-                    className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
-                      directSunlightMode
-                        ? 'bg-white text-black border-white shadow-md'
-                        : 'bg-[#1E293B]/70 border-[#334155] text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <Sun className="w-5 h-5 shrink-0 text-[#FBBC04]" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold font-mono">Sunlight Mode</div>
-                      <div className="text-[10px] opacity-75">{directSunlightMode ? 'High Contrast ON' : 'Standard Dark'}</div>
-                    </div>
-                  </button>
-
-                  {/* Horn Audio Mute */}
-                  <button
-                    onClick={onToggleMute}
-                    className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
-                      isMuted
-                        ? 'bg-rose-500/15 border-rose-500/50 text-rose-300'
-                        : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
-                    }`}
-                  >
-                    {isMuted ? (
-                      <VolumeX className="w-5 h-5 shrink-0 text-rose-400" />
-                    ) : (
-                      <Volume2 className="w-5 h-5 shrink-0 text-emerald-400" />
-                    )}
-                    <div className="text-left">
-                      <div className="text-xs font-bold font-mono">Horn Sound</div>
-                      <div className="text-[10px] opacity-75">{isMuted ? 'Muted' : 'Audible (Active)'}</div>
-                    </div>
-                  </button>
-
-                  {/* Sailor Dashboard / Sign In */}
-                  {currentUser ? (
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onOpenDashboard?.();
-                      }}
-                      className="p-3 rounded-xl border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-200 flex items-center gap-3 transition-all cursor-pointer"
-                    >
-                      <User className="w-5 h-5 shrink-0 text-cyan-400" />
-                      <div className="text-left min-w-0">
-                        <div className="text-xs font-bold font-mono truncate">{currentUser.fullName}</div>
-                        <div className="text-[10px] text-cyan-400">{currentUser.role === 'RACE_OFFICER' ? 'Race Officer' : 'Sailor Profile'}</div>
-                      </div>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onOpenAuth?.('login');
-                      }}
-                      className="p-3 rounded-xl border border-[#334155] bg-[#1E293B]/70 hover:bg-[#283548] text-slate-300 flex items-center gap-3 transition-all cursor-pointer"
-                    >
-                      <LogIn className="w-5 h-5 shrink-0 text-[#00D4FF]" />
-                      <div className="text-left">
-                        <div className="text-xs font-bold font-mono">Sign In / Register</div>
-                        <div className="text-[10px] text-slate-400">Save stats & PINs</div>
-                      </div>
-                    </button>
-                  )}
-
                   {/* About Tom Manas Technologies */}
                   <button
                     onClick={() => {
                       onClose();
                       onOpenAbout?.();
                     }}
-                    className="p-3 rounded-xl border border-[#334155] bg-[#1E293B]/70 hover:bg-[#283548] text-slate-300 hover:text-white flex items-center gap-3 transition-all cursor-pointer"
+                    className="p-3 rounded-xl border border-line bg-raised/70 hover:bg-raised text-ink hover:text-ink flex items-center gap-3 transition-all cursor-pointer"
                   >
-                    <Info className="w-5 h-5 shrink-0 text-[#00D4FF]" />
+                    <Info className="w-5 h-5 shrink-0 text-accent" />
                     <div className="text-left">
-                      <div className="text-xs font-bold font-mono">About TMTRAC</div>
-                      <div className="text-[10px] text-slate-400">Tom Manas Technologies</div>
+                      <div className="text-xs font-bold">About TMTRAC</div>
+                      <div className="text-xs text-ink-muted">Tom Manas Technologies</div>
                     </div>
                   </button>
                 </div>
@@ -1174,15 +705,15 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="px-4 sm:px-6 py-2 border-t border-[#1E293B] bg-[#0A0F1A]/80 flex items-center justify-between text-[11px] font-mono text-slate-400 shrink-0">
+        <div className="px-4 sm:px-6 py-2 border-t border-line bg-canvas/80 flex items-center justify-between text-xs text-ink-muted shrink-0">
           <div className="flex items-center gap-2">
-            <span>TMTRAC v3.4</span>
+            <span>TMTRAC v{APP_VERSION}</span>
             <span>·</span>
             <span>Handicap Default: 1.000</span>
           </div>
           <button
             onClick={onClose}
-            className="px-3 py-1 rounded bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+            className="px-3 py-1 rounded bg-raised hover:bg-raised text-ink text-xs font-bold transition-colors cursor-pointer"
           >
             Close
           </button>

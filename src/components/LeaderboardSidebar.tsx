@@ -5,38 +5,28 @@ import {
   Trophy,
   Radio,
   AlertTriangle,
-  ShieldCheck,
-  RefreshCw,
   Cpu,
-  Database,
   Crosshair,
   Eye,
   Bluetooth,
   Navigation,
-  Wifi,
   Smartphone,
   Tablet,
-  Laptop,
   Trash2,
-  Sparkles,
   Plus,
   Edit2,
   Clock,
-  Layers,
   Link2,
   PanelLeftClose,
   X,
   Gauge,
-  Thermometer,
-  Droplets,
-  Wind,
   ArrowUpDown,
   SlidersHorizontal,
-  Check,
   QrCode,
+  Settings,
 } from 'lucide-react';
 import { formatLastHeard, safeFixed } from '../utils/formatters';
-import { deduplicateNodes, isNodeWithin240Hours } from '../services/meshtasticBleMqttService';
+import { deduplicateNodes } from '../services/meshtasticBleMqttService';
 
 interface LeaderboardSidebarProps {
   boats: Boat[];
@@ -53,15 +43,11 @@ interface LeaderboardSidebarProps {
   deviceGps?: DeviceGpsState;
   onToggleDeviceGps?: () => void;
   onDeleteNode?: (nodeId: string) => void;
-  onClearDemoNodes?: () => void;
   onOpenAddBoat?: () => void;
   onEditBoat?: (boat: Boat) => void;
   onDeleteBoat?: (boatId: string) => void;
-  onClearDemoBoats?: () => void;
   onOpenBoatQr?: (boatId: string) => void;
-  onOpenSkipperCheckIn?: (boatId?: string) => void;
   raceClasses?: RaceClassDefinition[];
-  onOpenClassManager?: () => void;
   onOpenResults?: () => void;
   onEndRace?: (forClass?: string) => void;
   onCollapse?: () => void;
@@ -86,15 +72,11 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   deviceGps,
   onToggleDeviceGps,
   onDeleteNode,
-  onClearDemoNodes,
   onOpenAddBoat,
   onEditBoat,
   onDeleteBoat,
-  onClearDemoBoats,
   onOpenBoatQr,
-  onOpenSkipperCheckIn,
   raceClasses = [],
-  onOpenClassManager,
   onOpenResults,
   onEndRace,
   onCollapse,
@@ -179,8 +161,8 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         return (b.speedKt ?? 0) - (a.speedKt ?? 0);
       }
       if (nodeSort === 'BOUND') {
-        const aBound = (a.boundBoatId || boats.some((b) => b.id === a.boundBoatId || b.nodeId === a.id)) ? 1 : 0;
-        const bBound = (b.boundBoatId || boats.some((b) => b.id === b.boundBoatId || b.nodeId === b.id)) ? 1 : 0;
+        const aBound = (a.boundBoatId || boats.some((boat) => boat.id === a.boundBoatId || boat.nodeId === a.id)) ? 1 : 0;
+        const bBound = (b.boundBoatId || boats.some((boat) => boat.id === b.boundBoatId || boat.nodeId === b.id)) ? 1 : 0;
         return bBound - aBound;
       }
       // 'RECENT' (default)
@@ -222,24 +204,24 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
   return (
     <aside
-      className={`flex flex-col text-[#E0E6ED] select-none shadow-2xl transition-all ${
+      className={`flex flex-col text-ink select-none shadow-2xl transition-all ${
         isOverlay
-          ? 'w-full max-w-lg max-h-[calc(100vh-130px)] sm:max-h-[82vh] landscape:max-h-[98dvh] landscape:h-[98dvh] h-full rounded-2xl sm:rounded-3xl bg-[#0A0F1E]/90 backdrop-blur-md border border-[#334155]/80 overflow-hidden min-h-0'
-          : 'w-80 sm:w-88 bg-[#060B16] border-r border-[#1E293B] shrink-0 h-full overflow-hidden'
+          ? 'w-full max-w-lg max-h-[calc(100vh-130px)] sm:max-h-[82vh] landscape:max-h-[98dvh] landscape:h-[98dvh] h-full rounded-2xl sm:rounded-3xl bg-surface/90 backdrop-blur-md border border-line/80 overflow-hidden min-h-0'
+          : 'w-80 sm:w-88 bg-canvas border-r border-line shrink-0 h-full overflow-hidden'
       }`}
     >
       {/* Navigation Tabs & Collapse Control */}
       <div
         className={`flex border-b shrink-0 items-center ${
-          isOverlay ? 'border-[#334155]/80 bg-[#121826]/75' : 'border-[#1E293B] bg-[#0A0F1E]/80'
+          isOverlay ? 'border-line/80 bg-surface/75' : 'border-line bg-surface/80'
         }`}
       >
         <button
           onClick={() => setActiveTab('LEADERBOARD')}
-          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs landscape:text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-2 border-b-2 transition-all ${
+          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
             activeTab === 'LEADERBOARD'
-              ? 'border-[#00D4FF] text-[#00D4FF] bg-[#00D4FF]/5'
-              : 'border-transparent text-[#64748B] hover:text-[#94A3B8]'
+              ? 'border-accent text-accent bg-accent/5'
+              : 'border-transparent text-ink-muted hover:text-ink-muted'
           }`}
         >
           <Sailboat className="w-3.5 h-3.5" />
@@ -247,10 +229,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('MESH_NODES')}
-          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs landscape:text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-2 border-b-2 transition-all ${
+          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
             activeTab === 'MESH_NODES'
-              ? 'border-[#00D4FF] text-[#00D4FF] bg-[#00D4FF]/5'
-              : 'border-transparent text-[#64748B] hover:text-[#94A3B8]'
+              ? 'border-accent text-accent bg-accent/5'
+              : 'border-transparent text-ink-muted hover:text-ink-muted'
           }`}
         >
           <Cpu className="w-3.5 h-3.5" />
@@ -260,7 +242,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         {!isOverlay && onCollapse && (
           <button
             onClick={onCollapse}
-            className="p-3 text-[#64748B] hover:text-[#00D4FF] hover:bg-[#1E293B]/70 border-l border-[#1E293B] transition-colors shrink-0"
+            className="p-3 text-ink-muted hover:text-accent hover:bg-raised/70 border-l border-line transition-colors shrink-0"
             title="Collapse Sidebar Dashboard (Slide to Left)"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -270,7 +252,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         {onClose && (
           <button
             onClick={onClose}
-            className="p-2.5 text-[#64748B] hover:text-white hover:bg-white/10 transition-colors shrink-0 border-l border-[#334155]/80 mr-1"
+            className="p-2.5 text-ink-muted hover:text-ink hover:bg-ink/10 transition-colors shrink-0 border-l border-line/80 mr-1"
             title="Close Rank & Mesh Nodes"
           >
             <X className="w-4 h-4" />
@@ -280,21 +262,23 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
       {/* Tab 1: Leaderboard View */}
       {activeTab === 'LEADERBOARD' && (
-        <div className="p-3 border-b border-[#1E293B] bg-[#0A0F1E]/50 flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="p-3 border-b border-line bg-surface/50 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-2 shrink-0 flex-wrap gap-1">
-            <h2 className="text-[11px] uppercase tracking-[0.2em] text-[#64748B] font-mono font-bold">
-              Standing (IRC/ORC)
+            <h2 className="text-xs text-ink-muted font-bold">
+              Standings (IRC/ORC)
             </h2>
-            <div className="flex items-center gap-1 flex-wrap">
+            {/* Filters the leaderboard only; the race console's class tabs pick the active class */}
+            <div role="group" aria-label="Show class" className="flex items-center gap-1 flex-wrap">
+              <span className="text-xs text-ink-muted mr-0.5">Show</span>
               <button
                 onClick={() => setFilterClass('ALL')}
-                className={`text-[9px] px-1.5 py-0.5 rounded font-mono transition-all ${
+                className={`text-xs px-1.5 py-0.5 rounded  transition-all ${
                   filterClass === 'ALL'
-                    ? 'bg-[#00D4FF] text-[#020408] font-bold'
-                    : 'bg-[#1E293B]/60 text-[#94A3B8] hover:text-white'
+                    ? 'bg-accent text-on-accent font-bold'
+                    : 'bg-raised/60 text-ink-muted hover:text-ink'
                 }`}
               >
-                ALL
+                All
               </button>
               {raceClasses.map((cls) => {
                 const clsState = raceState.classStates?.[cls.name] || (raceState.activeClass === cls.name ? {
@@ -311,92 +295,84 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   <button
                     key={cls.id}
                     onClick={() => setFilterClass(cls.name)}
-                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono transition-all flex items-center gap-1 ${
+                    className={`text-xs px-1.5 py-0.5 rounded  transition-all flex items-center gap-1 ${
                       filterClass === cls.name
-                        ? 'bg-[#00D4FF] text-[#020408] font-bold'
-                        : 'bg-[#1E293B]/60 text-[#94A3B8] hover:text-white'
+                        ? 'bg-accent text-on-accent font-bold'
+                        : 'bg-raised/60 text-ink-muted hover:text-ink'
                     }`}
                     title={cls.description || cls.name}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
                         clsState.status === 'RACING'
-                          ? 'bg-[#00FF9D] animate-pulse'
+                          ? 'bg-success-ink '
                           : clsState.status === 'FINISHED'
-                          ? 'bg-purple-400'
+                          ? 'bg-ink'
                           : clsState.status === 'COUNTDOWN'
-                          ? 'bg-[#FBBC04] animate-pulse'
-                          : 'bg-slate-500'
+                          ? 'bg-warning-ink '
+                          : 'bg-raised'
                       }`}
                     />
                     <span>{cls.name}</span>
                   </button>
                 );
               })}
-              {viewMode !== 'SPECTATOR' && onOpenClassManager && (
-                <button
-                  onClick={onOpenClassManager}
-                  className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 flex items-center gap-1 transition-all shadow-sm"
-                  title="Manage, Add, Edit & Delete Race Classes"
-                >
-                  <Layers className="w-2.5 h-2.5 text-[#00D4FF]" />
-                  <span>+ Class</span>
-                </button>
-              )}
             </div>
           </div>
 
           {/* Fleet Management & Race Status Toolbar */}
-          <div className="p-2 bg-[#060B16] rounded-xl border border-[#1E293B] mb-2 shrink-0 space-y-1.5">
+          <div className="p-2 bg-canvas rounded-xl border border-line mb-2 shrink-0 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span
                   className={`w-2 h-2 rounded-full ${
                     (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'RACING'
-                      ? 'bg-emerald-400 animate-pulse'
+                      ? 'bg-success-ink '
                       : (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'FINISHED'
-                      ? 'bg-purple-400'
-                      : 'bg-amber-400'
+                      ? 'bg-ink'
+                      : 'bg-warning-ink'
                   }`}
                 />
-                <span className="text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                <span className="text-xs font-bold text-ink">
                   {filterClass === 'ALL' ? raceState.activeClass : filterClass}:
                 </span>
                 <span
-                  className={`text-[10px] font-mono font-bold ${
+                  className={`text-xs  font-bold ${
                     (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'RACING'
-                      ? 'text-[#00FF9D]'
+                      ? 'text-success-ink'
                       : (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'FINISHED'
-                      ? 'text-purple-300'
-                      : 'text-amber-300'
+                      ? 'text-ink'
+                      : 'text-warning-ink'
                   }`}
                 >
                   {(raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'RACING'
-                    ? 'IN PROGRESS (RACING)'
+                    ? 'Racing'
                     : (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'FINISHED'
-                    ? 'FINISHED'
-                    : (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status)}
+                    ? 'Finished'
+                    : (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'COUNTDOWN'
+                    ? 'Countdown'
+                    : 'Pre-start'}
                 </span>
               </div>
 
               {viewMode !== 'SPECTATOR' && onEndRace && (raceState.classStates?.[filterClass === 'ALL' ? raceState.activeClass : filterClass]?.status || raceState.status) === 'RACING' && (
                 <button
                   onClick={() => onEndRace(filterClass === 'ALL' ? raceState.activeClass : filterClass)}
-                  className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-red-600/80 hover:bg-red-600 text-white transition-all shadow-sm flex items-center gap-1"
+                  className="text-xs font-bold px-2 py-0.5 rounded bg-danger/80 hover:brightness-110 text-ink transition-all shadow-sm flex items-center gap-1"
                   title="Finish active race class and lock final results"
                 >
-                  <span>🏁 End {filterClass === 'ALL' ? raceState.activeClass : filterClass}</span>
+                  <span>Finish {filterClass === 'ALL' ? raceState.activeClass : filterClass}</span>
                 </button>
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-[#1E293B]/60 text-[9.5px] font-mono text-[#94A3B8]">
-              <span>Fleet: <strong className="text-white">{sortedBoats.length}</strong> boats</span>
+            <div className="flex items-center justify-between pt-1 border-t border-line/60 text-xs text-ink-muted">
+              <span>Fleet: <strong className="text-ink">{sortedBoats.length}</strong> boats</span>
               <div className="flex items-center gap-1.5">
                 {onOpenBoatQr && boats.length > 0 && (
                   <button
                     onClick={() => onOpenBoatQr(boats[0]?.id || '')}
-                    className="font-bold text-[#00D4FF] bg-[#00D4FF]/15 hover:bg-[#00D4FF]/25 border border-[#00D4FF]/40 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all text-[9px] font-mono"
+                    className="font-bold text-accent bg-accent/15 hover:bg-accent/25 border border-accent/40 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all text-xs"
                     title="Generate and print Smart Boat QR codes for 1-tap skipper check-in"
                   >
                     <QrCode className="w-2.5 h-2.5" />
@@ -404,36 +380,26 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   </button>
                 )}
 
-                {onOpenResults && (
+                {/* Spectators' way to results; officers use the race console's Results button */}
+                {onOpenResults && viewMode === 'SPECTATOR' && (
                   <button
                     onClick={onOpenResults}
-                    className="font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all"
+                    className="font-bold text-warning-ink bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all"
                     title="View official finish results and scoring breakdown"
                   >
-                    <Trophy className="w-2.5 h-2.5 text-[#FFB800]" />
+                    <Trophy className="w-2.5 h-2.5 text-warning-ink" />
                     <span>Results</span>
-                  </button>
-                )}
-
-                {viewMode !== 'SPECTATOR' && onClearDemoBoats && boats.some((b) => b.id.startsWith('boat-1') || b.id.startsWith('boat-2') || b.id.startsWith('boat-3')) && (
-                  <button
-                    onClick={onClearDemoBoats}
-                    className="text-[9px] font-mono font-bold text-red-400 hover:text-red-200 bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 px-1.5 py-0.5 rounded-lg flex items-center gap-1 transition-all"
-                    title="Remove sample demo boats to start with a clean regatta fleet"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Clear Demo</span>
                   </button>
                 )}
 
                 {viewMode !== 'SPECTATOR' && onOpenAddBoat && (
                   <button
                     onClick={onOpenAddBoat}
-                    className="text-[9.5px] font-mono font-bold text-slate-950 bg-[#00D4FF] hover:bg-cyan-300 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all shadow-sm"
+                    className="min-h-8 text-xs font-bold text-on-accent bg-accent hover:brightness-110 px-2.5 rounded-control flex items-center gap-1 transition-[filter]"
                     title="Add a new racing boat to the regatta"
                   >
                     <Plus className="w-3 h-3" />
-                    <span>Add Boat</span>
+                    <span>Add boat</span>
                   </button>
                 )}
               </div>
@@ -442,16 +408,16 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
           {/* Active Hardware Tracker Notification Banner */}
           {nodes.some((n) => n.isBluetoothConnected || n.connectionType === 'BLE' || n.connectionType === 'USB') && (
-            <div className="p-2 mb-2 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-between shrink-0">
+            <div className="p-2 mb-2 rounded-xl bg-surface/40 border border-accent/40 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-mono text-cyan-200 font-bold">
+                <span className="w-2 h-2 rounded-full bg-success-ink" />
+                <span className="text-xs text-accent font-bold">
                   Hardware Active: {nodes.find((n) => n.isBluetoothConnected || n.connectionType === 'BLE' || n.connectionType === 'USB')?.shortName || 'T-ECHO'}
                 </span>
               </div>
               <button
-                onClick={() => setActiveTab('NODES')}
-                className="text-[9px] font-mono text-[#00D4FF] hover:underline font-bold"
+                onClick={() => setActiveTab('MESH_NODES')}
+                className="text-xs text-accent hover:underline font-bold"
               >
                 Inspect Telemetry →
               </button>
@@ -460,30 +426,30 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
           <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1 min-h-0 pb-8 overscroll-contain touch-pan-y">
             {sortedBoats.length === 0 ? (
-              <div className="p-4 bg-[#0A0F1E] border border-dashed border-[#1E293B] rounded-xl text-center space-y-3">
-                <div className="w-10 h-10 rounded-full bg-[#00D4FF]/10 text-[#00D4FF] flex items-center justify-center mx-auto border border-[#00D4FF]/30">
+              <div className="p-4 bg-surface border border-dashed border-line rounded-xl text-center space-y-3">
+                <div className="w-10 h-10 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto border border-accent/30">
                   <Bluetooth className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">No Vessels in Fleet</h4>
-                  <p className="text-[10px] text-[#64748B] font-mono mt-1">
+                  <h4 className="text-sm font-bold text-ink">No boats yet</h4>
+                  <p className="text-xs text-ink-muted mt-1">
                     {viewMode === 'SPECTATOR'
-                      ? 'Waiting for manager to register vessels or activate tracking telemetry.'
-                      : 'Add registered boats or connect mobile phone GPS trackers to start live race tracking.'}
+                      ? 'Boats appear here once the race officer adds them.'
+                      : 'Add boats, or skippers can join themselves with Track in the header.'}
                   </p>
                 </div>
                 {viewMode !== 'SPECTATOR' && onOpenAddBoat && (
                   <button
                     onClick={onOpenAddBoat}
-                    className="w-full py-2 bg-[#00D4FF] hover:bg-cyan-300 text-[#020408] font-bold text-xs rounded-lg transition-all font-mono shadow-md"
+                    className="w-full py-2 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-lg transition-all shadow-md"
                   >
-                    + Add New Racing Vessel
+                    Add boat
                   </button>
                 )}
                 {viewMode !== 'SPECTATOR' && onOpenHardwareScan && (
                   <button
                     onClick={onOpenHardwareScan}
-                    className="w-full py-2 bg-[#1E293B] hover:bg-slate-700 text-[#00D4FF] font-bold text-xs rounded-lg transition-all font-mono border border-[#00D4FF]/30"
+                    className="w-full py-2 bg-raised hover:bg-raised text-accent font-bold text-xs rounded-lg transition-all border border-accent/30"
                   >
                     Connect T-Echo (BLE / MQTT)
                   </button>
@@ -522,50 +488,50 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   onClick={() => onSelectBoat(boat.id)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer relative ${
                     isOcs
-                      ? 'bg-[#450A0A]/40 border-[#991B1B]/60 hover:border-[#FF4D4D]'
+                      ? 'bg-surface/40 border-danger-ink/60 hover:border-danger-ink'
                       : isFollowing
-                      ? 'bg-[#FBBC04]/10 border-[#FBBC04] shadow-[0_0_12px_rgba(251,188,4,0.2)]'
+                      ? 'bg-warning-ink/10 border-warning-ink '
                       : isSelected
-                      ? 'bg-[#00D4FF]/15 border-[#00D4FF] shadow-[0_0_12px_rgba(0,212,255,0.2)]'
-                      : 'bg-[#0F172A]/70 border-[#1E293B] hover:border-[#334155]'
+                      ? 'bg-accent/15 border-accent '
+                      : 'bg-surface/70 border-line hover:border-line'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold w-4 h-4 rounded bg-[#1E293B] text-[#94A3B8] flex items-center justify-center">
+                      <span className="text-xs font-bold w-4 h-4 rounded bg-raised text-ink-muted flex items-center justify-center">
                         {rank + 1}
                       </span>
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: boat.color }} />
-                      <span className="text-xs font-bold text-white tracking-wide font-google truncate max-w-[110px]">
+                      <span className="text-xs font-bold text-ink truncate max-w-[110px]">
                         {boat.name}
                       </span>
-                      <span className="text-[10px] font-mono text-[#64748B]">
+                      <span className="text-xs text-ink-muted">
                         {boat.sailNumber}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       {isClassInPreStartOrCountdown || boat.status === 'PRE_START' ? (
-                        <span className="text-[9.5px] font-mono font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40">
-                          PRE-START
+                        <span className="text-xs font-bold text-warning-ink bg-warning-ink/20 px-1.5 py-0.5 rounded border border-warning-ink/40">
+                          Pre-start
                         </span>
                       ) : boat.status === 'FINISHED' ? (
-                        <span className="text-[9.5px] font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-purple-500/40">
-                          🏁 FINISHED
+                        <span className="text-xs font-bold text-ink bg-raised/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-line/40">
+                          FINISHED
                         </span>
                       ) : isOcs ? (
-                        <span className="text-[10px] font-bold text-[#FF4D4D] bg-[#FF4D4D]/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-[#FF4D4D]/40 animate-pulse">
+                        <span className="text-xs font-bold text-danger-ink bg-danger/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-danger-ink/40">
                           <AlertTriangle className="w-3 h-3" />
                           OCS
                         </span>
                       ) : boat.status === 'RET' || boat.status === 'DNF' || boat.status === 'DNS' || boat.status === 'DSQ' ? (
-                        <span className="text-[9.5px] font-mono font-bold text-red-300 bg-red-500/20 px-1.5 py-0.5 rounded border border-red-500/40">
+                        <span className="text-xs font-bold text-danger-ink bg-danger/20 px-1.5 py-0.5 rounded border border-danger-ink/40">
                           {boat.status}
                         </span>
                       ) : (
                         <span
-                          className={`text-xs font-mono font-bold ${
-                            rank === 0 ? 'text-[#00FF9D]' : 'text-[#94A3B8]'
+                          className={`text-xs  font-bold ${
+                            rank === 0 ? 'text-success-ink' : 'text-ink-muted'
                           }`}
                         >
                           {diffFormatted}
@@ -579,7 +545,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                             e.stopPropagation();
                             onOpenBoatQr(boat.id);
                           }}
-                          className="p-1 rounded hover:bg-[#00D4FF]/20 text-[#00D4FF] transition-colors"
+                          className="p-1 rounded hover:bg-accent/20 text-accent transition-colors"
                           title={`Smart QR Code for ${boat.name} (${boat.sailNumber})`}
                         >
                           <QrCode className="w-3 h-3" />
@@ -593,7 +559,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                             e.stopPropagation();
                             onOpenNodeBinding(undefined, boat.id);
                           }}
-                          className="p-1 rounded hover:bg-[#00D4FF]/20 text-[#00D4FF] transition-colors"
+                          className="p-1 rounded hover:bg-accent/20 text-accent transition-colors"
                           title={boundNode ? `Change Meshtastic node for ${boat.name} (Bound: ${boundNode.id})` : `Bind Meshtastic Node to ${boat.name}`}
                         >
                           <Link2 className="w-3 h-3" />
@@ -607,7 +573,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                             e.stopPropagation();
                             onEditBoat(boat);
                           }}
-                          className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-[#00D4FF] transition-colors"
+                          className="p-1 rounded hover:bg-raised text-ink-muted hover:text-accent transition-colors"
                           title={`Edit ${boat.name} profile, rating, or node`}
                         >
                           <Edit2 className="w-3 h-3" />
@@ -621,7 +587,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                             e.stopPropagation();
                             onDeleteBoat(boat.id);
                           }}
-                          className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                          className="p-1 rounded hover:bg-danger/20 text-ink-muted hover:text-danger-ink transition-colors"
                           title={`Delete ${boat.name} from fleet`}
                         >
                           <Trash2 className="w-3 h-3" />
@@ -630,53 +596,53 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] font-mono mt-1">
+                  <div className="flex items-center justify-between text-xs mt-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-emerald-400 font-bold flex items-center gap-0.5" title="Node Battery Voltage & Level">
-                        ⚡ {boundNode ? `${boundNode.battery ?? '--'}%${boundNode.voltage ? ` (${boundNode.voltage}V)` : ''}` : '--%'}
+                      <span className="text-success-ink font-bold flex items-center gap-0.5" title="Node Battery Voltage & Level">
+                        Battery {boundNode ? `${boundNode.battery ?? '—'}%${boundNode.voltage ? ` (${boundNode.voltage}V)` : ''}` : '—'}
                       </span>
-                      <span className="text-cyan-400 font-bold flex items-center gap-0.5" title="GPS Satellites in View / Fix">
-                        🛰️ {boundNode ? (boundNode.gpsFix ? `${boundNode.satsInView ?? 0} Sats` : 'NO GPS FIX') : 'NO FIX'}
+                      <span className="text-accent font-bold flex items-center gap-0.5" title="GPS Satellites in View / Fix">
+                        {boundNode ? (boundNode.gpsFix ? (boundNode.satsInView !== undefined ? `${boundNode.satsInView} satellites` : 'GPS fix') : 'No GPS fix') : 'No tracker'}
                       </span>
                     </div>
-                    <span className="text-[#94A3B8]">
-                      {boat.handicapSystem}: <strong className="text-[#E0E6ED]">{boat.handicapRating}</strong>
+                    <span className="text-ink-muted">
+                      {boat.handicapSystem}: <strong className="text-ink">{boat.handicapRating}</strong>
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-[#94A3B8] font-mono mt-1">
+                  <div className="flex items-center justify-between text-xs text-ink-muted mt-1">
                     <span>
-                      SOG: <strong className="text-[#00D4FF]">{safeFixed(boat.sog, 1, '0.0')}kt</strong> • VMG:{' '}
-                      <strong className="text-[#00FF9D]">{safeFixed(boat.vmg, 1, '0.0')}kt</strong>
+                      SOG: <strong className="text-accent">{safeFixed(boat.sog, 1, '0.0')}kt</strong> • VMG:{' '}
+                      <strong className="text-success-ink">{safeFixed(boat.vmg, 1, '0.0')}kt</strong>
                     </span>
                     <span>
-                      DTW: <strong className="text-[#8AB4F8]">{safeFixed(boat.dtw, 2, '0.00')}NM</strong>
+                      DTW: <strong className="text-accent">{safeFixed(boat.dtw, 2, '0.00')}NM</strong>
                     </span>
                   </div>
 
                   {/* Bound Tracker / Node Hardware Telemetry Status */}
                   {boundNode ? (
-                    <div className="flex items-center justify-between text-[9px] font-mono mt-1 pt-1.5 border-t border-[#1E293B]/70 bg-[#060B16]/50 px-2 py-1 rounded-lg border border-cyan-500/20">
+                    <div className="flex items-center justify-between text-xs mt-1 pt-1.5 border-t border-line/70 bg-canvas/50 px-2 py-1 rounded-lg border border-accent/20">
                       <div className="flex items-center gap-1.5 truncate max-w-[150px]">
-                        <span className="text-cyan-400 font-bold">
-                          {boundNode.connectionType === 'PHONE' || boundNode.isDeviceGps ? '📱 PHONE GPS' : '📻 LORA TRACKER'}:
+                        <span className="text-accent font-bold">
+                          {boundNode.connectionType === 'PHONE' || boundNode.isDeviceGps ? 'Phone GPS' : 'LoRa tracker'}:
                         </span>
-                        <strong className="text-slate-200 truncate">{boundNode.shortName || boundNode.id}</strong>
+                        <strong className="text-ink truncate">{boundNode.shortName || boundNode.id}</strong>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-emerald-400 font-bold">
-                          ⚡ {boundNode.battery ?? 85}%
+                        <span className="text-success-ink font-bold">
+                          Battery {boundNode.battery ?? '—'}%
                         </span>
-                        <span className="text-slate-400 flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5 text-cyan-400" />
+                        <span className="text-ink-muted flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5 text-accent" />
                           {formatLastHeard(boundNode.lastPingTime)}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between text-[9px] font-mono mt-1 pt-1 border-t border-[#1E293B]/40 text-slate-500 px-1">
-                      <span className="flex items-center gap-1 italic text-slate-400">
-                        🤖 Autonomous Sim (No Tracker)
+                    <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-line/40 text-ink-muted px-1">
+                      <span className="flex items-center gap-1 italic text-ink-muted">
+                        No tracker: position not live
                       </span>
                       {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
                         <button
@@ -684,7 +650,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                             e.stopPropagation();
                             onOpenNodeBinding(undefined, boat.id);
                           }}
-                          className="text-[#00D4FF] hover:underline font-bold"
+                          className="text-accent hover:underline font-bold"
                         >
                           + Bind Tracker
                         </button>
@@ -693,16 +659,16 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   )}
 
                   {/* Quick Actions: Follow & Inspect */}
-                  <div className="mt-2 pt-2 border-t border-[#1E293B] flex items-center justify-between gap-2">
+                  <div className="mt-2 pt-2 border-t border-line flex items-center justify-between gap-2">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleFollow(boat.id, boat.name);
                       }}
-                      className={`flex-1 py-1 px-2 rounded-lg text-[10px] font-bold font-google flex items-center justify-center gap-1 transition-all ${
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all ${
                         isFollowing
-                          ? 'bg-amber-500 text-slate-950 font-bold'
-                          : 'bg-[#1E293B] hover:bg-slate-700 text-[#00D4FF]'
+                          ? 'bg-warning-ink text-canvas font-bold'
+                          : 'bg-raised hover:bg-raised text-accent'
                       }`}
                     >
                       <Crosshair className={`w-3 h-3 ${isFollowing ? 'animate-spin' : ''}`} />
@@ -714,9 +680,9 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                         e.stopPropagation();
                         onOpenNodeInspector(boundNode || null, boat);
                       }}
-                      className="py-1 px-2.5 rounded-lg bg-[#1E293B] hover:bg-slate-700 text-slate-200 text-[10px] font-bold font-google flex items-center gap-1 transition-colors"
+                      className="py-1 px-2.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs font-bold flex items-center gap-1 transition-colors"
                     >
-                      <Eye className="w-3 h-3 text-cyan-400" />
+                      <Eye className="w-3 h-3 text-accent" />
                       Inspect
                     </button>
 
@@ -726,7 +692,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                           e.stopPropagation();
                           onOpenBoatQr(boat.id);
                         }}
-                        className="py-1 px-2 rounded-lg bg-[#00D4FF]/10 hover:bg-[#00D4FF]/25 border border-[#00D4FF]/30 text-[#00D4FF] text-[10px] font-bold font-google flex items-center gap-1 transition-all"
+                        className="py-1 px-2 rounded-lg bg-accent/10 hover:bg-accent/25 border border-accent/30 text-accent text-xs font-bold flex items-center gap-1 transition-all"
                         title={`Smart QR Code for ${boat.name}`}
                       >
                         <QrCode className="w-3 h-3" />
@@ -744,9 +710,9 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
       {/* Tab 2: Node Health & Mesh Topography */}
       {activeTab === 'MESH_NODES' && (
-        <div className="p-3 border-b border-[#1E293B] bg-[#0A0F1E]/50 flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="p-3 border-b border-line bg-surface/50 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-2 shrink-0">
-            <h2 className="text-[11px] uppercase tracking-[0.2em] text-[#64748B] font-mono font-bold">
+            <h2 className="text-xs text-ink-muted font-bold">
               MESHTASTIC NODES
             </h2>
           </div>
@@ -755,8 +721,8 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
             {/* User Device GPS Status Card */}
             <div className={`p-2.5 rounded-xl border transition-all flex flex-col gap-1.5 ${
               deviceGps?.active
-                ? 'bg-[#00D4FF]/10 border-[#00D4FF]/60 shadow-[0_0_12px_rgba(0,212,255,0.2)]'
-                : 'bg-[#0F172A]/70 border-[#1E293B]'
+                ? 'bg-accent/10 border-accent/60 '
+                : 'bg-surface/70 border-line'
             }`}>
               <div className="flex items-center justify-between">
                 <div
@@ -764,21 +730,21 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   onClick={onOpenHybridTrackers}
                   title="Click to open Hybrid Fleet & Multi-Device Tracker setup"
                 >
-                  <div className={`p-1.5 rounded ${deviceGps?.active ? 'bg-[#00D4FF]/20 text-[#00D4FF]' : 'bg-[#1E293B] text-[#64748B]'}`}>
-                    <Navigation className={`w-3.5 h-3.5 ${deviceGps?.active ? 'animate-pulse' : ''}`} />
+                  <div className={`p-1.5 rounded ${deviceGps?.active ? 'bg-accent/20 text-accent' : 'bg-raised text-ink-muted'}`}>
+                    <Navigation className={`w-3.5 h-3.5 ${deviceGps?.active ? '' : ''}`} />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-white font-google group-hover:text-[#00D4FF] transition-colors">
+                      <span className="text-xs font-bold text-ink group-hover:text-accent transition-colors">
                         {deviceGps?.profile?.deviceName || 'User Device GPS'}
                       </span>
-                      <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold font-mono ${
-                        deviceGps?.active ? 'bg-[#00D4FF]/20 text-[#00D4FF]' : 'bg-[#1E293B] text-[#64748B]'
+                      <span className={`px-1.5 py-0.2 rounded text-xs font-bold  ${
+                        deviceGps?.active ? 'bg-accent/20 text-accent' : 'bg-raised text-ink-muted'
                       }`}>
                         {deviceGps?.active ? 'ACTIVE' : 'OFF'}
                       </span>
                     </div>
-                    <span className="text-[9px] font-mono text-[#64748B]">
+                    <span className="text-xs text-ink-muted">
                       {deviceGps?.active
                         ? (typeof deviceGps.lat === 'number' && typeof deviceGps.lng === 'number'
                           ? `${safeFixed(deviceGps.lat, 4)}°N, ${safeFixed(deviceGps.lng, 4)}°E`
@@ -791,10 +757,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={onToggleDeviceGps}
-                    className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-all ${
+                    className={`px-2 py-1 rounded text-xs  font-bold transition-all ${
                       deviceGps?.active
-                        ? 'bg-[#00D4FF] text-[#020408]'
-                        : 'bg-[#1E293B] hover:bg-[#334155] text-white'
+                        ? 'bg-accent text-on-accent'
+                        : 'bg-raised hover:bg-raised text-ink'
                     }`}
                   >
                     {deviceGps?.active ? 'OFF' : 'ON'}
@@ -802,17 +768,18 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   {viewMode !== 'SPECTATOR' && onOpenHybridTrackers && (
                     <button
                       onClick={onOpenHybridTrackers}
-                      className="p-1 rounded bg-[#1E293B] hover:bg-[#334155] text-[#00D4FF] text-[10px] font-mono"
+                      className="p-1 rounded bg-raised hover:bg-raised text-accent text-xs"
                       title="Manage Hybrid Fleet Trackers"
+                      aria-label="Manage fleet trackers"
                     >
-                      ⚙️
+                      <Settings className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
               </div>
 
               {deviceGps?.active && deviceGps.lat && (
-                <div className="flex justify-between items-center text-[9px] font-mono text-[#00FF9D] pt-1 border-t border-[#1E293B]">
+                <div className="flex justify-between items-center text-xs text-success-ink pt-1 border-t border-line">
                   <span>Speed: {safeFixed(deviceGps.speedKt, 1, '0.0')} kt</span>
                   <span>Accuracy: ±{deviceGps.accuracy ?? 5}m</span>
                   <span>Heading: {deviceGps.headingDeg ?? 0}°</span>
@@ -820,19 +787,19 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               )}
 
               {deviceGps?.error && (
-                <p className="text-[9px] font-mono text-[#FF4D4D] pt-1 border-t border-[#FF4D4D]/30">
-                  ⚠️ {deviceGps.error}
+                <p className="text-xs text-danger-ink pt-1 border-t border-danger-ink/30">
+                  {deviceGps.error}
                 </p>
               )}
             </div>
             {/* MESH NODES MANAGEMENT TOOLBAR */}
-            <div className="flex items-center justify-between gap-2 p-2 bg-[#0A0F1E] rounded-xl border border-[#1E293B]">
+            <div className="flex items-center justify-between gap-2 p-2 bg-surface rounded-xl border border-line">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B] font-bold">
+                <span className="text-xs text-ink-muted font-bold">
                   Mesh Nodes ({filteredAndSortedNodes.length}{nodeFilter !== 'ALL' ? `/${uniqueNodes.length}` : ''})
                 </span>
                 {uniqueNodes.some((n) => !n.isDeviceGps && !n.isBluetoothConnected && n.connectionType !== 'BLE' && n.connectionType !== 'PHONE' && n.connectionType !== 'TABLET' && (n.id.startsWith('node-') || n.id.startsWith('mock-'))) && (
-                  <span className="text-[9px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-bold">
+                  <span className="text-xs bg-raised/20 text-ink border border-line/30 px-1.5 py-0.2 rounded font-bold">
                     Demo Active
                   </span>
                 )}
@@ -842,10 +809,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
                   <button
                     onClick={() => onOpenNodeBinding()}
-                    className="px-2 py-1 rounded bg-yellow-500/20 hover:bg-yellow-500/30 active:bg-yellow-500/40 border border-yellow-500/50 text-yellow-400 text-[10px] font-mono font-bold flex items-center gap-1 transition-all shadow-sm shadow-yellow-500/10 cursor-pointer"
+                    className="px-2 py-1 rounded bg-warning-ink/20 hover:bg-warning-ink/30 active:bg-warning-ink/40 border border-warning-ink/50 text-warning-ink text-xs font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
                     title="Open Meshtastic Node to Boat Binding Manager"
                   >
-                    <Link2 className="w-3 h-3 text-yellow-400" />
+                    <Link2 className="w-3 h-3 text-warning-ink" />
                     <span>Bind Boat</span>
                   </button>
                 )}
@@ -859,10 +826,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                         onOpenHybridTrackers();
                       }
                     }}
-                    className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 active:bg-emerald-500/40 border border-emerald-500/50 text-emerald-400 text-[10px] font-mono font-bold flex items-center gap-1 transition-all shadow-sm shadow-emerald-500/10 cursor-pointer"
+                    className="px-2 py-1 rounded bg-success-ink/20 hover:bg-success-ink/30 active:bg-success-ink/40 border border-success-ink/50 text-success-ink text-xs font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
                     title="Open Bluetooth BLE & Hardware Scanner Menu"
                   >
-                    <Bluetooth className="w-3 h-3 text-emerald-400" />
+                    <Bluetooth className="w-3 h-3 text-success-ink" />
                     <span>Bind Tracker</span>
                   </button>
                 )}
@@ -871,19 +838,19 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
             {/* MESH NODES FILTER & SORT CONTROLS */}
             {uniqueNodes.length > 0 && (
-              <div className="p-2 bg-[#0A0F1E] rounded-xl border border-[#1E293B] flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-1 text-[9px] font-mono">
-                  <div className="flex items-center gap-1 font-bold text-slate-300">
-                    <SlidersHorizontal className="w-3 h-3 text-[#00D4FF]" />
+              <div className="p-2 bg-surface rounded-xl border border-line flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-1 text-xs">
+                  <div className="flex items-center gap-1 font-bold text-ink">
+                    <SlidersHorizontal className="w-3 h-3 text-accent" />
                     <span>Filter:</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <ArrowUpDown className="w-3 h-3 text-[#00FF9D]" />
-                    <span className="text-slate-400">Sort:</span>
+                    <ArrowUpDown className="w-3 h-3 text-success-ink" />
+                    <span className="text-ink-muted">Sort:</span>
                     <select
                       value={nodeSort}
                       onChange={(e) => setNodeSort(e.target.value as any)}
-                      className="bg-[#060B16] text-[#00FF9D] text-[9.5px] font-bold border border-[#1E293B] rounded px-1.5 py-0.5 outline-none cursor-pointer hover:border-[#00FF9D]/40"
+                      className="bg-canvas text-success-ink text-xs font-bold border border-line rounded px-1.5 py-0.5 outline-none cursor-pointer hover:border-success-ink/40"
                     >
                       <option value="RECENT">Recent</option>
                       <option value="NAME">Name (A-Z)</option>
@@ -899,10 +866,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 <div className="flex items-center gap-1 flex-wrap">
                   <button
                     onClick={() => setNodeFilter('ALL')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all border flex items-center gap-1 ${
+                    className={`px-2 py-0.5 rounded-lg text-xs  font-bold transition-all border flex items-center gap-1 ${
                       nodeFilter === 'ALL'
-                        ? 'bg-[#00D4FF]/20 text-[#00D4FF] border-[#00D4FF]/60 shadow-[0_0_8px_rgba(0,212,255,0.2)]'
-                        : 'bg-[#060B16] text-slate-400 border-[#1E293B] hover:text-slate-200'
+                        ? 'bg-accent/20 text-accent border-accent/60 '
+                        : 'bg-canvas text-ink-muted border-line hover:text-ink'
                     }`}
                   >
                     <span>All</span>
@@ -911,10 +878,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                   <button
                     onClick={() => setNodeFilter('WEB_GPS')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all border flex items-center gap-1 ${
+                    className={`px-2 py-0.5 rounded-lg text-xs  font-bold transition-all border flex items-center gap-1 ${
                       nodeFilter === 'WEB_GPS'
-                        ? 'bg-[#00FF9D]/20 text-[#00FF9D] border-[#00FF9D]/60 shadow-[0_0_8px_rgba(0,255,157,0.2)]'
-                        : 'bg-[#060B16] text-slate-400 border-[#1E293B] hover:text-slate-200'
+                        ? 'bg-success-ink/20 text-success-ink border-success-ink/60 '
+                        : 'bg-canvas text-ink-muted border-line hover:text-ink'
                     }`}
                   >
                     <span>Web GPS</span>
@@ -923,10 +890,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                   <button
                     onClick={() => setNodeFilter('PHONE_GPS')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all border flex items-center gap-1 ${
+                    className={`px-2 py-0.5 rounded-lg text-xs  font-bold transition-all border flex items-center gap-1 ${
                       nodeFilter === 'PHONE_GPS'
-                        ? 'bg-sky-500/20 text-sky-300 border-sky-500/60 shadow-[0_0_8px_rgba(56,189,248,0.2)]'
-                        : 'bg-[#060B16] text-slate-400 border-[#1E293B] hover:text-slate-200'
+                        ? 'bg-accent/20 text-accent border-accent/60 '
+                        : 'bg-canvas text-ink-muted border-line hover:text-ink'
                     }`}
                   >
                     <span>Phone GPS</span>
@@ -935,10 +902,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                   <button
                     onClick={() => setNodeFilter('BLE')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all border flex items-center gap-1 ${
+                    className={`px-2 py-0.5 rounded-lg text-xs  font-bold transition-all border flex items-center gap-1 ${
                       nodeFilter === 'BLE'
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
-                        : 'bg-[#060B16] text-slate-400 border-[#1E293B] hover:text-slate-200'
+                        ? 'bg-accent/20 text-accent border-accent/60 '
+                        : 'bg-canvas text-ink-muted border-line hover:text-ink'
                     }`}
                   >
                     <span>BLE</span>
@@ -947,10 +914,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                   <button
                     onClick={() => setNodeFilter('LORA_MESH')}
-                    className={`px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all border flex items-center gap-1 ${
+                    className={`px-2 py-0.5 rounded-lg text-xs  font-bold transition-all border flex items-center gap-1 ${
                       nodeFilter === 'LORA_MESH'
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
-                        : 'bg-[#060B16] text-slate-400 border-[#1E293B] hover:text-slate-200'
+                        ? 'bg-success-ink/20 text-success-ink border-success-ink/60 '
+                        : 'bg-canvas text-ink-muted border-line hover:text-ink'
                     }`}
                   >
                     <span>LoRa Mesh</span>
@@ -961,13 +928,13 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
             )}
 
             {uniqueNodes.length === 0 ? (
-              <div className="p-4 bg-[#0A0F1E] border border-dashed border-[#1E293B] rounded-xl text-center space-y-3">
-                <div className="w-10 h-10 rounded-full bg-[#00FF9D]/10 text-[#00FF9D] flex items-center justify-center mx-auto border border-[#00FF9D]/30">
+              <div className="p-4 bg-surface border border-dashed border-line rounded-xl text-center space-y-3">
+                <div className="w-10 h-10 rounded-full bg-success-ink/10 text-success-ink flex items-center justify-center mx-auto border border-success-ink/30">
                   <Radio className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">No Nodes in Topology</h4>
-                  <p className="text-[10px] text-[#64748B] font-mono mt-1">
+                  <h4 className="text-xs font-bold text-ink">No Nodes in Topology</h4>
+                  <p className="text-xs text-ink-muted mt-1">
                     {viewMode === 'SPECTATOR'
                       ? 'Waiting for manager or fleet to connect tracking hardware/mobile GPS.'
                       : 'Connect mobile phones or turn on your T-Echo / Heltec node to start tracking live telemetry.'}
@@ -976,18 +943,18 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 {viewMode !== 'SPECTATOR' && onOpenHardwareScan && (
                   <button
                     onClick={onOpenHardwareScan}
-                    className="w-full py-2 bg-[#00FF9D] hover:bg-emerald-300 text-[#020408] font-bold text-xs rounded-lg transition-all font-mono"
+                    className="w-full py-2 bg-success-ink hover:brightness-110 text-canvas font-bold text-xs rounded-lg transition-all"
                   >
                     Scan / Add Hardware Node
                   </button>
                 )}
               </div>
             ) : filteredAndSortedNodes.length === 0 ? (
-              <div className="p-4 bg-[#0A0F1E] border border-dashed border-[#1E293B] rounded-xl text-center space-y-2">
-                <p className="text-xs font-bold text-slate-300">No nodes match the selected filter.</p>
+              <div className="p-4 bg-surface border border-dashed border-line rounded-xl text-center space-y-2">
+                <p className="text-xs font-bold text-ink">No nodes match the selected filter.</p>
                 <button
                   onClick={() => setNodeFilter('ALL')}
-                  className="px-3 py-1 bg-[#00D4FF]/20 hover:bg-[#00D4FF]/30 text-[#00D4FF] border border-[#00D4FF]/40 rounded-lg text-[10px] font-mono font-bold transition-all"
+                  className="px-3 py-1 bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 rounded-lg text-xs font-bold transition-all"
                 >
                   Show All Nodes ({uniqueNodes.length})
                 </button>
@@ -1003,16 +970,16 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               const isDemo = !isDeviceGps && !isPhone && !isTablet && !isBle && (node.id.startsWith('node-') || node.id.startsWith('mock-'));
 
               const badgeColor = isDemo
-                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                ? 'bg-raised/20 text-ink border-line/40'
                 : isPhone
-                ? 'bg-[#00D4FF]/20 text-[#00D4FF] border-[#00D4FF]/40'
+                ? 'bg-accent/20 text-accent border-accent/40'
                 : isTablet
-                ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                ? 'bg-accent/20 text-accent border-accent/40'
                 : isDeviceGps
-                ? 'bg-[#00FF9D]/20 text-[#00FF9D] border-[#00FF9D]/40'
+                ? 'bg-success-ink/20 text-success-ink border-success-ink/40'
                 : isBle
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                ? 'bg-accent/20 text-accent border-accent/40'
+                : 'bg-success-ink/20 text-success-ink border-success-ink/40';
 
               const badgeText = isDemo
                 ? 'DEMO NODE'
@@ -1033,12 +1000,12 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   key={node.id}
                   className={`p-2.5 rounded-xl border transition-all flex flex-col gap-2 ${
                     isFollowing
-                      ? 'bg-amber-950/30 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                      ? 'bg-surface/30 border-warning-ink/60 '
                       : isPhone || isTablet || isDeviceGps
-                      ? 'bg-[#060E1E] border-[#00D4FF]/30'
+                      ? 'bg-canvas border-accent/30'
                       : isBle
-                      ? 'bg-cyan-950/20 border-cyan-500/40'
-                      : 'bg-[#0F172A]/70 border-[#1E293B]'
+                      ? 'bg-surface/20 border-accent/40'
+                      : 'bg-surface/70 border-line'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -1046,10 +1013,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                       <div
                         className={`p-1.5 rounded ${
                           isPhone || isTablet
-                            ? 'bg-[#00D4FF]/20 text-[#00D4FF]'
+                            ? 'bg-accent/20 text-accent'
                             : isBle
-                            ? 'bg-cyan-500/20 text-cyan-400'
-                            : 'bg-emerald-500/20 text-emerald-400'
+                            ? 'bg-accent/20 text-accent'
+                            : 'bg-success-ink/20 text-success-ink'
                         }`}
                       >
                         {isPhone ? (
@@ -1064,25 +1031,25 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-bold text-white font-google">{node.longName}</span>
-                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold font-mono border ${badgeColor}`}>
+                          <span className="text-xs font-bold text-ink">{node.longName}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-xs font-bold  border ${badgeColor}`}>
                             {badgeText}
                           </span>
                         </div>
-                        <span className="text-[9px] font-mono text-slate-400">
+                        <span className="text-xs text-ink-muted">
                           {node.id} • {node.hardwareModel || (isPhone ? 'Mobile Device' : 'LoRa Device')}
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-right font-mono">
-                      <span className="text-[11px] font-bold text-emerald-400 block" title="Battery Charge & Voltage">
-                        {node.battery !== undefined ? `⚡ ${node.battery}%` : '⚡ —'}{node.voltage ? ` (${node.voltage}V)` : ''}
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-success-ink block" title="Battery Charge & Voltage">
+                        {node.battery !== undefined ? `Battery ${node.battery}%` : 'Battery —'}{node.voltage ? ` (${node.voltage}V)` : ''}
                       </span>
-                      <span className="text-[9px] text-cyan-300 block" title="Speed and Satellites">
-                        {node.speedKt !== undefined && node.speedKt !== null ? `${safeFixed(node.speedKt, 1, '0.0')} kt` : node.satsInView !== undefined ? `🛰️ ${node.satsInView} Sats` : '🛰️ —'}
+                      <span className="text-xs text-accent block" title="Speed and Satellites">
+                        {node.speedKt !== undefined && node.speedKt !== null ? `${safeFixed(node.speedKt, 1, '0.0')} kt` : node.satsInView !== undefined ? `${node.satsInView} satellites` : 'Satellites —'}
                       </span>
-                      <span className="text-[8px] text-slate-400">
+                      <span className="text-xs text-ink-muted">
                         {node.rssi !== undefined ? `${node.rssi} dBm` : '—'} • {node.snr !== undefined ? `${node.snr} SNR` : '—'}
                       </span>
                     </div>
@@ -1090,28 +1057,28 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                   {/* BME280 Environmental Sensors strip if available */}
                   {hasBme280 && (
-                    <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-lg px-2 py-1 flex items-center justify-between text-[9px] font-mono text-emerald-300 flex-wrap gap-1">
-                      <div className="flex items-center gap-1 text-[8.5px] font-bold text-emerald-400">
-                        <Gauge className="w-3 h-3 text-emerald-400" />
+                    <div className="bg-surface/30 border border-success-ink/30 rounded-lg px-2 py-1 flex items-center justify-between text-xs text-success-ink flex-wrap gap-1">
+                      <div className="flex items-center gap-1 text-xs font-bold text-success-ink">
+                        <Gauge className="w-3 h-3 text-success-ink" />
                         <span>BME280:</span>
                       </div>
                       {node.barometricPressure !== undefined && node.barometricPressure !== null && (
                         <span title="Barometric Atmospheric Pressure">
-                          🧭 {safeFixed(node.barometricPressure, 1)} hPa
+                          {safeFixed(node.barometricPressure, 1)} hPa
                         </span>
                       )}
                       {node.temperature !== undefined && node.temperature !== null && (
                         <span title="Ambient Temperature">
-                          🌡️ {safeFixed(node.temperature, 1)}°C
+                          {safeFixed(node.temperature, 1)}°C
                         </span>
                       )}
                       {node.humidity !== undefined && node.humidity !== null && (
                         <span title="Relative Humidity">
-                          💧 {safeFixed(node.humidity, 1)}% RH
+                          {safeFixed(node.humidity, 1)}% RH
                         </span>
                       )}
                       {node.iaq !== undefined && (
-                        <span title="Indoor Air Quality Index" className="text-cyan-300 font-bold">
+                        <span title="Indoor Air Quality Index" className="text-accent font-bold">
                           IAQ {node.iaq}
                         </span>
                       )}
@@ -1119,42 +1086,42 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   )}
 
                   {/* Last Heard & Position Metadata */}
-                  <div className="text-[9px] font-mono text-[#64748B] flex items-center justify-between px-1 bg-[#060B16]/60 py-1 rounded-lg border border-[#1E293B]/40">
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <Clock className="w-2.5 h-2.5 text-cyan-400" />
-                      Last Heard: <strong className="text-[#00D4FF] font-bold">{formatLastHeard(node.lastPingTime)}</strong>
+                  <div className="text-xs text-ink-muted flex items-center justify-between px-1 bg-canvas/60 py-1 rounded-lg border border-line/40">
+                    <span className="flex items-center gap-1 text-ink">
+                      <Clock className="w-2.5 h-2.5 text-accent" />
+                      Last Heard: <strong className="text-accent font-bold">{formatLastHeard(node.lastPingTime)}</strong>
                     </span>
                     {boundBoat ? (
                       <div className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: boundBoat.color || '#00D4FF' }} />
-                        <span className="text-[#00FF9D] font-bold truncate max-w-[130px]">
-                          ⚓ {boundBoat.name} ({boundBoat.sailNumber})
+                        <span className="text-success-ink font-bold truncate max-w-[130px]">
+                          {boundBoat.name} ({boundBoat.sailNumber})
                         </span>
                       </div>
                     ) : (
-                      <span className="text-amber-400 font-semibold italic bg-amber-400/10 px-1.5 py-0.2 rounded border border-amber-400/20">
-                        ⚠️ Unbound Tracker
+                      <span className="text-warning-ink font-semibold italic bg-warning-ink/10 px-1.5 py-0.2 rounded border border-warning-ink/20">
+                        Unbound Tracker
                       </span>
                     )}
                   </div>
 
                   {/* Coordinates indicator if active */}
                   {typeof node.lat === 'number' && typeof node.lng === 'number' && (
-                    <div className="text-[9px] font-mono text-[#64748B] flex items-center justify-between px-1">
+                    <div className="text-xs text-ink-muted flex items-center justify-between px-1">
                       <span>POS: {safeFixed(node.lat, 4)}°N, {safeFixed(node.lng, 4)}°E</span>
                       {node.altitudeMeters !== undefined && <span>ALT: {node.altitudeMeters}m</span>}
                     </div>
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-800/60 flex-wrap">
+                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-line/60 flex-wrap">
                     {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
                       <button
                         onClick={() => onOpenNodeBinding(node.id, boundBoat?.id)}
-                        className={`py-1 px-2 rounded text-[10px] font-bold font-google flex items-center gap-1 transition-all ${
+                        className={`py-1 px-2 rounded text-xs font-bold flex items-center gap-1 transition-all ${
                           boundBoat
-                            ? 'bg-[#00D4FF]/10 text-[#00D4FF] hover:bg-[#00D4FF]/25 border border-[#00D4FF]/30'
-                            : 'bg-[#FBBC04]/20 text-[#FBBC04] hover:bg-[#FBBC04]/30 border border-[#FBBC04]/50'
+                            ? 'bg-accent/10 text-accent hover:bg-accent/25 border border-accent/30'
+                            : 'bg-warning-ink/20 text-warning-ink hover:bg-warning-ink/30 border border-warning-ink/50'
                         }`}
                         title={`Bind ${node.longName} to a boat in the fleet`}
                       >
@@ -1165,10 +1132,10 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                     <button
                       onClick={() => onToggleFollow(node.id, node.longName)}
-                      className={`flex-1 py-1 rounded text-[10px] font-bold font-google flex items-center justify-center gap-1 transition-colors ${
+                      className={`flex-1 py-1 rounded text-xs font-bold flex items-center justify-center gap-1 transition-colors ${
                         isFollowing
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-800 text-cyan-300 hover:bg-slate-700'
+                          ? 'bg-warning-ink text-canvas'
+                          : 'bg-raised text-accent hover:bg-raised'
                       }`}
                     >
                       <Crosshair className="w-3 h-3" />
@@ -1177,16 +1144,16 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                     <button
                       onClick={() => onOpenNodeInspector(node, boundBoat || null)}
-                      className="py-1 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold font-google flex items-center gap-1"
+                      className="py-1 px-2 rounded bg-raised hover:bg-raised text-ink text-xs font-bold flex items-center gap-1"
                     >
-                      <Eye className="w-3 h-3 text-cyan-400" />
+                      <Eye className="w-3 h-3 text-accent" />
                       Inspect
                     </button>
 
                     {viewMode !== 'SPECTATOR' && onDeleteNode && (
                       <button
                         onClick={() => onDeleteNode(node.id)}
-                        className="p-1.5 rounded bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700/50 hover:border-red-500/40 transition-colors"
+                        className="p-1.5 rounded bg-raised/80 hover:bg-danger/20 text-ink-muted hover:text-danger-ink border border-line/50 hover:border-danger-ink/40 transition-colors"
                         title={`Remove ${node.longName} (${node.id}) from system`}
                       >
                         <Trash2 className="w-3 h-3" />

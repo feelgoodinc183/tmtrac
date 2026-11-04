@@ -136,7 +136,6 @@ export type EditRejectedCallback = (rejection: { action: string; roomCode: strin
 class HybridDeviceTrackerService {
   private profile: DeviceTrackerProfile = getDefaultDeviceProfile();
   private gpsWatchId: number | null = null;
-  private isWatchingGps = false;
   private batteryLevel: number | null = 88;
 
   private currentGpsState: DeviceGpsState;
@@ -163,6 +162,8 @@ class HybridDeviceTrackerService {
 
   // Live WebSocket Connection to Server
   private ws: WebSocket | null = null;
+  // The login the current socket was opened with; the server decides room rights from it
+  private wsToken = '';
   private wsConnected = false;
   private wsReconnectTimer: any = null;
   private pingTimer: any = null;
@@ -249,8 +250,9 @@ class HybridDeviceTrackerService {
       }
     });
 
-    // If on mobile / tablet, automatically request GPS permission & start tracking
-    if (typeof window !== 'undefined' && (this.profile.deviceType === 'PHONE' || this.profile.deviceType === 'TABLET')) {
+    // Location is only shared after the person turns tracking on (Track, or the Device Tracker
+    // toggle). If they did and the page reloads, e.g. a phone mid-race, sharing resumes.
+    if (typeof window !== 'undefined' && HybridDeviceTrackerService.hasGpsOptIn()) {
       setTimeout(() => {
         this.startGpsTracking().catch(() => {});
       }, 500);
@@ -631,6 +633,7 @@ class HybridDeviceTrackerService {
       try {
         const activeRoom = roomService.getActiveRoomCode();
         const token = typeof localStorage !== 'undefined' ? (localStorage.getItem('tmtrac_auth_token_v1') || '') : '';
+        this.wsToken = token;
         const wsUrl = `${protocol}//${host}/ws?room=${encodeURIComponent(activeRoom)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
         const socket = new WebSocket(wsUrl);
 
@@ -835,6 +838,27 @@ class HybridDeviceTrackerService {
     };
 
     connect();
+
+    // Signing in or out after the page loaded must reach the server, or the room keeps treating
+    // this device as the old identity (e.g. an owner who signed in would have edits rejected).
+    authService.onAuthChange(() => {
+      const token = typeof localStorage !== 'undefined' ? (localStorage.getItem('tmtrac_auth_token_v1') || '') : '';
+      if (token === this.wsToken) return;
+      const old = this.ws;
+      if (old) {
+        old.onclose = null;
+        old.close();
+        this.ws = null;
+        this.wsConnected = false;
+        this.requeuePendingBatches();
+        if (this.pingTimer) clearInterval(this.pingTimer);
+      }
+      if (this.wsReconnectTimer) {
+        clearTimeout(this.wsReconnectTimer);
+        this.wsReconnectTimer = null;
+      }
+      connect();
+    });
   }
 
   // Broadcast helper to Server WebSocket (returns boolean for Store-and-Forward offline detection)
@@ -1148,6 +1172,32 @@ class HybridDeviceTrackerService {
   }
 
   // Start watching native Geolocation & Magnetometer Compass
+  private static readonly GPS_OPT_IN_KEY = 'tmtrac_gps_sharing_opt_in';
+
+  private static hasGpsOptIn(): boolean {
+    try {
+      return localStorage.getItem(HybridDeviceTrackerService.GPS_OPT_IN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  /** The person chose to share this device's location. Remembered so a reload resumes it. */
+  public startSharingByUser(): Promise<boolean> {
+    try {
+      localStorage.setItem(HybridDeviceTrackerService.GPS_OPT_IN_KEY, '1');
+    } catch {}
+    return this.startGpsTracking();
+  }
+
+  /** The person stopped sharing this device's location. */
+  public stopSharingByUser() {
+    try {
+      localStorage.removeItem(HybridDeviceTrackerService.GPS_OPT_IN_KEY);
+    } catch {}
+    this.stopGpsTracking();
+  }
+
   public startGpsTracking(): Promise<boolean> {
     return new Promise((resolve) => {
       if (typeof window === 'undefined' || !('geolocation' in navigator)) {
@@ -1159,7 +1209,6 @@ class HybridDeviceTrackerService {
 
       this.stopGpsTracking();
 
-      this.isWatchingGps = true;
       this.currentGpsState.active = true;
       this.currentGpsState.error = null;
       this.notifyGps();
@@ -1333,7 +1382,6 @@ class HybridDeviceTrackerService {
       clearInterval(this.broadcastIntervalTimer);
       this.broadcastIntervalTimer = null;
     }
-    this.isWatchingGps = false;
     this.currentGpsState.active = false;
     this.currentGpsState.lat = undefined;
     this.currentGpsState.lng = undefined;
@@ -1425,104 +1473,6 @@ class HybridDeviceTrackerService {
     this.currentGpsState.packetsSent += 1;
     this.profile.packetsTransmitted += 1;
     this.profile.lastBroadcastTime = Date.now();
-  }
-
-  // Inject a simulated mobile tracker for testing
-  public addSimulatedMember(sim: {
-    name: string;
-    type: TrackerDeviceType;
-    role: TrackerVesselRole;
-    lat: number;
-    lng: number;
-    speedKt: number;
-    headingDeg: number;
-    color: string;
-  }) {
-    const id = 'SIM-' + Math.random().toString(16).substring(2, 6).toUpperCase();
-    const payload = {
-      deviceId: id,
-      deviceName: sim.name,
-      deviceType: sim.type,
-      role: sim.role,
-      boundBoatId: null,
-      color: sim.color,
-      lat: sim.lat,
-      lng: sim.lng,
-      accuracy: 6,
-      speedKt: sim.speedKt,
-      headingDeg: sim.headingDeg,
-      altitudeMeters: 5,
-      battery: Math.floor(Math.random() * 40) + 60,
-      timestamp: Date.now(),
-    };
-    this.handleIncomingFleetPacket(payload);
-    this.sendWs('GPS_BROADCAST', payload);
-  }
-
-  // Toggle broadcasting
-  public toggleSharing(): boolean {
-    this.profile.isBroadcasting = !this.profile.isBroadcasting;
-    this.currentGpsState.isSharing = this.profile.isBroadcasting;
-    this.currentGpsState.profile = { ...this.profile };
-    this.notifyGps();
-    if (this.currentGpsState.active && this.profile.isBroadcasting) {
-      this.broadcastCurrentLocation();
-    }
-    return this.profile.isBroadcasting;
-  }
-
-  // Clear all remote fleet devices
-  public clearFleet() {
-    this.clearRemoteMembers();
-    this.sendWs('CLEAR_TRACKERS', {});
-  }
-
-  // Inject multiple realistic visitor tracker devices for quick demonstration
-  public simulateHybridFleet() {
-    const demoMembers = [
-      {
-        name: 'iPhone 15 Pro (Tactician)',
-        type: 'PHONE' as TrackerDeviceType,
-        role: 'RACE_CREW' as TrackerVesselRole,
-        lat: 6.3075,
-        lng: 99.8245,
-        speedKt: 7.8,
-        headingDeg: 320,
-        color: '#00D4FF',
-      },
-      {
-        name: 'iPad Pro (RC Committee Boat)',
-        type: 'TABLET' as TrackerDeviceType,
-        role: 'RACE_COMMITTEE' as TrackerVesselRole,
-        lat: 6.3150,
-        lng: 99.8320,
-        speedKt: 1.2,
-        headingDeg: 90,
-        color: '#FBBC04',
-      },
-      {
-        name: 'MacBook Air (Safety Marshall)',
-        type: 'PC' as TrackerDeviceType,
-        role: 'SAFETY_PATROL' as TrackerVesselRole,
-        lat: 6.3210,
-        lng: 99.8180,
-        speedKt: 12.4,
-        headingDeg: 140,
-        color: '#FF4D4D',
-      },
-      {
-        name: 'Samsung S24 Ultra (Bowman)',
-        type: 'PHONE' as TrackerDeviceType,
-        role: 'SPECTATOR' as TrackerVesselRole,
-        lat: 6.2990,
-        lng: 99.8290,
-        speedKt: 5.6,
-        headingDeg: 280,
-        color: '#00FF9D',
-      },
-    ];
-
-    demoMembers.forEach((m) => this.addSimulatedMember(m));
   }
 
   // Clear all remote fleet devices

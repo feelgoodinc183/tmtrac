@@ -1,7 +1,7 @@
 import express from 'express';
 import Stripe from 'stripe';
-import { db, insertAuditLog, updateTenantSubscription, adjustTenantEventPasses, getPackageById, PLAN_CONFIG } from './db';
-import { requireAuth, requireTenantAdmin } from './gate';
+import { db, insertAuditLog, updateTenantSubscription, adjustTenantEventPasses, getPackageById } from './db';
+import { requireAuth } from './gate';
 import { PlanTier } from '../types/regatta';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';

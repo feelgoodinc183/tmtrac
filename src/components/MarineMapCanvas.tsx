@@ -5,7 +5,6 @@ import {
   CourseMark,
   CourseEditMode,
   MeshtasticNode,
-  RaceState,
   MapBasemap,
   WeatherOverlays,
   MapViewSize,
@@ -15,44 +14,18 @@ import {
 import { MapLayersControl } from './MapLayersControl';
 import { MarkDetailModal } from './MarkDetailModal';
 import { calculateCourseLegs, getOrderedCourseSequence, calculateBearingDeg } from '../services/courseService';
-import { generateTrail } from '../services/initialData';
 import {
-  Compass,
-  Wind,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  ShieldAlert,
   Crosshair,
-  MapPin,
   Zap,
-  Layers,
-  Eye,
-  Move,
-  RefreshCw,
-  ZoomIn,
-  ZoomOut,
-  Navigation,
-  Radio,
   Plus,
   Flag,
   Target,
-  Edit3,
-  Sliders,
   SlidersHorizontal,
-  X,
   Check,
   RotateCcw,
-  PanelLeft,
-  PanelLeftClose,
-  Maximize2,
   Minimize2,
   Smartphone,
-  Trophy,
-  Sailboat,
   Route,
-  Wrench,
 } from 'lucide-react';
 
 // Strict Coordinate Validation Helper to prevent Leaflet LatLng NaN crashes
@@ -146,15 +119,9 @@ interface MarineMapCanvasProps {
   boats: Boat[];
   marks: CourseMark[];
   nodes: MeshtasticNode[];
-  raceState: RaceState;
   selectedBoatId: string | null;
   onSelectBoat: (boatId: string) => void;
-  onToggleTelemetryRate: () => void;
   onOpenHeadToHead: (boat1Id: string, boat2Id: string) => void;
-  onPlayStartSignal: () => void;
-  onToggleRaceTimer: () => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
   basemap: MapBasemap;
   onSelectBasemap: (basemap: MapBasemap) => void;
   overlays: WeatherOverlays;
@@ -167,22 +134,13 @@ interface MarineMapCanvasProps {
   onChangeMapSize: (size: MapViewSize) => void;
   directSunlightMode: boolean;
   followedTargetId: string | null;
-  onToggleFollow: (id: string, name: string) => void;
   onOpenNodeInspector: (node: MeshtasticNode | null, boat: Boat | null) => void;
   selectedLocation?: RegattaLocation;
   playbackTimeSec?: number;
   maxPlaybackDurationSec?: number;
   deviceGps?: DeviceGpsState;
-  onToggleDeviceGps?: () => void;
   showReplayBar?: boolean;
   onToggleReplayBar?: () => void;
-  showRcConsoleOverlay?: boolean;
-  onToggleRcConsoleOverlay?: () => void;
-  showLeaderboardOverlay?: boolean;
-  onToggleLeaderboardOverlay?: () => void;
-  showToolsDrawer?: boolean;
-  onOpenTools?: () => void;
-  isToolsOpen?: boolean;
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
 
@@ -204,15 +162,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   boats,
   marks,
   nodes,
-  raceState,
   selectedBoatId,
   onSelectBoat,
-  onToggleTelemetryRate,
   onOpenHeadToHead,
-  onPlayStartSignal,
-  onToggleRaceTimer,
-  isMuted,
-  onToggleMute,
   basemap,
   onSelectBasemap,
   overlays,
@@ -225,22 +177,13 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   onChangeMapSize,
   directSunlightMode,
   followedTargetId,
-  onToggleFollow,
   onOpenNodeInspector,
   selectedLocation,
   playbackTimeSec = 0,
   maxPlaybackDurationSec = 1800,
   deviceGps,
-  onToggleDeviceGps,
   showReplayBar = false,
   onToggleReplayBar,
-  showRcConsoleOverlay = false,
-  onToggleRcConsoleOverlay,
-  showLeaderboardOverlay = false,
-  onToggleLeaderboardOverlay,
-  showToolsDrawer = false,
-  onOpenTools,
-  isToolsOpen = false,
   onToggleSidebar,
   isSidebarOpen,
   onAddMark,
@@ -255,6 +198,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   onOpenHub,
   viewMode = 'RC_CONSOLE',
 }) => {
+  // Only move boats along their trails when there is a recorded race to replay.
+  const replayActive = showReplayBar && (maxPlaybackDurationSec || 0) > 0;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseTileLayerRef = useRef<L.TileLayer | null>(null);
@@ -306,7 +251,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       resizeObserver = new ResizeObserver(() => {
         if (mapRef.current) {
           try {
-            mapRef.current.invalidateSize({ debounceMoveEvents: true });
+            mapRef.current.invalidateSize({ debounceMoveend: true });
           } catch {
             // ignore
           }
@@ -410,31 +355,30 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
     const targetBoat = boats.find((b) => b.id === followedTargetId);
     if (targetBoat) {
-      const boatTrail = (targetBoat.trail && targetBoat.trail.length >= 2)
-        ? targetBoat.trail
-        : generateTrail(targetBoat.lat, targetBoat.lng, targetBoat.cog || targetBoat.heading || 320, 50);
-      const ratio = showReplayBar ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
+      // Only the real recorded track; no made-up wake
+      const boatTrail = targetBoat.trail || [];
+      const ratio = replayActive ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
       const interp = getInterpolatedTrajectory(
         boatTrail,
         targetBoat.lat,
         targetBoat.lng,
         targetBoat.heading || targetBoat.cog || 0,
         ratio,
-        showReplayBar
+        replayActive
       );
       targetLat = interp.lat;
       targetLng = interp.lng;
     } else {
       const targetNode = nodes.find((n) => n.id === followedTargetId);
       if (targetNode && typeof targetNode.lat === 'number' && typeof targetNode.lng === 'number') {
-        const ratio = showReplayBar ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
+        const ratio = replayActive ? ((playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800)) : 0;
         const interp = getInterpolatedTrajectory(
           targetNode.trail,
           targetNode.lat,
           targetNode.lng,
           targetNode.headingDeg || 0,
           ratio,
-          showReplayBar
+          replayActive
         );
         targetLat = interp.lat;
         targetLng = interp.lng;
@@ -444,7 +388,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     if (isValidCoord(targetLat, targetLng)) {
       map.panTo([targetLat!, targetLng!], { animate: true });
     }
-  }, [followedTargetId, boats, nodes, playbackTimeSec, showReplayBar, maxPlaybackDurationSec]);
+  }, [followedTargetId, boats, nodes, playbackTimeSec, replayActive, maxPlaybackDurationSec]);
 
   // HANDLE INTERACTIVE MAP CLICK FOR DROPPING MARKS / LINES
   useEffect(() => {
@@ -538,7 +482,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       const startCenterLng = (pinMark.lng + rcMark.lng) / 2;
       if (isValidCoord(startCenterLat, startCenterLng)) {
         const startHtml = `
-          <div style="background: rgba(0,212,255,0.9); color: #020408; font-weight: 900; font-family: monospace; font-size: 8px; padding: 1px 4px; border-radius: 3px; transform: translate(-50%, -50%); border: 1px solid white; box-shadow: 0 0 8px rgba(0,212,255,0.6); white-space: nowrap;">
+          <div style="background: rgba(0,212,255,0.9); color: #020408; font-weight: 900; font-family: monospace; font-size: 12px; padding: 1px 4px; border-radius: 3px; transform: translate(-50%, -50%); border: 1px solid white; box-shadow: 0 0 8px rgba(0,212,255,0.6); white-space: nowrap;">
             START LINE
           </div>
         `;
@@ -562,7 +506,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       const finishCenterLng = (finishPin.lng + finishRc.lng) / 2;
       if (isValidCoord(finishCenterLat, finishCenterLng)) {
         const finishHtml = `
-          <div style="background: rgba(0,255,157,0.9); color: #020408; font-weight: 900; font-family: monospace; font-size: 8px; padding: 1px 4px; border-radius: 3px; transform: translate(-50%, -50%); border: 1px solid white; box-shadow: 0 0 8px rgba(0,255,157,0.6); white-space: nowrap;">
+          <div style="background: rgba(0,255,157,0.9); color: #020408; font-weight: 900; font-family: monospace; font-size: 12px; padding: 1px 4px; border-radius: 3px; transform: translate(-50%, -50%); border: 1px solid white; box-shadow: 0 0 8px rgba(0,255,157,0.6); white-space: nowrap;">
             FINISH LINE
           </div>
         `;
@@ -600,7 +544,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           if (!isValidCoord(midLat, midLng)) return;
 
           const legHtml = `
-            <div style="background: rgba(10,15,30,0.85); color: #FBBC04; border: 1px solid #FBBC04; font-size: 8px; font-family: monospace; padding: 1px 4px; border-radius: 3px; transform: translate(-50%, -50%); white-space: nowrap; box-shadow: 0 0 6px rgba(0,0,0,0.8);">
+            <div style="background: rgba(10,15,30,0.85); color: #FBBC04; border: 1px solid #FBBC04; font-size: 12px; font-family: monospace; padding: 1px 4px; border-radius: 3px; transform: translate(-50%, -50%); white-space: nowrap; box-shadow: 0 0 6px rgba(0,0,0,0.8);">
               ${leg.distanceNm} NM (${leg.bearingDeg}°)
             </div>
           `;
@@ -637,12 +581,12 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
       const markHtml = `
         <div style="display:flex; flex-direction:column; align-items:center; transform: translate(-50%, -50%); cursor: grab;" title="Click to edit mark settings or drag & drop anywhere on the water">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: ${color}; border: 2.5px solid white; box-shadow: 0 0 12px ${color}; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 900; color: #020408; font-family: monospace; transition: transform 0.15s ease;">
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: ${color}; border: 2.5px solid white; box-shadow: 0 0 12px ${color}; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #020408; font-family: monospace; transition: transform 0.15s ease;">
             ${badgeText}
           </div>
-          <div style="background: rgba(6,11,22,0.92); color: white; padding: 2px 6px; border-radius: 5px; font-size: 9.5px; font-family: monospace; font-weight: bold; white-space: nowrap; margin-top: 3px; border: 1.5px solid ${color}; box-shadow: 0 2px 8px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 3px;">
+          <div style="background: rgba(6,11,22,0.92); color: white; padding: 2px 6px; border-radius: 5px; font-size: 12px; font-family: monospace; font-weight: bold; white-space: nowrap; margin-top: 3px; border: 1.5px solid ${color}; box-shadow: 0 2px 8px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 3px;">
             <span>${m.name}</span>
-            <span style="color: ${m.requiredRounding === 'STARBOARD' ? '#00FF9D' : '#FF4D4D'}; font-size: 8px;">(${m.requiredRounding === 'STARBOARD' ? 'STBD' : m.requiredRounding === 'PORT' ? 'PORT' : 'LINE'})</span>
+            <span style="color: ${m.requiredRounding === 'STARBOARD' ? '#00FF9D' : '#FF4D4D'}; font-size: 12px;">(${m.requiredRounding === 'STARBOARD' ? 'STBD' : m.requiredRounding === 'PORT' ? 'PORT' : 'LINE'})</span>
           </div>
         </div>
       `;
@@ -687,7 +631,6 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     validBoats.forEach((b) => {
       if (!isValidCoord(b.lat, b.lng)) return;
       const isSelected = b.id === selectedBoatId;
-      const isFollowed = b.id === followedTargetId;
 
       // Identify if this boat is bound to a physical LoRa Node or Phone/Tablet/Device GPS
       const boundNode = (nodes || []).find((n) => n.boundBoatId === b.id || (b.nodeId && n.id === b.nodeId));
@@ -696,10 +639,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         boundNode?.isDeviceGps ||
         (deviceGps?.active && (deviceGps.profile?.boundBoatId === b.id || b.nodeId === deviceGps.profile?.deviceId || b.nodeId === 'device-phone-local'));
 
-      // Ensure rich trajectory for replay
-      const boatTrail = (b.trail && Array.isArray(b.trail) && b.trail.length >= 2)
-        ? b.trail
-        : generateTrail(b.lat, b.lng, b.cog || b.heading || 320, 50);
+      // Only the real recorded track; a boat without one shows no trail
+      const boatTrail = Array.isArray(b.trail) ? b.trail : [];
 
       const replayRatio = (playbackTimeSec || 0) / (maxPlaybackDurationSec || 1800);
       const {
@@ -714,7 +655,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         b.lng,
         b.heading || b.cog || 0,
         replayRatio,
-        showReplayBar
+        replayActive
       );
 
       // Draw Active Historical Breadcrumb Trail (solid)
@@ -727,7 +668,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       }
 
       // In Replay Mode, draw Ghost Future Trail (dashed, subtle)
-      if (showReplayBar && ghostTrail.length > 1) {
+      if (replayActive && ghostTrail.length > 1) {
         L.polyline(ghostTrail, {
           color: b.color || '#00D4FF',
           weight: isSelected ? 2 : 1.5,
@@ -737,17 +678,17 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       }
 
       const trackerBadgeHtml = boundNode
-        ? `<span style="background: ${isPhoneGpsBound ? 'rgba(0,212,255,0.25)' : 'rgba(0,255,157,0.25)'}; color: ${isPhoneGpsBound ? '#00D4FF' : '#00FF9D'}; font-size: 7.5px; font-weight: 800; padding: 1px 4px; border-radius: 3px; border: 1px solid ${isPhoneGpsBound ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,157,0.5)'}; display: inline-flex; align-items: center; gap: 2px;">${isPhoneGpsBound ? '📱 PHONE GPS' : `📻 ${boundNode.shortName || boundNode.id.slice(-4)}`}</span>`
+        ? `<span style="background: ${isPhoneGpsBound ? 'rgba(0,212,255,0.25)' : 'rgba(0,255,157,0.25)'}; color: ${isPhoneGpsBound ? '#00D4FF' : '#00FF9D'}; font-size: 12px; font-weight: 800; padding: 1px 4px; border-radius: 3px; border: 1px solid ${isPhoneGpsBound ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,157,0.5)'}; display: inline-flex; align-items: center; gap: 2px;">${isPhoneGpsBound ? 'PHONE GPS' : `${boundNode.shortName || boundNode.id.slice(-4)}`}</span>`
         : '';
 
       const statusBadgeHtml = b.status === 'OCS'
-        ? `<span style="background: #EA4335; color: white; font-size: 7.5px; font-weight: 900; padding: 1px 4px; border-radius: 3px; animation: pulse 1s infinite;">OCS</span>`
+        ? `<span style="background: #EA4335; color: white; font-size: 12px; font-weight: 900; padding: 1px 4px; border-radius: 3px; animation: pulse 1s infinite;">OCS</span>`
         : b.status === 'PRE_START'
-        ? `<span style="background: rgba(251,188,4,0.25); color: #FBBC04; border: 1px solid rgba(251,188,4,0.6); font-size: 7px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">PRE</span>`
+        ? `<span style="background: rgba(251,188,4,0.25); color: #FBBC04; border: 1px solid rgba(251,188,4,0.6); font-size: 12px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">PRE</span>`
         : b.status === 'FINISHED'
-        ? `<span style="background: rgba(168,85,247,0.3); color: #C084FC; border: 1px solid rgba(168,85,247,0.6); font-size: 7px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">FIN</span>`
+        ? `<span style="background: rgba(168,85,247,0.3); color: #C084FC; border: 1px solid rgba(168,85,247,0.6); font-size: 12px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">FIN</span>`
         : b.status && b.status !== 'RACING' && b.status !== 'CLEARED_OCS'
-        ? `<span style="background: rgba(239,68,68,0.25); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); font-size: 7px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">${b.status}</span>`
+        ? `<span style="background: rgba(239,68,68,0.25); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); font-size: 12px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">${b.status}</span>`
         : '';
 
       const boatHtml = `
@@ -760,13 +701,13 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               </svg>
             </div>
           </div>
-          <div style="background: rgba(6,11,22,0.92); border: 1.5px solid ${isSelected ? '#00D4FF' : b.color || 'rgba(255,255,255,0.3)'}; padding: 2px 6px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; white-space: nowrap; font-family: monospace; text-align: center; margin-top: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; gap: 1px;">
+          <div style="background: rgba(6,11,22,0.92); border: 1.5px solid ${isSelected ? '#00D4FF' : b.color || 'rgba(255,255,255,0.3)'}; padding: 2px 6px; border-radius: 6px; color: white; font-size: 12px; font-weight: bold; white-space: nowrap; font-family: monospace; text-align: center; margin-top: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; gap: 1px;">
             <div style="display: flex; align-items: center; gap: 3px;">
               <span>${b.name}</span>
               ${statusBadgeHtml}
               ${trackerBadgeHtml}
             </div>
-            <div style="font-size: 8px; color: #00FF9D;">${(b.sog || 0).toFixed(1)} kt • DTW: ${(b.dtw || 0).toFixed(2)}NM</div>
+            <div style="font-size: 12px; color: #00FF9D;">${(b.sog || 0).toFixed(1)} kt • DTW: ${(b.dtw || 0).toFixed(2)}NM</div>
           </div>
         </div>
       `;
@@ -859,7 +800,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         node.lng!,
         node.headingDeg || 0,
         replayRatio,
-        showReplayBar
+        replayActive
       );
 
       // Draw node trail if available
@@ -873,7 +814,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       }
 
       const hasMovement = (node.speedKt || 0) > 0.3;
-      const headingDeg = showReplayBar ? nodeHeading : (node.headingDeg || 0);
+      const headingDeg = replayActive ? nodeHeading : (node.headingDeg || 0);
 
       const nodeHtml = `
         <div style="display:flex; flex-direction:column; align-items:center; transform: translate(-50%, -50%); cursor: grab;" title="Drag mesh node to relocate position or click to inspect">
@@ -885,9 +826,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             }
             ${hasMovement ? `<div style="position: absolute; top: -6px; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid ${color}; transform: rotate(${headingDeg}deg); transform-origin: 50% 19px;"></div>` : ''}
           </div>
-          <div style="background: rgba(6,11,22,0.92); border: 1px solid ${color}; padding: 2px 6px; border-radius: 5px; color: white; font-size: 9px; font-family: monospace; white-space: nowrap; margin-top: 2px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.8);">
+          <div style="background: rgba(6,11,22,0.92); border: 1px solid ${color}; padding: 2px 6px; border-radius: 5px; color: white; font-size: 12px; font-family: monospace; white-space: nowrap; margin-top: 2px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.8);">
             <span style="color: ${color}; font-weight: bold; margin-right: 3px;">[${badgeLabel}]</span>
-            <span>${node.shortName || node.longName.slice(0, 10)} (${typeof node.speedKt === 'number' ? node.speedKt.toFixed(1) + 'kt' : (node.battery || 85) + '%'})</span>
+            <span>${node.shortName || node.longName.slice(0, 10)} (${typeof node.speedKt === 'number' ? node.speedKt.toFixed(1) + 'kt' : node.battery !== undefined ? node.battery + '%' : '—'})</span>
           </div>
         </div>
       `;
@@ -952,9 +893,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               </svg>
             </div>
           </div>
-          <div style="background: rgba(6,11,22,0.95); border: 1.5px solid #38BDF8; padding: 3px 7px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; white-space: nowrap; font-family: monospace; text-align: center; margin-top: 3px; box-shadow: 0 0 12px rgba(56,189,248,0.5);">
+          <div style="background: rgba(6,11,22,0.95); border: 1.5px solid #38BDF8; padding: 3px 7px; border-radius: 6px; color: white; font-size: 12px; font-weight: bold; white-space: nowrap; font-family: monospace; text-align: center; margin-top: 3px; box-shadow: 0 0 12px rgba(56,189,248,0.5);">
             <div style="color: #38BDF8;">MY DEVICE GPS (UNBOUND)</div>
-            <div style="font-size: 8.5px; color: #00FF9D;">${(deviceGps.speedKt || 0).toFixed(1)} kt • ±${deviceGps.accuracy || 5}m</div>
+            <div style="font-size: 12px; color: #00FF9D;">${(deviceGps.speedKt || 0).toFixed(1)} kt • ±${deviceGps.accuracy || 5}m</div>
           </div>
         </div>
       `;
@@ -967,7 +908,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
       L.marker([deviceGps.lat!, deviceGps.lng!], { icon: gpsIcon }).addTo(group);
     }
-  }, [boats, marks, nodes, selectedBoatId, followedTargetId, playbackTimeSec, maxPlaybackDurationSec, showReplayBar, deviceGps, showCourseLegs, onMoveMarkPosition, onMoveBoatPosition, onMoveNodePosition]);
+  }, [boats, marks, nodes, selectedBoatId, followedTargetId, playbackTimeSec, maxPlaybackDurationSec, replayActive, deviceGps, showCourseLegs, onMoveMarkPosition, onMoveBoatPosition, onMoveNodePosition]);
 
   // Handle Zoom In/Out manually
   const handleMapZoomIn = () => {
@@ -980,14 +921,6 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     onZoomOut();
   };
 
-  const handleMapReset = () => {
-    if (selectedLocation && mapRef.current) {
-      if (isValidCoord(selectedLocation.centerLat, selectedLocation.centerLng)) {
-        mapRef.current.flyTo([selectedLocation.centerLat, selectedLocation.centerLng], 12);
-      }
-    }
-    onResetZoom();
-  };
 
   const handleFitAllFleet = () => {
     if (!mapRef.current) return;
@@ -1019,46 +952,44 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   return (
     <section
       className={`flex-1 relative overflow-hidden select-none flex flex-col h-full w-full ${
-        directSunlightMode ? 'bg-black text-white' : 'bg-[#141518] text-[#E8EAED]'
+        'bg-surface text-ink'
       } ${courseEditMode !== 'NONE' ? 'cursor-crosshair' : ''}`}
     >
       {/* LEAFLET TILE MAP CONTAINER */}
       <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0" />
 
-      {/* HISTORICAL REPLAY STATUS HUD INDICATOR */}
-      {showReplayBar && (
-        <div className="hidden md:flex absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-[#060B16]/95 border border-[#00D4FF]/60 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(0,212,255,0.35)] backdrop-blur-md items-center gap-2.5 font-mono text-xs text-[#00D4FF] animate-in fade-in zoom-in-95">
-          <RotateCcw className="w-3.5 h-3.5 text-[#FFB800] animate-spin" style={{ animationDuration: '6s' }} />
-          <span className="font-bold text-white tracking-wider">RACE REPLAY MODE</span>
-          <span className="text-slate-600">|</span>
-          <span className="text-[#00FF9D] font-bold">
-            {Math.floor((playbackTimeSec || 0) / 60).toString().padStart(2, '0')}:{Math.floor((playbackTimeSec || 0) % 60).toString().padStart(2, '0')}
+      {/* HISTORICAL REPLAY STATUS HUD INDICATOR (below the top toolbars so it doesn't cover them) */}
+      {showReplayBar && (maxPlaybackDurationSec || 0) > 0 && (
+        <div className="hidden md:flex absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-canvas/95 border border-line px-4 py-1.5 rounded-full items-center gap-2.5 text-xs text-ink-muted">
+          <span className="font-bold text-ink">Replay</span>
+          <span className="text-accent font-bold">
+            {((sec: number) => `${Math.floor(sec / 60).toString().padStart(2, '0')}:${Math.floor(sec % 60).toString().padStart(2, '0')}`)(playbackTimeSec || 0)}
           </span>
-          <span className="text-[#64748B]">/ {Math.floor((maxPlaybackDurationSec || 1800) / 60)}:00</span>
+          <span>/ {((sec: number) => `${Math.floor(sec / 60).toString().padStart(2, '0')}:${Math.floor(sec % 60).toString().padStart(2, '0')}`)(maxPlaybackDurationSec || 0)}</span>
         </div>
       )}
 
       {/* FLOATING ACTIVE PLACEMENT BANNER HUD */}
       {courseEditMode !== 'NONE' && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 pointer-events-auto bg-[#060B16]/95 border-2 border-[#FBBC04] text-white px-5 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(251,188,4,0.4)] backdrop-blur-md flex items-center gap-3 font-google animate-bounce">
-          <div className="w-7 h-7 rounded-full bg-[#FBBC04] text-black font-bold text-xs flex items-center justify-center font-mono">
-            {courseEditMode === 'DROP_MARK' ? `#${sequentialMarksCount + 1}` : '🎯'}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 pointer-events-auto bg-canvas/95 border-2 border-warning-ink text-ink px-5 py-2.5 rounded-2xl backdrop-blur-md flex items-center gap-3">
+          <div className="w-7 h-7 rounded-full bg-warning-ink text-canvas font-bold text-xs flex items-center justify-center">
+            {courseEditMode === 'DROP_MARK' ? `#${sequentialMarksCount + 1}` : '+'}
           </div>
           <div>
-            <div className="text-xs font-bold text-[#FBBC04]">
+            <div className="text-xs font-bold text-warning-ink">
               {courseEditMode === 'DROP_MARK' && `Click anywhere on map to drop Mark #${sequentialMarksCount + 1}`}
               {courseEditMode === 'SET_START_PIN' && 'Click on map to place Start Pin End (Port)'}
               {courseEditMode === 'SET_START_RC' && 'Click on map to place Start RC Vessel (Starboard)'}
               {courseEditMode === 'SET_FINISH_PIN' && 'Click on map to place Finish Line Pin'}
               {courseEditMode === 'SET_FINISH_RC' && 'Click on map to place Finish RC Vessel'}
             </div>
-            <div className="text-[10px] text-[#94A3B8] font-mono">
+            <div className="text-xs text-ink-muted">
               Draggable buoy markers can be moved and reordered at any time.
             </div>
           </div>
           <button
             onClick={() => setCourseEditMode('NONE')}
-            className="ml-2 px-2.5 py-1 bg-[#1E293B] hover:bg-slate-700 text-[#94A3B8] hover:text-white rounded-lg text-xs font-mono font-bold transition-colors"
+            className="ml-2 px-2.5 py-1 bg-raised hover:bg-raised text-ink-muted hover:text-ink rounded-lg text-xs font-bold transition-colors"
           >
             Cancel (ESC)
           </button>
@@ -1068,27 +999,25 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       {/* FLOATING HEADER CONTROLS HUD */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 sm:gap-2 max-w-[calc(100vw-80px)] landscape:max-w-[calc(100vw-180px)] sm:max-w-none overflow-x-auto no-scrollbar py-0.5 pointer-events-auto">
         {/* Fleet Dashboard Sidebar Toggle for Tablets / Horizontal Screens (Icon Button) */}
-        {onToggleSidebar && (
+        {/* The sidebar collapses from its own button; this is the way back */}
+        {onToggleSidebar && !isSidebarOpen && (
           <button
             onClick={onToggleSidebar}
-            className={`p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md ${
-              isSidebarOpen
-                ? 'bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/40 hover:bg-[#00D4FF]/30'
-                : 'bg-[#060B16]/90 hover:bg-[#1E293B] border border-[#00D4FF]/70 text-[#00D4FF] shadow-[0_0_12px_rgba(0,212,255,0.3)] animate-pulse'
-            }`}
-            title={isSidebarOpen ? 'Expand Map (Collapse sidebar)' : 'Restore Sidebar (Exit full map)'}
+            className="px-2.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg flex items-center gap-1.5 backdrop-blur-md bg-canvas/90 hover:bg-raised border border-accent/70 text-accent"
           >
-            {isSidebarOpen ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+            <Minimize2 className="w-4 h-4" />
+            <span>Show sidebar</span>
           </button>
         )}
 
         {/* Fit All Fleet Button (Sized like Replay icon button) */}
         <button
           onClick={handleFitAllFleet}
-          className="p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md bg-[#060B16]/90 hover:bg-[#1E293B] border border-[#00FF9D]/40 text-[#00FF9D]"
+          className="min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center bg-surface/95 hover:bg-raised border border-line text-ink"
           title="Fit All Fleet & Marks (Zoom to view fleet)"
         >
-          <Crosshair className="w-4 h-4 text-[#00FF9D]" />
+          <Crosshair className="w-4 h-4" />
+          <span className="hidden md:inline ml-1.5">Fit all</span>
         </button>
 
         {/* Active Device Quick Finder Button (Sized like Replay icon button) */}
@@ -1100,12 +1029,12 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
                 mapRef.current.flyTo([target.lat, target.lng], 15);
               }
             }}
-            className="p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(0,212,255,0.3)] flex items-center justify-center backdrop-blur-md bg-[#060B16]/90 hover:bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF] relative animate-pulse"
+            className="p-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center backdrop-blur-md bg-canvas/90 hover:bg-accent/20 border border-accent text-accent relative"
             title={`Zoom to Active Mobile Device: ${mobileNodes[0].shortName || mobileNodes[0].longName.slice(0, 8)} (${mobileNodes.length} active)`}
           >
-            <Smartphone className="w-4 h-4 text-[#00D4FF]" />
+            <Smartphone className="w-4 h-4 text-accent" />
             {mobileNodes.length > 1 && (
-              <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-[#00D4FF] text-black font-mono text-[8px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-accent text-on-accent text-xs font-bold flex items-center justify-center">
                 {mobileNodes.length}
               </span>
             )}
@@ -1113,54 +1042,24 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         )}
 
         {/* Race Control Console Floating Map Trigger (Race Manager icon) */}
-        {viewMode !== 'SPECTATOR' && onToggleRcConsoleOverlay && (
-          <button
-            onClick={onToggleRcConsoleOverlay}
-            className={`p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md ${
-              showRcConsoleOverlay
-                ? 'bg-[#FBBC04] text-black shadow-[0_0_12px_rgba(251,188,4,0.4)]'
-                : 'bg-[#060B16]/90 hover:bg-[#1E293B] border border-[#FBBC04]/50 text-[#FBBC04]'
-            }`}
-            title={showRcConsoleOverlay ? 'Close Race Control' : 'Open Race Control (Race Committee Controls)'}
-          >
-            <Compass className="w-4 h-4" />
-          </button>
-        )}
 
         {/* Rank (Leaderboard & Fleet) Floating Map Trigger */}
-        {onToggleLeaderboardOverlay && (
-          <button
-            onClick={onToggleLeaderboardOverlay}
-            className={`p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md relative ${
-              showLeaderboardOverlay
-                ? 'bg-[#00D4FF] text-black shadow-[0_0_12px_rgba(0,212,255,0.4)]'
-                : 'bg-[#060B16]/90 hover:bg-[#1E293B] border border-[#00D4FF]/50 text-[#00D4FF]'
-            }`}
-            title={showLeaderboardOverlay ? 'Close Rank & Fleet' : 'Open Rank (Fleet Leaderboard)'}
-          >
-            <Sailboat className="w-4 h-4" />
-            {boats.length > 0 && (
-              <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-[#00D4FF] text-black font-mono text-[8px] font-bold flex items-center justify-center">
-                {boats.length}
-              </span>
-            )}
-          </button>
-        )}
 
         {/* Course Designer Floating Map Trigger (Dotted Track Route icon) */}
         {viewMode !== 'SPECTATOR' && (
           <button
             onClick={() => setIsCourseBarOpen((prev) => !prev)}
-            className={`p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md relative ${
+            className={`min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center relative ${
               isCourseBarOpen
-                ? 'bg-[#FBBC04] text-black shadow-[0_0_12px_rgba(251,188,4,0.4)]'
-                : 'bg-[#060B16]/90 hover:bg-[#1E293B] border border-[#FBBC04]/60 text-[#FBBC04]'
+                ? 'bg-accent text-on-accent border border-accent'
+                : 'bg-surface/95 hover:bg-raised border border-line text-ink'
             }`}
             title={isCourseBarOpen ? 'Close Course Editor' : 'Open Course Tools & Mark Layouts'}
           >
             <Route className="w-4 h-4" />
+            <span className="hidden md:inline ml-1.5">Course</span>
             {marks.length > 0 && (
-              <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-[#FBBC04] text-black font-mono text-[8px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-warning-ink text-canvas text-xs font-bold flex items-center justify-center">
                 {marks.length}
               </span>
             )}
@@ -1171,7 +1070,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         {boats.length >= 2 && (
           <button
             onClick={() => onOpenHeadToHead(boats[0].id, boats[1].id)}
-            className="p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(0,212,255,0.4)] flex items-center justify-center bg-[#00D4FF] hover:bg-cyan-300 text-[#020408]"
+            className="p-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center bg-accent hover:brightness-110 text-on-accent"
             title="Open Head-to-Head Comparison"
           >
             <Zap className="w-4 h-4" />
@@ -1182,14 +1081,15 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         {onToggleReplayBar && (
           <button
             onClick={onToggleReplayBar}
-            className={`p-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg flex items-center justify-center backdrop-blur-md ${
+            className={`min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center ${
               showReplayBar
-                ? 'bg-[#FFB800] text-black shadow-[0_0_12px_rgba(255,184,0,0.4)]'
-                : 'bg-[#060B16]/90 hover:bg-[#1E293B] border border-[#FFB800]/50 text-[#FFB800]'
+                ? 'bg-accent text-on-accent border border-accent'
+                : 'bg-surface/95 hover:bg-raised border border-line text-ink'
             }`}
             title={showReplayBar ? 'Close Race Replay Controls' : 'Open Race Replay Timeline & Controls'}
           >
             <RotateCcw className="w-4 h-4" />
+            <span className="hidden md:inline ml-1.5">Replay</span>
           </button>
         )}
       </div>
@@ -1201,20 +1101,18 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           <button
             id="map-control-hub-btn"
             onClick={() => onOpenHub('FLEET')}
-            className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-mono font-bold transition-all shadow-xl flex items-center gap-1.5 backdrop-blur-md cursor-pointer group shrink-0 ${
-              directSunlightMode
-                ? 'bg-black/95 text-white border border-white'
-                : 'bg-[#060B16]/90 border border-[#00D4FF]/50 hover:border-[#00D4FF] text-[#00D4FF] hover:bg-[#1E293B] shadow-[0_0_12px_rgba(0,212,255,0.25)]'
+            className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs  font-bold transition-all shadow-xl flex items-center gap-1.5 backdrop-blur-md cursor-pointer group shrink-0 ${
+              'bg-canvas/90 border border-accent/50 hover:border-accent text-accent hover:bg-raised '
             }`}
             title="Open Control Hub: Fleet, Racing, Results & System"
             aria-label="Open Control Hub"
           >
-            <SlidersHorizontal className="w-4 h-4 text-[#00D4FF] group-hover:scale-110 transition-transform shrink-0" />
-            <span className="hidden sm:inline font-google text-slate-200 group-hover:text-white tracking-wide text-xs">
+            <SlidersHorizontal className="w-4 h-4 text-accent group-hover:scale-110 transition-transform shrink-0" />
+            <span className="hidden sm:inline text-ink group-hover:text-ink text-xs">
               Control Hub
             </span>
             {boats.length > 0 && (
-              <span className="text-[10px] text-[#00D4FF] bg-[#00D4FF]/20 px-1.5 py-0.5 rounded-full font-mono font-bold">
+              <span className="text-xs text-accent bg-accent/20 px-1.5 py-0.5 rounded-full font-bold">
                 {boats.length}
               </span>
             )}
@@ -1229,20 +1127,18 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           zoomLevel={zoomLevel}
           onZoomIn={handleMapZoomIn}
           onZoomOut={handleMapZoomOut}
-          onResetZoom={handleMapReset}
           mapSize={mapSize}
           onChangeMapSize={onChangeMapSize}
-          directSunlightMode={directSunlightMode}
         />
       </div>
 
       {/* FLOATING TOP COURSE CUSTOMIZATION SLIDING TOOLBAR */}
       {viewMode !== 'SPECTATOR' && isCourseBarOpen && (
         <div className="absolute top-14 left-2 sm:left-3 z-20 pointer-events-auto flex items-center max-w-[calc(100vw-16px)] sm:max-w-2xl transition-all animate-in slide-in-from-top-2 duration-200">
-          <div className="bg-[#060B16]/95 border border-[#FBBC04]/70 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl shadow-[0_0_25px_rgba(251,188,4,0.3)] flex flex-wrap items-center gap-1 sm:gap-1.5 font-google">
-            <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-1.5 border-r border-[#1E293B] mr-0.5">
-              <Route className="w-3.5 h-3.5 text-[#FBBC04]" />
-              <span className="text-[10px] sm:text-[11px] font-bold text-white uppercase tracking-wider font-mono">
+          <div className="bg-canvas/95 border border-warning-ink/70 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl flex flex-wrap items-center gap-1 sm:gap-1.5">
+            <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-1.5 border-r border-line mr-0.5">
+              <Route className="w-3.5 h-3.5 text-warning-ink" />
+              <span className="text-xs sm:text-xs font-bold text-ink">
                 Course ({marks.length})
               </span>
             </div>
@@ -1250,10 +1146,10 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             {/* Drop Mark Button */}
             <button
               onClick={() => setCourseEditMode(courseEditMode === 'DROP_MARK' ? 'NONE' : 'DROP_MARK')}
-              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold font-google flex items-center gap-1 sm:gap-1.5 transition-all ${
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all ${
                 courseEditMode === 'DROP_MARK'
-                  ? 'bg-[#FBBC04] text-black shadow-[0_0_12px_rgba(251,188,4,0.5)]'
-                  : 'bg-[#1E293B] text-[#FBBC04] hover:bg-slate-700'
+                  ? 'bg-accent text-on-accent'
+                  : 'bg-raised text-ink hover:brightness-110'
               }`}
               title="Click to drop next sequential mark buoy"
             >
@@ -1264,10 +1160,10 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             {/* Set Start Line */}
             <button
               onClick={() => setCourseEditMode(courseEditMode === 'SET_START_PIN' ? 'NONE' : 'SET_START_PIN')}
-              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold font-google flex items-center gap-1 transition-all ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold flex items-center gap-1 transition-all ${
                 courseEditMode === 'SET_START_PIN'
-                  ? 'bg-[#00D4FF] text-black shadow-[0_0_12px_rgba(0,212,255,0.5)]'
-                  : 'bg-[#1E293B] text-[#00D4FF] hover:bg-slate-700'
+                  ? 'bg-accent text-on-accent '
+                  : 'bg-raised text-accent hover:bg-raised'
               }`}
               title="Click map to relocate Start Line Pin"
             >
@@ -1278,10 +1174,10 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             {/* Set Finish Line */}
             <button
               onClick={() => setCourseEditMode(courseEditMode === 'SET_FINISH_PIN' ? 'NONE' : 'SET_FINISH_PIN')}
-              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold font-google flex items-center gap-1 transition-all ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold flex items-center gap-1 transition-all ${
                 courseEditMode === 'SET_FINISH_PIN'
-                  ? 'bg-[#00FF9D] text-black shadow-[0_0_12px_rgba(0,255,157,0.5)]'
-                  : 'bg-[#1E293B] text-[#00FF9D] hover:bg-slate-700'
+                  ? 'bg-success-ink text-canvas '
+                  : 'bg-raised text-success-ink hover:bg-raised'
               }`}
               title="Click map to relocate Finish Line Pin"
             >
@@ -1292,10 +1188,10 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             {/* Toggle Course Legs Overlay */}
             <button
               onClick={() => setShowCourseLegs(!showCourseLegs)}
-              className={`px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-bold font-mono transition-all ${
+              className={`px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs sm:text-xs font-bold  transition-all ${
                 showCourseLegs
-                  ? 'bg-[#1E293B] text-[#FBBC04] border border-[#FBBC04]/40'
-                  : 'bg-[#0A0F1E] text-[#64748B] hover:text-white'
+                  ? 'bg-raised text-warning-ink border border-warning-ink/40'
+                  : 'bg-surface text-ink-muted hover:text-ink'
               }`}
               title="Toggle Course Legs & Distance Badges"
             >
@@ -1304,24 +1200,24 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
             {/* Course Presets Dropdown / Quick Switch */}
             {onApplyCoursePreset && (
-              <div className="hidden sm:flex items-center gap-1 border-l border-[#1E293B] pl-1.5 ml-0.5">
+              <div className="hidden sm:flex items-center gap-1 border-l border-line pl-1.5 ml-0.5">
                 <button
                   onClick={() => onApplyCoursePreset('WINDWARD_LEEWARD')}
-                  className="px-2 py-1 rounded-lg bg-[#1E293B] hover:bg-slate-700 text-[#94A3B8] hover:text-white text-[10px] font-mono transition-colors"
+                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
                   title="Apply Windward-Leeward Preset Course"
                 >
                   W/L
                 </button>
                 <button
                   onClick={() => onApplyCoursePreset('TRIANGLE')}
-                  className="px-2 py-1 rounded-lg bg-[#1E293B] hover:bg-slate-700 text-[#94A3B8] hover:text-white text-[10px] font-mono transition-colors"
+                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
                   title="Apply Olympic Triangle Preset Course"
                 >
                   Triangle
                 </button>
                 <button
                   onClick={() => onApplyCoursePreset('TRAPEZOID')}
-                  className="px-2 py-1 rounded-lg bg-[#1E293B] hover:bg-slate-700 text-[#94A3B8] hover:text-white text-[10px] font-mono transition-colors"
+                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
                   title="Apply 4-Mark Trapezoid Preset Course"
                 >
                   Trapezoid
@@ -1333,7 +1229,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
             {onOpenCourseProfiles && (
               <button
                 onClick={onOpenCourseProfiles}
-                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-[#FBBC04]/20 hover:bg-[#FBBC04]/30 border border-[#FBBC04]/50 text-[#FBBC04] text-[11px] sm:text-xs font-bold font-google flex items-center gap-1 transition-all"
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/50 text-warning-ink text-xs sm:text-xs font-bold flex items-center gap-1 transition-all"
                 title="Manage Saved Course Profiles & Buoy Layouts (Max 10)"
               >
                 <Route className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -1347,7 +1243,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
                 setIsCourseBarOpen(false);
                 setCourseEditMode('NONE');
               }}
-              className="px-2.5 py-1 sm:py-1.5 rounded-xl bg-[#FBBC04] text-black hover:bg-amber-300 font-bold text-xs font-mono flex items-center gap-1 shadow-md transition-all ml-1"
+              className="px-2.5 py-1 sm:py-1.5 rounded-xl bg-warning-ink text-canvas hover:brightness-110 font-bold text-xs flex items-center gap-1 shadow-md transition-all ml-1"
               title="Done editing course (Slide bar back in)"
             >
               <Check className="w-3.5 h-3.5" />

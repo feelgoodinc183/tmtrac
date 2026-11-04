@@ -204,7 +204,7 @@ export interface MeshtasticNode {
   longName: string;       // e.g. "T-Echo-WindRunner" or "LilyGO T-Echo nRF52840"
   shortName: string;      // e.g. "7A2C"
   mac: string;            // e.g. "24:6F:28:7A:2C:10"
-  battery: number;        // 0-100%
+  battery?: number;       // 0-100%, missing until the tracker reports it
   voltage?: number;       // e.g. 4.15 V
   satsInView?: number;    // e.g. 11
   satsInFix?: number;     // e.g. 9
@@ -214,9 +214,9 @@ export interface MeshtasticNode {
   headingDeg?: number;    // e.g. 312°
   lat?: number;
   lng?: number;
-  snr: number;            // dB, e.g. +4.5
-  rssi: number;           // dBm, e.g. -78
-  hops: number;           // 0-4
+  snr?: number;           // dB, e.g. +4.5; missing until a packet reports it
+  rssi?: number;          // dBm, e.g. -78
+  hops?: number;          // 0-4
   boundBoatId: string | null; // e.g. "boat-1"
   status: 'OPTIMAL' | 'DEGRADED' | 'OFFLINE';
   connectionType?: 'BLE' | 'USB' | 'LORA_MESH' | 'MALAYSIA_PUBLIC_LORA' | 'MQTT' | 'DEVICE_GPS' | 'PHONE' | 'TABLET' | 'PC';

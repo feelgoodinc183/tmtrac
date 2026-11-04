@@ -11,17 +11,13 @@ import {
   CheckCircle2,
   Anchor,
   Activity,
-  Layers,
   Crosshair,
-  Maximize2,
   Trash2,
-  MapPin,
   RefreshCw,
   Sliders,
   Check,
   Play,
   Pause,
-  Timer,
   Zap,
   Gauge,
   Thermometer,
@@ -29,9 +25,7 @@ import {
   Wind,
   MessageSquare,
   Send,
-  Filter,
   Terminal,
-  ArrowDownCircle,
 } from 'lucide-react';
 import { MeshtasticNode, Boat } from '../types/regatta';
 import { formatLastHeard, safeFixed } from '../utils/formatters';
@@ -48,7 +42,6 @@ interface NodeTelemetryModalProps {
   onClose: () => void;
   followedTargetId: string | null;
   onToggleFollow: (id: string, name: string) => void;
-  onPingNode?: (nodeId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
 }
 
@@ -61,7 +54,6 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   onClose,
   followedTargetId,
   onToggleFollow,
-  onPingNode,
   onDeleteNode,
 }) => {
   const [isCalibrating, setIsCalibrating] = useState(false);
@@ -84,7 +76,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageFeedback, setMessageFeedback] = useState<string | null>(null);
   const packetsEndRef = useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [autoScroll] = useState(true);
 
   const targetId = boat ? boat.id : (node ? node.id : '');
   const targetName = boat ? boat.name : (node ? node.longName : 'Node');
@@ -162,20 +154,20 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
   if (!isOpen || (!node && !boat)) return null;
 
-  // Telemetry attributes resolution (Strict real values, no dummy fallbacks)
+  // Telemetry: only what the tracker reported; missing readings show as a dash
   const batteryPct = node?.battery;
   const voltage = node?.voltage;
-  const satsInView = node?.satsInView ?? 0;
-  const satsInFix = node?.satsInFix ?? 0;
+  const satsInView = node?.satsInView;
+  const satsInFix = node?.satsInFix;
   const speed = boat ? (boat.sog ?? 0) : (node?.speedKt ?? 0);
   const heading = boat ? (boat.cog ?? 0) : (node?.headingDeg ?? 0);
   const lat = boat ? (boat.lat ?? 0) : (node?.lat ?? 0);
   const lng = boat ? (boat.lng ?? 0) : (node?.lng ?? 0);
-  const snr = node?.snr ?? 0;
-  const rssi = node?.rssi ?? 0;
-  const hops = node?.hops ?? 0;
+  const snr = node?.snr;
+  const rssi = node?.rssi;
+  const hops = node?.hops;
   const hardware = node?.hardwareModel || 'Meshtastic Hardware Node';
-  const firmware = node?.firmwareVersion || 'v2.5.x';
+  const firmware = node?.firmwareVersion || '—';
   const connType = node?.connectionType || (node?.isBluetoothConnected ? 'BLE' : 'LORA_MESH');
 
   // BME280 / Environmental Metrics
@@ -280,43 +272,43 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[120] bg-canvas/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-3xl bg-[#080D1A]/95 border border-[#1E293B] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] min-h-0 text-[#E0E6ED]">
+      <div className="w-full max-w-3xl bg-canvas/95 border border-line rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] min-h-0 text-ink">
         {/* Modal Header */}
-        <div className="px-5 py-3.5 bg-[#060B16] border-b border-[#1E293B] flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 bg-canvas border-b border-line flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-2xl border ${
               node?.isBluetoothConnected
-                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-                : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                ? 'bg-accent/20 text-accent border-accent/40'
+                : 'bg-success-ink/20 text-success-ink border-success-ink/40'
             }`}>
               {node?.isBluetoothConnected ? (
-                <Zap className="w-5 h-5 animate-pulse" />
+                <Zap className="w-5 h-5" />
               ) : (
                 <Radio className="w-5 h-5" />
               )}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-white font-google">{targetName}</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                <h3 className="text-base font-bold text-ink">{targetName}</h3>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-accent/20 text-accent border border-accent/40">
                   {node?.id || boat?.nodeId || 'LOCAL_NODE'}
                 </span>
                 {node?.isBluetoothConnected && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-[#00FF9D]/20 text-[#00FF9D] border border-[#00FF9D]/40 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00FF9D] animate-ping" />
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-success-ink/20 text-success-ink border border-success-ink/40 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success-ink" />
                     BLE Connected
                   </span>
                 )}
                 {sensorModel && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                    <Gauge className="w-3 h-3 text-emerald-400" />
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-success-ink/20 text-success-ink border border-success-ink/40 flex items-center gap-1">
+                    <Gauge className="w-3 h-3 text-success-ink" />
                     {sensorModel}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 {hardware} • {connType} • Last Ping: {formatLastHeard(node?.lastPingTime)}
               </p>
             </div>
@@ -325,10 +317,10 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => onToggleFollow(targetId, targetName)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-google flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 isFollowing
-                  ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
-                  : 'bg-[#00D4FF] hover:bg-cyan-300 text-black font-bold'
+                  ? 'bg-warning-ink text-canvas hover:brightness-110'
+                  : 'bg-accent hover:brightness-110 text-on-accent font-bold'
               }`}
             >
               <Crosshair className={`w-3.5 h-3.5 ${isFollowing ? 'animate-spin' : ''}`} />
@@ -337,7 +329,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-raised/80 hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -347,26 +339,26 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
         {/* Modal Scrollable Body */}
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           {/* REAL-TIME AUTO GPS SYNC CONTROL BAR */}
-          <div className="p-4 bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-[#0A1128] border border-cyan-500/40 rounded-2xl space-y-3 shadow-lg">
+          <div className="p-4 bg-gradient-to-r from-surface/40 via-surface/30 to-surface border border-accent/40 rounded-2xl space-y-3 shadow-lg">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/40">
-                  <Activity className="w-4 h-4 animate-pulse" />
+                <div className="p-2 bg-accent/20 text-accent rounded-xl border border-accent/40">
+                  <Activity className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white font-google">
+                    <span className="text-xs font-bold text-ink">
                       Real-time LoRa & GPS Telemetry Stream
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold font-mono ${
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold  ${
                       autoGps.enabled
-                        ? 'bg-[#00FF9D]/20 text-[#00FF9D] border border-[#00FF9D]/40 animate-pulse'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        ? 'bg-success-ink/20 text-success-ink border border-success-ink/40 '
+                        : 'bg-raised text-ink-muted border border-line'
                     }`}>
                       {autoGps.enabled ? 'STREAMING ACTIVE' : 'PAUSED'}
                     </span>
                   </div>
-                  <p className="text-[11px] font-mono text-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Continuous high-frequency LoRa RF broadcast and position push
                   </p>
                 </div>
@@ -375,10 +367,10 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleToggleAutoSync}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-md ${
+                  className={`px-3 py-1.5 rounded-lg text-xs  font-bold flex items-center gap-1.5 transition-all shadow-md ${
                     autoGps.enabled
-                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                      : 'bg-[#00FF9D] hover:bg-emerald-300 text-slate-950'
+                      ? 'bg-warning-ink/20 hover:bg-warning-ink/30 text-warning-ink border border-warning-ink/50'
+                      : 'bg-success-ink hover:brightness-110 text-canvas'
                   }`}
                 >
                   {autoGps.enabled ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
@@ -388,7 +380,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 <button
                   onClick={handleForceGpsSync}
                   disabled={isGeoLoading || autoGps.isSyncing}
-                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+                  className="px-2.5 py-1.5 rounded-lg bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
                   title="Force immediate GPS position sync"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${(isGeoLoading || autoGps.isSyncing) ? 'animate-spin' : ''}`} />
@@ -397,19 +389,19 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
                 <button
                   onClick={() => setIsCalibrating(!isCalibrating)}
-                  className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono flex items-center gap-1 transition-colors"
+                  className="px-2 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs flex items-center gap-1 transition-colors"
                   title="Enter manual coordinates"
                 >
-                  <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                  <Sliders className="w-3.5 h-3.5 text-accent" />
                   <span>{isCalibrating ? 'Close' : 'Calibrate'}</span>
                 </button>
               </div>
             </div>
 
             {/* Interval Selector Bar */}
-            <div className="p-2.5 bg-[#060B16] rounded-xl border border-[#1E293B] flex flex-wrap items-center justify-between gap-2.5">
+            <div className="p-2.5 bg-canvas rounded-xl border border-line flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+                <span className="text-xs text-ink-muted font-bold">
                   Update Interval:
                 </span>
                 <div className="flex items-center gap-1 flex-wrap">
@@ -417,10 +409,10 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                     <button
                       key={secs}
                       onClick={() => handleSelectInterval(secs)}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold transition-all ${
+                      className={`px-2 py-0.5 rounded-md text-xs  font-bold transition-all ${
                         selectedInterval === secs && !showCustomInterval
-                          ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
+                          ? 'bg-accent text-on-accent shadow-sm'
+                          : 'bg-raised hover:bg-raised text-ink border border-line/60'
                       }`}
                     >
                       {secs}s
@@ -428,10 +420,10 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                   ))}
                   <button
                     onClick={() => setShowCustomInterval(!showCustomInterval)}
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold transition-all ${
+                    className={`px-2 py-0.5 rounded-md text-xs  font-bold transition-all ${
                       showCustomInterval
-                        ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
+                        ? 'bg-accent text-on-accent shadow-sm'
+                        : 'bg-raised hover:bg-raised text-ink border border-line/60'
                     }`}
                   >
                     Custom
@@ -442,17 +434,17 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
               {/* Countdown or Sync Status Ticker */}
               <div className="flex items-center gap-2">
                 {autoGps.enabled ? (
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-lg text-cyan-300">
+                  <div className="flex items-center gap-1.5 text-xs bg-surface/60 border border-accent/30 px-2 py-0.5 rounded-lg text-accent">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00FF9D] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00FF9D]"></span>
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-success-ink opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-success-ink"></span>
                     </span>
-                    <span>Next update: <strong className="text-white font-bold">{countdownSec}s</strong></span>
-                    <span className="text-slate-500">|</span>
-                    <span className="text-slate-400">Syncs: <strong className="text-cyan-200">{autoGps.syncCount}</strong></span>
+                    <span>Next update: <strong className="text-ink font-bold">{countdownSec}s</strong></span>
+                    <span className="text-ink-muted">|</span>
+                    <span className="text-ink-muted">Syncs: <strong className="text-accent">{autoGps.syncCount}</strong></span>
                   </div>
                 ) : (
-                  <span className="text-[10px] font-mono text-slate-500">
+                  <span className="text-xs text-ink-muted">
                     Click 'Start Stream' to broadcast real-time packets
                   </span>
                 )}
@@ -461,8 +453,8 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
             {/* Custom Interval Form (if opened) */}
             {showCustomInterval && (
-              <div className="p-3 bg-[#060B16] rounded-xl border border-cyan-500/40 flex items-center gap-2 animate-fadeIn">
-                <span className="text-xs font-mono text-slate-300">Set custom interval (1 - 300s):</span>
+              <div className="p-3 bg-canvas rounded-xl border border-accent/40 flex items-center gap-2 animate-fadeIn">
+                <span className="text-xs text-ink">Set custom interval (1 - 300s):</span>
                 <input
                   type="number"
                   min="1"
@@ -470,11 +462,11 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                   value={customIntervalInput}
                   onChange={(e) => setCustomIntervalInput(e.target.value)}
                   placeholder="e.g. 8"
-                  className="w-24 px-2.5 py-1 bg-[#0D182E] border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  className="w-24 px-2.5 py-1 bg-surface border border-line rounded-lg text-ink text-xs focus:border-accent focus:outline-none"
                 />
                 <button
                   onClick={handleApplyCustomInterval}
-                  className="px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono rounded-lg transition-colors"
+                  className="px-3 py-1 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-lg transition-colors"
                 >
                   Apply
                 </button>
@@ -482,59 +474,59 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
             )}
 
             {/* Current Coordinates & Real-time Metrics Display */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-slate-300 bg-[#060B16] p-2.5 rounded-lg border border-[#1E293B]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink bg-canvas p-2.5 rounded-lg border border-line">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Current Position: </span>
-                <strong className="text-white font-bold">{lat.toFixed(5)}° N, {lng.toFixed(5)}° E</strong>
+                <span className="text-ink-muted">Current Position: </span>
+                <strong className="text-ink font-bold">{lat.toFixed(5)}° N, {lng.toFixed(5)}° E</strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">GPS Fix & Accuracy: </span>
-                <strong className={node?.gpsFix ? 'text-[#00FF9D]' : 'text-amber-400'}>
-                  {node?.gpsFix ? `3D Lock (${satsInFix || 8} Sats${autoGps.accuracyMeters ? ` • ±${autoGps.accuracyMeters}m` : ''})` : 'Indoor / Acquiring'}
+                <span className="text-ink-muted">GPS Fix & Accuracy: </span>
+                <strong className={node?.gpsFix ? 'text-success-ink' : 'text-warning-ink'}>
+                  {node?.gpsFix ? `3D Lock (${satsInFix ?? '—'} Sats${autoGps.accuracyMeters ? ` • ±${autoGps.accuracyMeters}m` : ''})` : 'Indoor / Acquiring'}
                 </strong>
               </div>
             </div>
 
             {/* Calibration Input Form */}
             {isCalibrating && (
-              <div className="p-3 bg-[#060B16] rounded-xl border border-cyan-500/40 space-y-2.5 animate-fadeIn">
-                <p className="text-[11px] font-mono text-cyan-200">
+              <div className="p-3 bg-canvas rounded-xl border border-accent/40 space-y-2.5 animate-fadeIn">
+                <p className="text-xs text-accent">
                   Enter exact latitude and longitude coordinates for this node / boat:
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-mono text-slate-400 block mb-1">Latitude (°N/S)</label>
+                    <label className="text-xs text-ink-muted block mb-1">Latitude (°N/S)</label>
                     <input
                       type="number"
                       step="0.00001"
                       value={customLat}
                       onChange={(e) => setCustomLat(e.target.value)}
                       placeholder="e.g. 6.3080"
-                      className="w-full px-3 py-1.5 bg-[#0D182E] border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-1.5 bg-surface border border-line rounded-lg text-ink text-xs focus:border-accent focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-mono text-slate-400 block mb-1">Longitude (°E/W)</label>
+                    <label className="text-xs text-ink-muted block mb-1">Longitude (°E/W)</label>
                     <input
                       type="number"
                       step="0.00001"
                       value={customLng}
                       onChange={(e) => setCustomLng(e.target.value)}
                       placeholder="e.g. 99.8200"
-                      className="w-full px-3 py-1.5 bg-[#0D182E] border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-1.5 bg-surface border border-line rounded-lg text-ink text-xs focus:border-accent focus:outline-none"
                     />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <button
                     onClick={() => setIsCalibrating(false)}
-                    className="px-3 py-1 bg-slate-800 text-slate-300 text-xs font-mono rounded-lg hover:bg-slate-700"
+                    className="px-3 py-1 bg-raised text-ink text-xs rounded-lg hover:bg-raised"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSaveCustomCoords}
-                    className="px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono rounded-lg flex items-center gap-1 shadow-md"
+                    className="px-3 py-1 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-lg flex items-center gap-1 shadow-md"
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>Apply Calibration</span>
@@ -544,7 +536,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
             )}
 
             {syncStatus && (
-              <p className="text-[11px] font-mono text-[#00FF9D] bg-[#00FF9D]/10 p-2 rounded border border-[#00FF9D]/30 animate-fadeIn">
+              <p className="text-xs text-success-ink bg-success-ink/10 p-2 rounded border border-success-ink/30 animate-fadeIn">
                 {syncStatus}
               </p>
             )}
@@ -553,69 +545,69 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
           {/* Key Quick Stats Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Battery */}
-            <div className="p-3.5 bg-[#0D182E] border border-[#1E293B] rounded-xl flex flex-col">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <div className="p-3.5 bg-surface border border-line rounded-xl flex flex-col">
+              <div className="flex items-center justify-between text-ink-muted text-xs">
                 <span>BATTERY</span>
-                <BatteryCharging className="w-4 h-4 text-emerald-400" />
+                <BatteryCharging className="w-4 h-4 text-success-ink" />
               </div>
-              <div className="mt-2 text-xl font-bold text-white font-google flex items-baseline gap-1">
+              <div className="mt-2 text-xl font-bold text-ink flex items-baseline gap-1">
                 {batteryPct !== undefined ? `${batteryPct}%` : 'N/A'}
-                {voltage ? <span className="text-xs text-slate-400 font-normal">{voltage}V</span> : null}
+                {voltage ? <span className="text-xs text-ink-muted font-normal">{voltage}V</span> : null}
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+              <div className="w-full bg-raised rounded-full h-1.5 mt-2 overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${(batteryPct ?? 100) < 20 ? 'bg-red-500' : (batteryPct ?? 100) < 50 ? 'bg-amber-500' : 'bg-emerald-400'}`}
+                  className={`h-full rounded-full ${(batteryPct ?? 100) < 20 ? 'bg-danger' : (batteryPct ?? 100) < 50 ? 'bg-warning-ink' : 'bg-success-ink'}`}
                   style={{ width: `${batteryPct ?? 0}%` }}
                 />
               </div>
             </div>
 
             {/* Speed SOG */}
-            <div className="p-3.5 bg-[#0D182E] border border-[#1E293B] rounded-xl flex flex-col">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <div className="p-3.5 bg-surface border border-line rounded-xl flex flex-col">
+              <div className="flex items-center justify-between text-ink-muted text-xs">
                 <span>SPEED (SOG)</span>
-                <Navigation className="w-4 h-4 text-cyan-400" />
+                <Navigation className="w-4 h-4 text-accent" />
               </div>
-              <div className="mt-2 text-xl font-bold text-cyan-300 font-google">
-                {speed.toFixed(1)} <span className="text-xs text-slate-400">kt</span>
+              <div className="mt-2 text-xl font-bold text-accent">
+                {speed.toFixed(1)} <span className="text-xs text-ink-muted">kt</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono mt-1">
+              <span className="text-xs text-ink-muted mt-1">
                 COG / Bearing: {Math.round(heading)}°
               </span>
             </div>
 
             {/* GPS Satellites */}
-            <div className="p-3.5 bg-[#0D182E] border border-[#1E293B] rounded-xl flex flex-col">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <div className="p-3.5 bg-surface border border-line rounded-xl flex flex-col">
+              <div className="flex items-center justify-between text-ink-muted text-xs">
                 <span>GPS FIX</span>
-                <Eye className="w-4 h-4 text-blue-400" />
+                <Eye className="w-4 h-4 text-accent" />
               </div>
-              <div className="mt-2 text-xl font-bold text-white font-google flex items-center gap-1.5">
+              <div className="mt-2 text-xl font-bold text-ink flex items-center gap-1.5">
                 {node?.gpsFix ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0" />
                     3D FIX
                   </>
                 ) : (
-                  <span className="text-amber-400 text-xs font-mono font-semibold">ACQUIRING FIX...</span>
+                  <span className="text-warning-ink text-xs font-semibold">ACQUIRING FIX...</span>
                 )}
               </div>
-              <span className="text-[10px] text-slate-400 font-mono mt-1">
-                {satsInFix} / {satsInView} Sats • Alt: {node?.altitudeMeters !== undefined ? `${node.altitudeMeters}m` : '--'}
+              <span className="text-xs text-ink-muted mt-1">
+                {satsInFix ?? '—'} / {satsInView ?? '—'} Sats • Alt: {node?.altitudeMeters !== undefined ? `${node.altitudeMeters}m` : '--'}
               </span>
             </div>
 
             {/* RF SNR & RSSI */}
-            <div className="p-3.5 bg-[#0D182E] border border-[#1E293B] rounded-xl flex flex-col">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <div className="p-3.5 bg-surface border border-line rounded-xl flex flex-col">
+              <div className="flex items-center justify-between text-ink-muted text-xs">
                 <span>RF SIGNAL</span>
-                <Signal className="w-4 h-4 text-indigo-400" />
+                <Signal className="w-4 h-4 text-ink-muted" />
               </div>
-              <div className="mt-2 text-xl font-bold text-white font-google">
-                {rssi} <span className="text-xs text-slate-400">dBm</span>
+              <div className="mt-2 text-xl font-bold text-ink">
+                {rssi ?? '—'} <span className="text-xs text-ink-muted">dBm</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono mt-1">
-                SNR: {snr > 0 ? `+${snr}` : snr} dB • Hops: {hops}
+              <span className="text-xs text-ink-muted mt-1">
+                SNR: {snr === undefined ? '—' : snr > 0 ? `+${snr}` : snr} dB • Hops: {hops ?? '—'}
               </span>
             </div>
           </div>
@@ -624,22 +616,22 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
           {(() => {
             const hasEnvData = pressure !== undefined || temperature !== undefined || humidity !== undefined || gasResistance !== undefined || iaq !== undefined;
             return (
-              <div className="p-4 bg-gradient-to-br from-[#06181E] to-[#0A1E26] border border-emerald-500/40 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2 flex-wrap gap-2">
+              <div className="p-4 bg-gradient-to-br from-surface to-surface border border-success-ink/40 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between border-b border-success-ink/20 pb-2 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <div className="p-2 rounded-xl bg-success-ink/20 text-success-ink border border-success-ink/30">
                       <Gauge className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-white font-google flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-ink flex items-center gap-2">
                         Environment & Atmosphere Sensors
                         {hasEnvData && (
-                          <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-bold bg-success-ink/20 text-success-ink border border-success-ink/40 px-2 py-0.5 rounded-full">
                             {sensorModel || 'I2C Sensor'}
                           </span>
                         )}
                       </h4>
-                      <p className="text-[11px] font-mono text-emerald-200/70">
+                      <p className="text-xs text-success-ink/70">
                         {hasEnvData
                           ? 'Real-time barometric pressure, ambient temperature, and relative humidity'
                           : 'No environmental telemetry packets received from this node'}
@@ -647,7 +639,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                     </div>
                   </div>
                   {!hasEnvData && (
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-2 py-1 rounded-md border border-slate-700">
+                    <span className="text-xs text-ink-muted bg-raised/80 px-2 py-1 rounded-md border border-line">
                       No Telemetry Received
                     </span>
                   )}
@@ -656,64 +648,64 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 {hasEnvData ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {/* Barometric Pressure */}
-                    <div className="p-3 bg-[#020A10] border border-emerald-500/20 rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <div className="p-3 bg-canvas border border-success-ink/20 rounded-xl">
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
                         <span>BAROMETER</span>
-                        <Wind className="w-3.5 h-3.5 text-cyan-400" />
+                        <Wind className="w-3.5 h-3.5 text-accent" />
                       </div>
-                      <div className="mt-1.5 text-lg font-bold text-white font-google">
-                        {pressure !== undefined && pressure !== null ? `${Number(pressure).toFixed(1)}` : '—'} <span className="text-xs text-emerald-400 font-mono">{pressure !== undefined && pressure !== null ? 'hPa' : ''}</span>
+                      <div className="mt-1.5 text-lg font-bold text-ink">
+                        {pressure !== undefined && pressure !== null ? `${Number(pressure).toFixed(1)}` : '—'} <span className="text-xs text-success-ink">{pressure !== undefined && pressure !== null ? 'hPa' : ''}</span>
                       </div>
-                      <span className="text-[9px] font-mono text-slate-400 block mt-0.5">
+                      <span className="text-xs text-ink-muted block mt-0.5">
                         {pressure !== undefined ? (pressure > 1013.25 ? 'High Pressure / Clear' : 'Standard Sea-Level') : 'No sensor data'}
                       </span>
                     </div>
 
                     {/* Temperature */}
-                    <div className="p-3 bg-[#020A10] border border-emerald-500/20 rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <div className="p-3 bg-canvas border border-success-ink/20 rounded-xl">
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
                         <span>TEMPERATURE</span>
-                        <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+                        <Thermometer className="w-3.5 h-3.5 text-warning-ink" />
                       </div>
-                      <div className="mt-1.5 text-lg font-bold text-white font-google">
-                        {temperature !== undefined && temperature !== null ? `${Number(temperature).toFixed(1)}` : '—'} <span className="text-xs text-amber-400 font-mono">{temperature !== undefined && temperature !== null ? '°C' : ''}</span>
+                      <div className="mt-1.5 text-lg font-bold text-ink">
+                        {temperature !== undefined && temperature !== null ? `${Number(temperature).toFixed(1)}` : '—'} <span className="text-xs text-warning-ink">{temperature !== undefined && temperature !== null ? '°C' : ''}</span>
                       </div>
-                      <span className="text-[9px] font-mono text-slate-400 block mt-0.5">
+                      <span className="text-xs text-ink-muted block mt-0.5">
                         {temperature !== undefined && temperature !== null ? `${((Number(temperature) * 9/5) + 32).toFixed(1)}°F Ambient` : 'No sensor data'}
                       </span>
                     </div>
 
                     {/* Humidity */}
-                    <div className="p-3 bg-[#020A10] border border-emerald-500/20 rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <div className="p-3 bg-canvas border border-success-ink/20 rounded-xl">
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
                         <span>HUMIDITY</span>
-                        <Droplets className="w-3.5 h-3.5 text-blue-400" />
+                        <Droplets className="w-3.5 h-3.5 text-accent" />
                       </div>
-                      <div className="mt-1.5 text-lg font-bold text-white font-google">
-                        {humidity !== undefined && humidity !== null ? `${Number(humidity).toFixed(1)}` : '—'} <span className="text-xs text-blue-400 font-mono">{humidity !== undefined && humidity !== null ? '% RH' : ''}</span>
+                      <div className="mt-1.5 text-lg font-bold text-ink">
+                        {humidity !== undefined && humidity !== null ? `${Number(humidity).toFixed(1)}` : '—'} <span className="text-xs text-accent">{humidity !== undefined && humidity !== null ? '% RH' : ''}</span>
                       </div>
-                      <span className="text-[9px] font-mono text-slate-400 block mt-0.5">
+                      <span className="text-xs text-ink-muted block mt-0.5">
                         {humidity !== undefined ? 'Marine Relative Humidity' : 'No sensor data'}
                       </span>
                     </div>
 
                     {/* Gas Resistance / IAQ */}
-                    <div className="p-3 bg-[#020A10] border border-emerald-500/20 rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <div className="p-3 bg-canvas border border-success-ink/20 rounded-xl">
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
                         <span>AIR QUALITY</span>
-                        <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                        <Activity className="w-3.5 h-3.5 text-success-ink" />
                       </div>
-                      <div className="mt-1.5 text-lg font-bold text-white font-google">
+                      <div className="mt-1.5 text-lg font-bold text-ink">
                         {iaq !== undefined ? `IAQ ${iaq}` : (gasResistance !== undefined && gasResistance !== null ? `${Number(gasResistance).toFixed(1)} kΩ` : '—')}
                       </div>
-                      <span className="text-[9px] font-mono text-emerald-400 block mt-0.5">
+                      <span className="text-xs text-success-ink block mt-0.5">
                         {iaq !== undefined || gasResistance !== undefined ? 'Fresh Oceanic Air' : 'No sensor data'}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 bg-[#020A10] border border-emerald-500/10 rounded-xl text-center">
-                    <p className="text-xs font-mono text-slate-400">
+                  <div className="p-3 bg-canvas border border-success-ink/10 rounded-xl text-center">
+                    <p className="text-xs text-ink-muted">
                       No environmental sensor attached. Connect a BME280/BMP280/SHT31 sensor to the node's I2C bus or broadcast telemetry packets over LoRa to populate this section.
                     </p>
                   </div>
@@ -725,31 +717,31 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
           {/* Detailed Hardware & Mesh Telemetry Sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Hardware & Protocol Specs */}
-            <div className="p-4 bg-[#0B132B] border border-[#1E293B] rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-white font-google border-b border-slate-800 pb-2">
-                <Cpu className="w-4 h-4 text-blue-400" />
+            <div className="p-4 bg-surface border border-line rounded-xl space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-ink border-b border-line pb-2">
+                <Cpu className="w-4 h-4 text-accent" />
                 Hardware & Device Specifications
               </div>
-              <div className="space-y-2 text-xs font-mono">
+              <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Hardware Model:</span>
-                  <span className="text-slate-200 font-medium text-right">{hardware}</span>
+                  <span className="text-ink-muted">Hardware Model:</span>
+                  <span className="text-ink font-medium text-right">{hardware}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Firmware Build:</span>
-                  <span className="text-emerald-400">{firmware}</span>
+                  <span className="text-ink-muted">Firmware Build:</span>
+                  <span className="text-success-ink">{firmware}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Transport Layer:</span>
-                  <span className="text-cyan-400 font-bold">{connType}</span>
+                  <span className="text-ink-muted">Transport Layer:</span>
+                  <span className="text-accent font-bold">{connType}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">MAC Address:</span>
-                  <span className="text-slate-300">{node?.mac || '24:6F:28:7A:2C:10'}</span>
+                  <span className="text-ink-muted">MAC Address:</span>
+                  <span className="text-ink">{node?.mac || '24:6F:28:7A:2C:10'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Region Frequency:</span>
-                  <span className="text-amber-300">
+                  <span className="text-ink-muted">Region Frequency:</span>
+                  <span className="text-warning-ink">
                     {node?.locationRegion || 'MY_919 (919-923 MHz 500mW)'}
                   </span>
                 </div>
@@ -757,33 +749,33 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
             </div>
 
             {/* GPS Coordinates & Position Telemetry */}
-            <div className="p-4 bg-[#0B132B] border border-[#1E293B] rounded-xl space-y-3">
-              <div className="flex items-center justify-between text-sm font-bold text-white font-google border-b border-slate-800 pb-2">
+            <div className="p-4 bg-surface border border-line rounded-xl space-y-3">
+              <div className="flex items-center justify-between text-sm font-bold text-ink border-b border-line pb-2">
                 <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-emerald-400" />
+                  <Compass className="w-4 h-4 text-success-ink" />
                   Live Position & Airtime Metrics
                 </div>
               </div>
-              <div className="space-y-2 text-xs font-mono">
+              <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Latitude:</span>
-                  <span className="text-white font-bold">{lat.toFixed(5)}° N</span>
+                  <span className="text-ink-muted">Latitude:</span>
+                  <span className="text-ink font-bold">{lat.toFixed(5)}° N</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Longitude:</span>
-                  <span className="text-white font-bold">{lng.toFixed(5)}° E</span>
+                  <span className="text-ink-muted">Longitude:</span>
+                  <span className="text-ink font-bold">{lng.toFixed(5)}° E</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Channel Utilization:</span>
-                  <span className="text-blue-300">{node?.channelUtil ?? 1.8}%</span>
+                  <span className="text-ink-muted">Channel Utilization:</span>
+                  <span className="text-accent">{node?.channelUtil !== undefined ? `${node.channelUtil}%` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Airtime Tx Load:</span>
-                  <span className="text-blue-300">{node?.airUtilTx ?? 0.4}%</span>
+                  <span className="text-ink-muted">Airtime Tx Load:</span>
+                  <span className="text-accent">{node?.airUtilTx !== undefined ? `${node.airUtilTx}%` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Last Heard:</span>
-                  <span className="text-[#00D4FF] font-bold">
+                  <span className="text-ink-muted">Last Heard:</span>
+                  <span className="text-accent font-bold">
                     {formatLastHeard(node?.lastPingTime)}
                   </span>
                 </div>
@@ -793,24 +785,24 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
           {/* Bound Boat Context */}
           {boat && (
-            <div className="p-4 bg-[#0B132B] border border-blue-500/30 rounded-xl flex items-center justify-between">
+            <div className="p-4 bg-surface border border-accent/30 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                <div className="p-2.5 rounded-lg bg-accent/20 text-accent border border-accent/30">
                   <Anchor className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs text-slate-400 font-mono">BOUND VESSEL REGISTRATION</div>
-                  <div className="text-base font-bold text-white font-google">{boat.name} ({boat.sailNumber})</div>
-                  <p className="text-xs text-slate-300 mt-0.5 font-mono">
+                  <div className="text-xs text-ink-muted">BOUND VESSEL REGISTRATION</div>
+                  <div className="text-base font-bold text-ink">{boat.name} ({boat.sailNumber})</div>
+                  <p className="text-xs text-ink mt-0.5">
                     Skipper: {boat.skipper} • Class: {boat.class} • Handicap Rating: {boat.handicapRating} ({boat.handicapSystem})
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs text-emerald-400 font-bold font-mono block">
+                <span className="text-xs text-success-ink font-bold block">
                   STATUS: {boat.status}
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-xs text-ink-muted">
                   DTW: {safeFixed(boat.dtw, 2, '0.00')} NM
                 </span>
               </div>
@@ -818,35 +810,35 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
           )}
 
           {/* REAL-TIME CAPTURED PACKET LOGS & LORA MESSAGES SECTION */}
-          <div className="p-4 bg-[#040812] border border-[#1E293B] rounded-2xl space-y-3">
-            <div className="flex items-center justify-between border-b border-[#1E293B] pb-2.5 flex-wrap gap-2">
+          <div className="p-4 bg-canvas border border-line rounded-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-line pb-2.5 flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/40">
+                <div className="p-2 bg-raised/20 text-ink-muted rounded-xl border border-line/40">
                   <Terminal className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white font-google flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-ink flex items-center gap-2">
                     Real-time Captured Packets & LoRa RF Stream
-                    <span className="text-[10px] font-mono bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/40">
+                    <span className="text-xs bg-raised/20 text-accent px-2 py-0.5 rounded-full border border-line/40">
                       {filteredPackets.length} Packets
                     </span>
                   </h4>
-                  <p className="text-[11px] font-mono text-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Live binary & text frames captured from this device ({targetName})
                   </p>
                 </div>
               </div>
 
               {/* Packet Type Filter Tabs */}
-              <div className="flex items-center gap-1 bg-[#0A0F1E] p-1 rounded-xl border border-[#1E293B]">
+              <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-line">
                 {(['ALL', 'TEXT', 'TELEMETRY', 'POSITION'] as const).map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setPacketFilter(filter)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
+                    className={`px-2 py-1 rounded-lg text-xs  font-bold transition-all ${
                       packetFilter === filter
-                        ? 'bg-indigo-500 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
+                        ? 'bg-raised text-ink shadow-sm'
+                        : 'text-ink-muted hover:text-ink'
                     }`}
                   >
                     {filter}
@@ -856,12 +848,12 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
             </div>
 
             {/* Packet Log Terminal Container */}
-            <div className="bg-[#02050D] border border-slate-800 rounded-xl p-3 max-h-64 overflow-y-auto font-mono text-[11px] space-y-2 custom-scrollbar">
+            <div className="bg-canvas border border-line rounded-xl p-3 max-h-64 overflow-y-auto text-xs space-y-2 custom-scrollbar">
               {filteredPackets.length === 0 ? (
-                <div className="p-6 text-center text-slate-500 space-y-1">
-                  <Radio className="w-6 h-6 mx-auto text-slate-600 animate-pulse" />
+                <div className="p-6 text-center text-ink-muted space-y-1">
+                  <Radio className="w-6 h-6 mx-auto text-ink-muted" />
                   <p>Listening for real-time LoRa packets from {targetName}...</p>
-                  <p className="text-[10px] text-slate-600">Packets arrive every 2-3s when T-Echo is streaming</p>
+                  <p className="text-xs text-ink-muted">Packets arrive every 2-3s when T-Echo is streaming</p>
                 </div>
               ) : (
                 filteredPackets.map((pkt) => {
@@ -874,23 +866,23 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                       key={pkt.id}
                       className={`p-2 rounded-lg border transition-all ${
                         isText
-                          ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                          ? 'bg-surface/20 border-warning-ink/40 text-warning-ink'
                           : isTele
-                          ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200'
+                          ? 'bg-surface/20 border-success-ink/40 text-success-ink'
                           : isPos
-                          ? 'bg-cyan-950/20 border-cyan-500/40 text-cyan-200'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-300'
+                          ? 'bg-surface/20 border-accent/40 text-accent'
+                          : 'bg-surface/60 border-line text-ink'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-[10px] opacity-75 border-b border-white/10 pb-1 mb-1">
+                      <div className="flex items-center justify-between text-xs opacity-75 border-b border-line/10 pb-1 mb-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold">{pkt.timestamp}</span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-black/40 border border-white/20">
+                          <span className="text-ink font-bold">{pkt.timestamp}</span>
+                          <span className="px-1.5 py-0.2 rounded text-xs font-bold bg-canvas/40 border border-line/20">
                             {pkt.portnum}
                           </span>
-                          <span>From: <strong className="text-white">{pkt.fromNodeName || pkt.fromNode}</strong></span>
+                          <span>From: <strong className="text-ink">{pkt.fromNodeName || pkt.fromNode}</strong></span>
                         </div>
-                        <div className="flex items-center gap-2 text-slate-400">
+                        <div className="flex items-center gap-2 text-ink-muted">
                           {pkt.snr !== undefined && <span>SNR: {pkt.snr}dB</span>}
                           {pkt.rssi !== undefined && <span>RSSI: {pkt.rssi}dBm</span>}
                           {pkt.hops !== undefined && <span>Hops: {pkt.hops}</span>}
@@ -898,20 +890,20 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                       </div>
 
                       {/* Packet Content Payload */}
-                      <div className="font-mono text-white break-words">
+                      <div className="text-ink break-words">
                         {isText ? (
-                          <div className="flex items-start gap-1.5 text-amber-300 font-semibold">
-                            <MessageSquare className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
+                          <div className="flex items-start gap-1.5 text-warning-ink font-semibold">
+                            <MessageSquare className="w-3.5 h-3.5 shrink-0 mt-0.5 text-warning-ink" />
                             <span>"{pkt.textMessage || pkt.payload}"</span>
                           </div>
                         ) : isTele ? (
-                          <div className="flex items-start gap-1.5 text-emerald-300">
-                            <Gauge className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-400" />
+                          <div className="flex items-start gap-1.5 text-success-ink">
+                            <Gauge className="w-3.5 h-3.5 shrink-0 mt-0.5 text-success-ink" />
                             <span>{pkt.payload}</span>
                           </div>
                         ) : isPos ? (
-                          <div className="flex items-start gap-1.5 text-cyan-300">
-                            <Compass className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cyan-400" />
+                          <div className="flex items-start gap-1.5 text-accent">
+                            <Compass className="w-3.5 h-3.5 shrink-0 mt-0.5 text-accent" />
                             <span>{pkt.payload}</span>
                           </div>
                         ) : (
@@ -933,14 +925,14 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                   value={outboundMessage}
                   onChange={(e) => setOutboundMessage(e.target.value)}
                   placeholder={`Send LoRa RF text message to ${targetName} or fleet...`}
-                  className="w-full pl-3 pr-8 py-2 bg-[#02050D] border border-slate-700 rounded-xl text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  className="w-full pl-3 pr-8 py-2 bg-canvas border border-line rounded-xl text-ink text-xs focus:border-accent focus:outline-none"
                 />
-                <MessageSquare className="w-4 h-4 text-slate-500 absolute right-2.5 top-2.5" />
+                <MessageSquare className="w-4 h-4 text-ink-muted absolute right-2.5 top-2.5" />
               </div>
               <button
                 type="submit"
                 disabled={isSendingMessage || !outboundMessage.trim()}
-                className="px-4 py-2 bg-[#00D4FF] hover:bg-cyan-300 disabled:opacity-50 text-slate-950 font-google font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all"
+                className="px-4 py-2 bg-accent hover:brightness-110 disabled:opacity-50 text-on-accent font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{isSendingMessage ? 'Transmitting...' : 'Send LoRa'}</span>
@@ -948,15 +940,15 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
             </form>
 
             {messageFeedback && (
-              <p className="text-[10px] font-mono text-[#00FF9D] bg-[#00FF9D]/10 p-1.5 rounded border border-[#00FF9D]/30 animate-fadeIn">
-                ✓ {messageFeedback}
+              <p className="text-xs text-success-ink bg-success-ink/10 p-1.5 rounded border border-success-ink/30 animate-fadeIn">
+                {messageFeedback}
               </p>
             )}
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3.5 bg-[#060B16]/90 border-t border-[#1E293B] flex items-center justify-between shrink-0 flex-wrap gap-2">
+        <div className="px-5 py-3.5 bg-canvas/90 border-t border-line flex items-center justify-between shrink-0 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             {onDeleteNode && node && (
               <button
@@ -964,7 +956,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                   onDeleteNode(node.id);
                   onClose();
                 }}
-                className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-google font-bold flex items-center gap-1.5 transition-colors"
+                className="px-3 py-2 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger-ink border border-danger-ink/30 text-xs font-bold flex items-center gap-1.5 transition-colors"
                 title="Remove node from system"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -975,7 +967,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-[#1E293B] hover:bg-slate-700 text-slate-200 text-xs font-google font-bold transition-colors"
+            className="px-4 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs font-bold transition-colors"
           >
             Close Inspector
           </button>

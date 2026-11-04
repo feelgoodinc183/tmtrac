@@ -1,4 +1,4 @@
-import { Boat, CourseMark, CourseLeg, MarkRounding, RaceState, BackfillPoint } from '../types/regatta';
+import { Boat, CourseMark, CourseLeg, MarkRounding, BackfillPoint } from '../types/regatta';
 
 /**
  * Great-circle distance calculation in Nautical Miles (NM)

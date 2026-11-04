@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import L from 'leaflet';
 import App from './App.tsx';
+import { SessionEndedPrompt } from './components/SessionEndedPrompt';
 import './index.css';
 
 // Global Leaflet LatLng protection to prevent any (NaN, NaN) uncaught exceptions
@@ -249,5 +250,6 @@ if (typeof window !== 'undefined') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <SessionEndedPrompt />
   </StrictMode>,
 );

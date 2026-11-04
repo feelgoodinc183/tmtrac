@@ -45,7 +45,6 @@ interface CourseProfileModalProps {
   currentWindSpeed?: number;
   activeProfileId?: string | null;
   onApplyCourse: (marks: CourseMark[], profileName: string, profileId?: string) => void;
-  directSunlightMode?: boolean;
 }
 
 export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
@@ -58,7 +57,6 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
   currentWindSpeed,
   activeProfileId,
   onApplyCourse,
-  directSunlightMode = false,
 }) => {
   const [profiles, setProfiles] = useState<CourseProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -303,30 +301,28 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200 font-google">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 bg-canvas/75 backdrop-blur-xs animate-in fade-in duration-200">
       <div
         className={`w-full max-w-4xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 flex flex-col rounded-3xl landscape:rounded-2xl border shadow-2xl overflow-hidden ${
-          directSunlightMode
-            ? 'bg-black text-white border-white'
-            : 'bg-[#0A0F1E]/95 backdrop-blur-md text-[#E0E6ED] border-[#334155]/80'
+          'bg-surface/95 backdrop-blur-md text-ink border-line/80'
         }`}
       >
         {/* MODAL HEADER */}
-        <div className="px-5 py-4 landscape:py-2.5 border-b border-[#1E293B] bg-[#060B16]/90 flex items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-4 landscape:py-2.5 border-b border-line bg-canvas/90 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#FBBC04]/15 border border-[#FBBC04]/40 flex items-center justify-center text-[#FBBC04] shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-warning-ink/15 border border-warning-ink/40 flex items-center justify-center text-warning-ink shadow-sm shrink-0">
               <MapPin className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold font-google text-white flex items-center gap-2 truncate">
+                <h2 className="text-base sm:text-lg font-bold text-ink flex items-center gap-2 truncate">
                   Course Profiles
                 </h2>
                 <span
-                  className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                  className={`text-xs  font-bold px-2.5 py-0.5 rounded-full border ${
                     isMaxReached
-                      ? 'bg-[#EA4335]/20 text-[#F28B82] border-[#EA4335]/40'
-                      : 'bg-[#00D4FF]/15 text-[#00D4FF] border-[#00D4FF]/30'
+                      ? 'bg-danger/20 text-danger-ink border-danger-ink/40'
+                      : 'bg-accent/15 text-accent border-accent/30'
                   }`}
                 >
                   {profiles.length} / {MAX_COURSE_PROFILES} SAVED
@@ -337,7 +333,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/80 transition-colors"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-colors"
             title="Close modal"
           >
             <X className="w-5 h-5" />
@@ -347,12 +343,12 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
         {/* STATUS NOTIFICATION BANNER */}
         {statusMessage && (
           <div
-            className={`px-5 py-2.5 text-xs font-mono font-bold flex items-center justify-between transition-all border-b ${
+            className={`px-5 py-2.5 text-xs  font-bold flex items-center justify-between transition-all border-b ${
               statusMessage.type === 'success'
-                ? 'bg-[#00FF9D]/15 text-[#00FF9D] border-[#00FF9D]/30'
+                ? 'bg-success-ink/15 text-success-ink border-success-ink/30'
                 : statusMessage.type === 'error'
-                ? 'bg-[#EA4335]/15 text-[#F28B82] border-[#EA4335]/30'
-                : 'bg-[#00D4FF]/15 text-[#00D4FF] border-[#00D4FF]/30'
+                ? 'bg-danger/15 text-danger-ink border-danger-ink/30'
+                : 'bg-accent/15 text-accent border-accent/30'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -373,8 +369,8 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
         {/* GLOBAL RESTORE FACTORY DEFAULTS CONFIRMATION BANNER */}
         {showRestoreConfirm && (
-          <div className="px-5 py-3 bg-[#EA4335]/15 border-b border-[#EA4335]/40 flex flex-wrap items-center justify-between gap-3 animate-in slide-in-from-top-1">
-            <div className="flex items-center gap-2 text-xs font-mono text-[#F28B82]">
+          <div className="px-5 py-3 bg-danger/15 border-b border-danger-ink/40 flex flex-wrap items-center justify-between gap-3 animate-in slide-in-from-top-1">
+            <div className="flex items-center gap-2 text-xs text-danger-ink">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>Restore factory presets (RLIR W/L, Olympic Triangle, Trapezoid)? Custom courses will be reset.</span>
             </div>
@@ -382,14 +378,14 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowRestoreConfirm(false)}
-                className="px-3 py-1 bg-[#1E293B] hover:bg-[#334155] text-xs font-mono text-white rounded-lg"
+                className="px-3 py-1 bg-raised hover:bg-raised text-xs text-ink rounded-lg"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={executeRestoreDefaults}
-                className="px-3 py-1 bg-[#EA4335] hover:bg-red-600 text-xs font-mono font-bold text-white rounded-lg shadow-sm"
+                className="px-3 py-1 bg-danger hover:brightness-110 text-xs font-bold text-on-danger rounded-lg shadow-sm"
               >
                 Yes, Restore Presets
               </button>
@@ -398,14 +394,14 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
         )}
 
         {/* CAPACITY PROGRESS BAR */}
-        <div className="w-full bg-[#0A0F1E] h-1.5 overflow-hidden">
+        <div className="w-full bg-surface h-1.5 overflow-hidden">
           <div
             className={`h-full transition-all duration-300 ${
               profiles.length >= 10
-                ? 'bg-[#EA4335]'
+                ? 'bg-danger'
                 : profiles.length >= 8
-                ? 'bg-[#FBBC04]'
-                : 'bg-[#00D4FF]'
+                ? 'bg-warning-ink'
+                : 'bg-accent'
             }`}
             style={{ width: `${(profiles.length / MAX_COURSE_PROFILES) * 100}%` }}
           />
@@ -414,19 +410,19 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
         {/* MODAL BODY */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
           {/* LOCATION PLACEMENT SELECTOR BANNER */}
-          <div className="bg-[#0A0F1E] border border-[#00D4FF]/30 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-inner">
+          <div className="bg-surface border border-accent/30 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-inner">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#00D4FF]/15 border border-[#00D4FF]/40 flex items-center justify-center text-[#00D4FF]">
+              <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/40 flex items-center justify-center text-accent">
                 <Crosshair className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-google font-bold text-white flex items-center gap-2">
+                <div className="text-xs font-bold text-ink flex items-center gap-2">
                   <span>Course Placement Location</span>
-                  <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-[#00FF9D]/15 text-[#00FF9D] border border-[#00FF9D]/30">
-                    📍 {userLocationLabel} ({safeFixed(userLat, 3)}°, ${safeFixed(userLng, 3)}°)
+                  <span className="text-xs px-2 py-0.2 rounded-full bg-success-ink/15 text-success-ink border border-success-ink/30">
+                    {userLocationLabel} ({safeFixed(userLat, 3)}°, ${safeFixed(userLng, 3)}°)
                   </span>
                 </div>
-                <p className="text-[11px] text-[#94A3B8] font-mono">
+                <p className="text-xs text-ink-muted">
                   {placementMode === 'USER_LOCATION'
                     ? 'Loading a course will automatically position the start line & marks at your current location.'
                     : 'Loading a course will use the original saved GPS coordinates.'}
@@ -435,14 +431,14 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
             </div>
 
             {/* Toggle Modes */}
-            <div className="flex items-center bg-[#121824] p-1 rounded-xl border border-[#1E293B]">
+            <div className="flex items-center bg-surface p-1 rounded-xl border border-line">
               <button
                 type="button"
                 onClick={() => setPlacementMode('USER_LOCATION')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs  font-bold flex items-center gap-1.5 transition-all ${
                   placementMode === 'USER_LOCATION'
-                    ? 'bg-[#00D4FF] text-black shadow-sm'
-                    : 'text-[#94A3B8] hover:text-white'
+                    ? 'bg-accent text-on-accent shadow-sm'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
                 title="Relocates course marks to your current location/venue"
               >
@@ -452,10 +448,10 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPlacementMode('ORIGINAL_GPS')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs  font-bold flex items-center gap-1.5 transition-all ${
                   placementMode === 'ORIGINAL_GPS'
-                    ? 'bg-[#FBBC04] text-black shadow-sm'
-                    : 'text-[#94A3B8] hover:text-white'
+                    ? 'bg-warning-ink text-canvas shadow-sm'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
                 title="Preserve exact original recorded coordinates"
               >
@@ -466,14 +462,14 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
           </div>
 
           {/* TOP CONTROLS & NEW PROFILE ACCORDION */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0A0F1E] border border-[#1E293B] p-3.5 rounded-2xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-surface border border-line p-3.5 rounded-2xl">
             <div className="flex-1 min-w-[240px]">
               <input
                 type="text"
                 placeholder="Search saved course profiles by name, notes, or location..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#121824] border border-[#1E293B] rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder-[#64748B] focus:outline-none focus:border-[#00D4FF]"
+                className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
               />
             </div>
 
@@ -481,12 +477,12 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
               <button
                 onClick={() => setIsCreatingNew((prev) => !prev)}
                 disabled={isMaxReached && !isCreatingNew}
-                className={`px-3.5 py-2 rounded-xl text-xs font-google font-bold flex items-center gap-1.5 transition-all shadow-md ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md ${
                   isCreatingNew
-                    ? 'bg-[#334155] text-white'
+                    ? 'bg-raised text-ink'
                     : isMaxReached
-                    ? 'bg-[#1E293B] text-[#64748B] cursor-not-allowed'
-                    : 'bg-[#FBBC04] hover:bg-yellow-400 text-black'
+                    ? 'bg-raised text-ink-muted cursor-not-allowed'
+                    : 'bg-warning-ink hover:brightness-110 text-canvas'
                 }`}
                 title={isMaxReached ? 'Maximum of 10 course profiles reached' : 'Save current map course as a new profile'}
               >
@@ -500,25 +496,25 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
           {isCreatingNew && (
             <form
               onSubmit={handleSaveCurrentAsNew}
-              className="bg-[#0A0F1E] border-2 border-[#FBBC04]/70 p-4 sm:p-5 rounded-2xl space-y-4 animate-in slide-in-from-top-2 duration-200"
+              className="bg-surface border-2 border-warning-ink/70 p-4 sm:p-5 rounded-2xl space-y-4 animate-in slide-in-from-top-2 duration-200"
             >
-              <div className="flex items-center justify-between border-b border-[#1E293B] pb-3">
-                <div className="flex items-center gap-2 text-sm font-google font-bold text-[#FBBC04]">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-warning-ink">
                   <Save className="w-4 h-4" />
                   <span>Save Current Active Course as New Profile</span>
                 </div>
-                <div className="text-xs font-mono text-[#94A3B8] flex items-center gap-2">
+                <div className="text-xs text-ink-muted flex items-center gap-2">
                   <span>{currentMarks.length} Marks on Map</span>
                   <span>•</span>
                   <span>{currentMarksDistance} NM Total</span>
                   <span>•</span>
-                  <span className="text-[#00D4FF]">📍 {userLocationLabel}</span>
+                  <span className="text-accent">{userLocationLabel}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider mb-1">
+                  <label className="block text-xs text-ink-muted mb-1">
                     Course Profile Name *
                   </label>
                   <input
@@ -527,12 +523,12 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                     placeholder="e.g. Langkawi 2-Lap Windward/Leeward"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full bg-[#121824] border border-[#1E293B] rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#FBBC04] focus:outline-none"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:border-warning-ink focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider mb-1">
+                  <label className="block text-xs text-ink-muted mb-1">
                     Description & Notes (Optional)
                   </label>
                   <input
@@ -540,21 +536,21 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                     placeholder="e.g. 1.2 NM beat to windward mark, port rounding"
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    className="w-full bg-[#121824] border border-[#1E293B] rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#FBBC04] focus:outline-none"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:border-warning-ink focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Mark Chips Preview */}
               <div>
-                <span className="block text-[10px] font-mono text-[#64748B] uppercase mb-1.5">
+                <span className="block text-xs text-ink-muted mb-1.5">
                   Course Marks to be saved:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {currentMarks.map((m, idx) => (
                     <span
                       key={m.id || idx}
-                      className="px-2 py-0.5 rounded-lg bg-[#121824] border border-[#1E293B] text-[10px] font-mono text-[#00D4FF] flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-lg bg-surface border border-line text-xs text-accent flex items-center gap-1"
                     >
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color || '#FBBC04' }} />
                       {m.shortName || m.name} ({m.type})
@@ -563,17 +559,17 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#1E293B]">
+              <div className="flex justify-end gap-2 pt-2 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setIsCreatingNew(false)}
-                  className="px-4 py-2 rounded-xl bg-[#121824] border border-[#1E293B] text-xs font-google text-[#94A3B8] hover:text-white"
+                  className="px-4 py-2 rounded-xl bg-surface border border-line text-xs text-ink-muted hover:text-ink"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#FBBC04] hover:bg-yellow-400 text-black font-google text-xs font-bold flex items-center gap-1.5 shadow-md"
+                  className="px-5 py-2 rounded-xl bg-warning-ink hover:brightness-110 text-canvas text-xs font-bold flex items-center gap-1.5 shadow-md"
                 >
                   <Save className="w-3.5 h-3.5" /> Save Course Profile
                 </button>
@@ -583,18 +579,18 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
           {/* PROFILES GRID */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8]">
+            <div className="flex items-center justify-between text-xs text-ink-muted">
               <span>Saved Course Profiles ({filteredProfiles.length})</span>
               <span>Sorted by Most Recent</span>
             </div>
 
             {filteredProfiles.length === 0 ? (
-              <div className="p-8 text-center bg-[#0A0F1E] border border-dashed border-[#1E293B] rounded-2xl space-y-2">
-                <MapPin className="w-8 h-8 text-[#64748B] mx-auto opacity-50" />
-                <p className="text-sm font-google text-[#94A3B8]">No course profiles match your search.</p>
+              <div className="p-8 text-center bg-surface border border-dashed border-line rounded-2xl space-y-2">
+                <MapPin className="w-8 h-8 text-ink-muted mx-auto opacity-50" />
+                <p className="text-sm text-ink-muted">No course profiles match your search.</p>
                 <button
                   onClick={() => setShowRestoreConfirm(true)}
-                  className="text-xs text-[#00D4FF] hover:underline font-mono"
+                  className="text-xs text-accent hover:underline"
                 >
                   Restore default course presets
                 </button>
@@ -613,8 +609,8 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                       key={profile.id}
                       className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
                         isActive
-                          ? 'bg-[#0A0F1E] border-[#00D4FF] shadow-[0_0_15px_rgba(0,212,255,0.25)]'
-                          : 'bg-[#0A0F1E] border-[#1E293B] hover:border-[#334155]'
+                          ? 'bg-surface border-accent '
+                          : 'bg-surface border-line hover:border-line'
                       }`}
                     >
                       {/* CARD TOP: NAME & BADGES */}
@@ -625,28 +621,28 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                               type="text"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
-                              className="w-full bg-[#121824] border border-[#00D4FF] rounded-lg px-2.5 py-1 text-xs font-mono text-white focus:outline-none"
+                              className="w-full bg-surface border border-accent rounded-lg px-2.5 py-1 text-xs text-ink focus:outline-none"
                               placeholder="Course Profile Name"
                             />
                             <input
                               type="text"
                               value={editDesc}
                               onChange={(e) => setEditDesc(e.target.value)}
-                              className="w-full bg-[#121824] border border-[#1E293B] rounded-lg px-2.5 py-1 text-[11px] font-mono text-[#94A3B8] focus:outline-none"
+                              className="w-full bg-surface border border-line rounded-lg px-2.5 py-1 text-xs text-ink-muted focus:outline-none"
                               placeholder="Description..."
                             />
                             <div className="flex gap-1.5 justify-end">
                               <button
                                 type="button"
                                 onClick={() => setEditingProfileId(null)}
-                                className="px-2.5 py-1 rounded bg-[#1E293B] text-[10px] font-mono text-[#94A3B8]"
+                                className="px-2.5 py-1 rounded bg-raised text-xs text-ink-muted"
                               >
                                 Cancel
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleSaveEdit(profile.id)}
-                                className="px-3 py-1 rounded bg-[#00D4FF] text-[10px] font-mono font-bold text-black"
+                                className="px-3 py-1 rounded bg-accent text-xs font-bold text-on-accent"
                               >
                                 Save Changes
                               </button>
@@ -656,17 +652,17 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2">
-                                <h3 className="font-google font-bold text-sm text-white flex items-center gap-1.5">
+                                <h3 className="font-bold text-sm text-ink flex items-center gap-1.5">
                                   {profile.name}
                                 </h3>
                                 {isActive && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/40">
+                                  <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent border border-accent/40">
                                     ACTIVE
                                   </span>
                                 )}
                               </div>
                               {profile.description && (
-                                <p className="text-xs text-[#94A3B8] font-sans mt-0.5 line-clamp-2">
+                                <p className="text-xs text-ink-muted font-sans mt-0.5 line-clamp-2">
                                   {profile.description}
                                 </p>
                               )}
@@ -675,7 +671,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleStartEdit(profile)}
-                              className="p-1 rounded text-[#64748B] hover:text-[#00D4FF] hover:bg-[#1E293B] transition-colors"
+                              className="p-1 rounded text-ink-muted hover:text-accent hover:bg-raised transition-colors"
                               title="Edit profile name & notes"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -684,25 +680,25 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                         )}
 
                         {/* METRICS & MARKS SUMMARY */}
-                        <div className="flex flex-wrap items-center gap-2 mt-2.5 text-[11px] font-mono text-[#94A3B8]">
-                          <span className="px-2 py-0.5 rounded bg-[#121824] border border-[#1E293B] text-white font-bold flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-[#FBBC04]" />
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5 text-xs text-ink-muted">
+                          <span className="px-2 py-0.5 rounded bg-surface border border-line text-ink font-bold flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-warning-ink" />
                             {profile.marks.length} Marks
                           </span>
 
-                          <span className="px-2 py-0.5 rounded bg-[#121824] border border-[#1E293B] text-[#00FF9D] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-surface border border-line text-success-ink font-bold">
                             {totalDist} NM
                           </span>
 
                           {profile.windDirectionDeg !== undefined && (
-                            <span className="px-2 py-0.5 rounded bg-[#121824] border border-[#1E293B] text-[#81C995] flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded bg-surface border border-line text-success-ink flex items-center gap-1">
                               <Wind className="w-3 h-3" />
                               {profile.windDirectionDeg}°
                             </span>
                           )}
 
                           {profile.locationName && (
-                            <span className="px-2 py-0.5 rounded bg-[#121824] border border-[#1E293B] text-[#94A3B8] truncate max-w-[150px]">
+                            <span className="px-2 py-0.5 rounded bg-surface border border-line text-ink-muted truncate max-w-[150px]">
                               {profile.locationName}
                             </span>
                           )}
@@ -713,7 +709,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                           {profile.marks.slice(0, 7).map((m, idx) => (
                             <span
                               key={m.id || idx}
-                              className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#121824] border border-[#1E293B] text-[#E0E6ED] flex items-center gap-1"
+                              className="px-1.5 py-0.5 rounded text-xs bg-surface border border-line text-ink flex items-center gap-1"
                               title={`${m.name} (${m.type}) - ${safeFixed(m.lat, 4)}, ${safeFixed(m.lng, 4)}`}
                             >
                               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: m.color || '#FBBC04' }} />
@@ -721,7 +717,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                             </span>
                           ))}
                           {profile.marks.length > 7 && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#121824] text-[#64748B]">
+                            <span className="px-1.5 py-0.5 rounded text-xs bg-surface text-ink-muted">
                               +{profile.marks.length - 7} more
                             </span>
                           )}
@@ -730,8 +726,8 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
                       {/* INLINE CONFIRMATION OVERLAYS FOR ROBUST ACTION HANDLING */}
                       {isDeletingThis ? (
-                        <div className="p-2.5 rounded-xl bg-[#EA4335]/20 border border-[#EA4335]/50 flex items-center justify-between gap-2 animate-in fade-in">
-                          <div className="text-[11px] font-mono font-bold text-[#F28B82] flex items-center gap-1.5">
+                        <div className="p-2.5 rounded-xl bg-danger/20 border border-danger-ink/50 flex items-center justify-between gap-2 animate-in fade-in">
+                          <div className="text-xs font-bold text-danger-ink flex items-center gap-1.5">
                             <Trash2 className="w-3.5 h-3.5 shrink-0" />
                             <span>Delete this course profile?</span>
                           </div>
@@ -739,22 +735,22 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setPendingDeleteProfile(null)}
-                              className="px-2 py-1 rounded bg-[#1E293B] text-[10px] font-mono text-white"
+                              className="px-2 py-1 rounded bg-raised text-xs text-ink"
                             >
                               Cancel
                             </button>
                             <button
                               type="button"
                               onClick={() => executeDelete(profile)}
-                              className="px-2.5 py-1 rounded bg-[#EA4335] hover:bg-red-600 text-[10px] font-mono font-bold text-white shadow-sm"
+                              className="px-2.5 py-1 rounded bg-danger hover:brightness-110 text-xs font-bold text-on-danger shadow-sm"
                             >
                               Delete
                             </button>
                           </div>
                         </div>
                       ) : isOverwritingThis ? (
-                        <div className="p-2.5 rounded-xl bg-[#FBBC04]/20 border border-[#FBBC04]/50 flex items-center justify-between gap-2 animate-in fade-in">
-                          <div className="text-[11px] font-mono font-bold text-[#FBBC04] flex items-center gap-1.5">
+                        <div className="p-2.5 rounded-xl bg-warning-ink/20 border border-warning-ink/50 flex items-center justify-between gap-2 animate-in fade-in">
+                          <div className="text-xs font-bold text-warning-ink flex items-center gap-1.5">
                             <Save className="w-3.5 h-3.5 shrink-0" />
                             <span>Overwrite with current {currentMarks.length} map marks?</span>
                           </div>
@@ -762,14 +758,14 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setPendingOverwriteProfile(null)}
-                              className="px-2 py-1 rounded bg-[#1E293B] text-[10px] font-mono text-white"
+                              className="px-2 py-1 rounded bg-raised text-xs text-ink"
                             >
                               Cancel
                             </button>
                             <button
                               type="button"
                               onClick={() => executeOverwrite(profile)}
-                              className="px-2.5 py-1 rounded bg-[#FBBC04] text-[10px] font-mono font-bold text-black shadow-sm"
+                              className="px-2.5 py-1 rounded bg-warning-ink text-xs font-bold text-canvas shadow-sm"
                             >
                               Confirm
                             </button>
@@ -777,16 +773,16 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                         </div>
                       ) : (
                         /* CARD BOTTOM ACTION BUTTONS */
-                        <div className="pt-3 border-t border-[#1E293B] flex flex-wrap items-center justify-between gap-2">
+                        <div className="pt-3 border-t border-line flex flex-wrap items-center justify-between gap-2">
                           {/* PRIMARY LOAD BUTTON */}
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => handleApply(profile)}
-                              className={`px-3 py-1.5 text-black font-google text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all ${
+                              className={`px-3 py-1.5 text-canvas text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all ${
                                 placementMode === 'USER_LOCATION'
-                                  ? 'bg-[#00D4FF] hover:bg-[#00B4D8]'
-                                  : 'bg-[#FBBC04] hover:bg-yellow-400'
+                                  ? 'bg-accent hover:brightness-110'
+                                  : 'bg-warning-ink hover:brightness-110'
                               }`}
                               title={
                                 placementMode === 'USER_LOCATION'
@@ -811,7 +807,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                                   placementMode === 'USER_LOCATION' ? 'ORIGINAL_GPS' : 'USER_LOCATION'
                                 )
                               }
-                              className="p-1.5 rounded-lg bg-[#121824] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-[#00D4FF] transition-colors"
+                              className="p-1.5 rounded-lg bg-surface hover:bg-raised border border-line text-ink-muted hover:text-accent transition-colors"
                               title={
                                 placementMode === 'USER_LOCATION'
                                   ? 'Load at original GPS coordinates instead'
@@ -831,7 +827,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setPendingOverwriteProfile(profile)}
-                              className="p-1.5 rounded-lg bg-[#121824] hover:bg-[#1E293B] border border-[#1E293B] text-[#FBBC04] transition-colors"
+                              className="p-1.5 rounded-lg bg-surface hover:bg-raised border border-line text-warning-ink transition-colors"
                               title="Overwrite this profile with marks currently placed on the map"
                             >
                               <Save className="w-3.5 h-3.5" />
@@ -842,7 +838,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                               type="button"
                               onClick={() => handleDuplicate(profile)}
                               disabled={isMaxReached}
-                              className="p-1.5 rounded-lg bg-[#121824] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-white disabled:opacity-30 transition-colors"
+                              className="p-1.5 rounded-lg bg-surface hover:bg-raised border border-line text-ink-muted hover:text-ink disabled:opacity-30 transition-colors"
                               title="Duplicate profile"
                             >
                               <Copy className="w-3.5 h-3.5" />
@@ -852,7 +848,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setPendingDeleteProfile(profile)}
-                              className="p-1.5 rounded-lg bg-[#EA4335]/15 hover:bg-[#EA4335]/30 border border-[#EA4335]/30 text-[#F28B82] transition-colors"
+                              className="p-1.5 rounded-lg bg-danger/15 hover:bg-danger/30 border border-danger-ink/30 text-danger-ink transition-colors"
                               title="Delete profile"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -869,23 +865,23 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
         </div>
 
         {/* MODAL FOOTER: BACKUP & PRESETS */}
-        <div className="px-5 py-3.5 border-t border-[#1E293B] bg-[#0A0F1E]/90 flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs font-mono">
+        <div className="px-5 py-3.5 border-t border-line bg-surface/90 flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs">
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportJson}
-              className="px-3 py-1.5 rounded-xl bg-[#121824] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-white flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-surface hover:bg-raised border border-line text-ink-muted hover:text-ink flex items-center gap-1.5 transition-colors"
               title="Export all course profiles as a backup JSON file"
             >
-              <Download className="w-3.5 h-3.5 text-[#00D4FF]" />
+              <Download className="w-3.5 h-3.5 text-accent" />
               <span>Export JSON</span>
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-xl bg-[#121824] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-white flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-surface hover:bg-raised border border-line text-ink-muted hover:text-ink flex items-center gap-1.5 transition-colors"
               title="Import course profiles from a JSON file"
             >
-              <Upload className="w-3.5 h-3.5 text-[#00FF9D]" />
+              <Upload className="w-3.5 h-3.5 text-success-ink" />
               <span>Import JSON</span>
             </button>
             <input
@@ -898,7 +894,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
             <button
               onClick={() => setShowRestoreConfirm(true)}
-              className="px-3 py-1.5 rounded-xl bg-[#121824] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-[#FBBC04] flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-surface hover:bg-raised border border-line text-ink-muted hover:text-warning-ink flex items-center gap-1.5 transition-colors"
               title="Restore original factory presets"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -907,10 +903,10 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-[#64748B]">Max 10 course profiles</span>
+            <span className="text-ink-muted">Max 10 course profiles</span>
             <button
               onClick={onClose}
-              className="px-4 py-1.5 bg-[#1E293B] hover:bg-[#334155] text-white font-google font-bold rounded-xl transition-colors"
+              className="px-4 py-1.5 bg-raised hover:bg-raised text-ink font-bold rounded-xl transition-colors"
             >
               Done
             </button>

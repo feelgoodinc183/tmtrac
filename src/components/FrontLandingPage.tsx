@@ -8,20 +8,15 @@ import {
   ChevronRight,
   Eye,
   LogIn,
-  Building,
   CheckCircle2,
-  Anchor,
   Wind,
-  Layers,
-  Sparkles,
-  ArrowRight,
   Play,
-  Activity,
   Map,
   Server,
   Zap,
 } from 'lucide-react';
 import { PricingPackage, UserAccount } from '../types/regatta';
+import { APP_VERSION } from '../appVersion';
 
 interface FrontLandingPageProps {
   onLoginClick: () => void;
@@ -424,28 +419,28 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <span>Smart Race Control</span>
                 <Zap className="w-3.5 h-3.5 text-cyan-600" />
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">Virtual Boundary Sensor </div>
+              <div className="text-xs text-slate-500 font-medium">Virtual Boundary Sensor </div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
               <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
                 <span>Mesh Network</span>
                 <Radio className="w-3.5 h-3.5 text-sky-600" />
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">Dual LoRa + 5G Mobile</div>
+              <div className="text-xs text-slate-500 font-medium">Dual LoRa + 5G Mobile</div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
               <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
                 <span>Auto-Rank</span>
                 <Trophy className="w-3.5 h-3.5 text-amber-600" />
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">IRC / PHRF Corrected Time</div>
+              <div className="text-xs text-slate-500 font-medium">IRC / PHRF Corrected Time</div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
               <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
                 <span>Share Live Race</span>
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">Live Data Telemetry</div>
+              <div className="text-xs text-slate-500 font-medium">Live Data Telemetry</div>
             </div>
           </div>
         </div>
@@ -478,11 +473,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
             <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg text-xs">
               <div className="flex items-center space-x-4">
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Active Regatta</span>
+                  <span className="text-slate-500 block text-xs uppercase font-semibold">Active Regatta</span>
                   <span className="text-slate-900 font-bold">Royal Langkawi International (RLIR26)</span>
                 </div>
                 <div className="hidden sm:block border-l border-slate-200 pl-4">
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Course Layout</span>
+                  <span className="text-slate-500 block text-xs uppercase font-semibold">Course Layout</span>
                   <span className="text-slate-800 font-medium">Windward-Leeward (2.4 NM)</span>
                 </div>
               </div>
@@ -521,7 +516,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Connect long-range Meshtastic LoRa radios over Bluetooth or USB. Boats transmit offshore position fixes over miles of open water without needing cellular towers.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[11px] text-cyan-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-cyan-700 font-semibold">
               868 / 915 MHz Zero-SIM Fallback
             </div>
           </div>
@@ -537,7 +532,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Instant virtual finish line detection with millisecond precision. Automatically computes corrected times under IRC, ORC, and Portsmouth Yardstick rating rules.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[11px] text-amber-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-amber-700 font-semibold">
               Real-Time Leaderboard Publishing
             </div>
           </div>
@@ -553,7 +548,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Each yacht club is a fully isolated organization with its own events, members, and custom billing tier. Nothing is cross-shared or leaked between clubs.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[11px] text-purple-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-purple-700 font-semibold">
               Role Gates (Admin, Skipper, Spectator)
             </div>
           </div>
@@ -569,7 +564,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Architected with store-and-forward telemetry buffers. When skippers sail through cellular blindspots, fixes buffer locally and automatically backfill upon reconnection.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[11px] text-emerald-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-emerald-700 font-semibold">
               Native Android GPS & Deep Links
             </div>
           </div>
@@ -585,7 +580,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Live wind vector arrows, current layline cones, mark rounding angle indicators, and Velocity Made Good (VMG) efficiency calculations for strategic race debriefs.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[11px] text-sky-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-sky-700 font-semibold">
               Tactical Race Replay Engine
             </div>
           </div>
@@ -601,7 +596,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Share boat registration QR code and viewer link to participants and viewers. Register and login on-the go with fast and easy boat to tracker binder. 
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[11px] text-rose-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-rose-700 font-semibold">
               Self-Service Registration
             </div>
           </div>
@@ -635,7 +630,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   }`}
                 >
                   {pkg.badge && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-sm">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-sm">
                       {pkg.badge}
                     </div>
                   )}
@@ -758,7 +753,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
             </form>
 
             <div>
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Active Public Regattas
               </div>
               <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -772,9 +767,9 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   >
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-xs text-slate-900">Royal Langkawi Regatta (RLIR26)</span>
-                      <span className="text-[10px] text-cyan-700 font-mono font-medium">DEFAULT</span>
+                      <span className="text-xs text-cyan-700 font-mono font-medium">DEFAULT</span>
                     </div>
-                    <div className="text-[11px] text-slate-500">Kuah Bay, Langkawi (RLYC)</div>
+                    <div className="text-xs text-slate-500">Kuah Bay, Langkawi (RLYC)</div>
                   </div>
                 ) : (
                   activeEvents.map((ev) => (
@@ -788,9 +783,9 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                     >
                       <div>
                         <div className="text-xs font-semibold text-slate-900">{ev.title}</div>
-                        <div className="text-[11px] text-slate-500">{ev.locationName}</div>
+                        <div className="text-xs text-slate-500">{ev.locationName}</div>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold">
+                      <span className="text-xs px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold">
                         {ev.code}
                       </span>
                     </div>
@@ -808,7 +803,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <div className="flex items-center space-x-2">
             <Compass className="w-4 h-4 text-cyan-600" />
             <span className="font-semibold text-slate-700">TMTRAC by tmtecq.com </span>
-            <span>• v1.6.0</span>
+            <span>• v{APP_VERSION}</span>
           </div>
 
           <div className="flex items-center space-x-6 text-slate-600">
@@ -819,7 +814,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 Super Admin Panel
               </button>
             ) : (
-              <button onClick={onLoginClick} className="hover:text-slate-900 text-[11px] transition-colors">
+              <button onClick={onLoginClick} className="hover:text-slate-900 text-xs transition-colors">
                 Super Admin Access
               </button>
             )}
