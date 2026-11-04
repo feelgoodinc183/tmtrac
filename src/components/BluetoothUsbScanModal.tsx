@@ -18,7 +18,7 @@ import {
   Clock,
   Gauge,
 } from 'lucide-react';
-import { formatLastHeard, safeFixed } from '../utils/formatters';
+import { formatBattery, formatLastHeard, safeFixed } from '../utils/formatters';
 import {
   meshtasticService,
   MqttConfig,
@@ -440,7 +440,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                                   )}
                                 </div>
                                 <p className="text-xs text-ink-muted">
-                                  Battery: <strong className="text-ink">{node.battery !== undefined ? `${node.battery}%` : '—'}{node.voltage !== undefined ? ` (${node.voltage}V)` : ''}</strong> • Sats:{' '}
+                                  Battery: <strong className="text-ink">{formatBattery(node.battery)}{node.voltage !== undefined ? ` (${node.voltage}V)` : ''}</strong> • Sats:{' '}
                                   <strong className="text-success-ink">{node.satsInView ?? '—'}</strong> • RSSI: {node.rssi ?? '—'} dBm
                                 </p>
                                 {node.lat && node.lng ? (

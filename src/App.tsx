@@ -88,6 +88,7 @@ import {
   replayBatchThroughCourseProgress,
 } from './services/courseService';
 import { Navigation, Trophy, X } from 'lucide-react';
+import { formatBattery } from './utils/formatters';
 
 const isValidNumber = (val: any): boolean => typeof val === 'number' && Number.isFinite(val) && !Number.isNaN(val);
 
@@ -3113,7 +3114,7 @@ export default function App() {
                               {member.deviceName}
                             </h5>
                             <p className="text-xs text-ink-muted">
-                              Role: {member.role} • Battery: {member.battery !== undefined ? `${member.battery}%` : '—'}
+                              Role: {member.role} • Battery: {formatBattery(member.battery)}
                             </p>
                           </div>
                         </div>

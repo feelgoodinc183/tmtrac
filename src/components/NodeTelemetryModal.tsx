@@ -28,7 +28,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { MeshtasticNode, Boat } from '../types/regatta';
-import { formatLastHeard, safeFixed } from '../utils/formatters';
+import { formatBattery, formatLastHeard, safeFixed } from '../utils/formatters';
 import {
   meshtasticService,
   AutoGpsSyncState,
@@ -551,13 +551,13 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 <BatteryCharging className="w-4 h-4 text-success-ink" />
               </div>
               <div className="mt-2 text-xl font-bold text-ink flex items-baseline gap-1">
-                {batteryPct !== undefined ? `${batteryPct}%` : 'N/A'}
+                {formatBattery(batteryPct)}
                 {voltage ? <span className="text-xs text-ink-muted font-normal">{voltage}V</span> : null}
               </div>
               <div className="w-full bg-raised rounded-full h-1.5 mt-2 overflow-hidden">
                 <div
                   className={`h-full rounded-full ${(batteryPct ?? 100) < 20 ? 'bg-danger' : (batteryPct ?? 100) < 50 ? 'bg-warning-ink' : 'bg-success-ink'}`}
-                  style={{ width: `${batteryPct ?? 0}%` }}
+                  style={{ width: `${Math.min(100, batteryPct ?? 0)}%` }}
                 />
               </div>
             </div>
