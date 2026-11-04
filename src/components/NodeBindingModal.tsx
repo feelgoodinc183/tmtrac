@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Boat, MeshtasticNode, HandicapSystem, RaceClass, RaceClassDefinition } from '../types/regatta';
 import { X, Radio, Anchor, CheckCircle2, Link2, Unlink, Smartphone, Tablet, Bluetooth, AlertCircle, QrCode } from 'lucide-react';
-import { formatLastHeard, safeFixed } from '../utils/formatters';
+import { formatBattery, formatLastHeard, safeFixed } from '../utils/formatters';
 
 interface NodeBindingModalProps {
   nodes: MeshtasticNode[];
@@ -188,7 +188,7 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
                   const bound = boats.find((b) => b.id === node.boundBoatId);
                   return (
                     <option key={node.id} value={node.id}>
-                      {node.id} - {node.longName} ({node.connectionType || 'LORA'}) • Bat: {node.battery !== undefined ? `${node.battery}%` : '—'} {bound ? `[Bound: ${bound.name}]` : '[Unassigned]'}
+                      {node.id} - {node.longName} ({node.connectionType || 'LORA'}) • Bat: {formatBattery(node.battery)} {bound ? `[Bound: ${bound.name}]` : '[Unassigned]'}
                     </option>
                   );
                 })}
@@ -217,7 +217,7 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-success-ink font-bold block">{activeNode.battery !== undefined ? `${activeNode.battery}%` : '—'}</span>
+                  <span className="text-success-ink font-bold block">{formatBattery(activeNode.battery)}</span>
                   <span className="text-ink-muted">Heard: {formatLastHeard(activeNode.lastPingTime)}</span>
                 </div>
               </div>

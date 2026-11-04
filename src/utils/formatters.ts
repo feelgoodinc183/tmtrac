@@ -46,3 +46,24 @@ export function formatTime(seconds: number): string {
   }
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Meshtastic reports battery_level 101 when the device runs on external power (USB or solar),
+ * so anything above 100 is shown as that rather than as a percentage.
+ */
+export function formatBattery(level?: number | null): string {
+  if (level === null || level === undefined || isNaN(level)) return '—';
+  if (level > 100) return 'External power';
+  return `${Math.round(Math.max(0, level))}%`;
+}
+
+export type TrackerFreshness = 'live' | 'stale' | 'offline';
+
+/** live: heard in the last 2 minutes; stale: within 10 minutes; offline: longer, or never */
+export function trackerFreshness(lastPingTime?: number): TrackerFreshness {
+  if (!lastPingTime || lastPingTime <= 0) return 'offline';
+  const age = Date.now() - lastPingTime;
+  if (age <= 2 * 60_000) return 'live';
+  if (age <= 10 * 60_000) return 'stale';
+  return 'offline';
+}

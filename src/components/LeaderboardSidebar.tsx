@@ -25,7 +25,8 @@ import {
   QrCode,
   Settings,
 } from 'lucide-react';
-import { formatLastHeard, safeFixed } from '../utils/formatters';
+import { formatBattery, formatLastHeard, safeFixed, trackerFreshness } from '../utils/formatters';
+import { Button } from './ui/Button';
 import { deduplicateNodes } from '../services/meshtasticBleMqttService';
 
 interface LeaderboardSidebarProps {
@@ -406,24 +407,6 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
             </div>
           </div>
 
-          {/* Active Hardware Tracker Notification Banner */}
-          {nodes.some((n) => n.isBluetoothConnected || n.connectionType === 'BLE' || n.connectionType === 'USB') && (
-            <div className="p-2 mb-2 rounded-xl bg-surface/40 border border-accent/40 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-success-ink" />
-                <span className="text-xs text-accent font-bold">
-                  Hardware Active: {nodes.find((n) => n.isBluetoothConnected || n.connectionType === 'BLE' || n.connectionType === 'USB')?.shortName || 'T-ECHO'}
-                </span>
-              </div>
-              <button
-                onClick={() => setActiveTab('MESH_NODES')}
-                className="text-xs text-accent hover:underline font-bold"
-              >
-                Inspect Telemetry →
-              </button>
-            </div>
-          )}
-
           <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1 min-h-0 pb-8 overscroll-contain touch-pan-y">
             {sortedBoats.length === 0 ? (
               <div className="p-4 bg-surface border border-dashed border-line rounded-xl text-center space-y-3">
@@ -482,224 +465,148 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 ? (boatClsState.status === 'PRE_START' || boatClsState.status === 'COUNTDOWN' || (typeof boatClsState.countdownSeconds === 'number' && boatClsState.countdownSeconds > 0))
                 : (raceState.status === 'PRE_START' || raceState.status === 'COUNTDOWN' || (typeof raceState.countdownSeconds === 'number' && raceState.countdownSeconds > 0));
 
+              const canManage = viewMode !== 'SPECTATOR';
+              const showActions = isSelected || isFollowing;
+              const freshness = boundNode ? trackerFreshness(boundNode.lastPingTime) : null;
+              const isPhone = boundNode && (boundNode.connectionType === 'PHONE' || boundNode.isDeviceGps);
+
               return (
                 <div
                   key={boat.id}
                   onClick={() => onSelectBoat(boat.id)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer relative ${
+                  aria-current={isSelected || undefined}
+                  className={`p-3 rounded-container border transition-colors cursor-pointer ${
                     isOcs
-                      ? 'bg-surface/40 border-danger-ink/60 hover:border-danger-ink'
+                      ? 'bg-surface border-danger-ink/60'
                       : isFollowing
-                      ? 'bg-warning-ink/10 border-warning-ink '
+                      ? 'bg-surface border-warning-ink'
                       : isSelected
-                      ? 'bg-accent/15 border-accent '
-                      : 'bg-surface/70 border-line hover:border-line'
+                      ? 'bg-surface border-accent'
+                      : 'bg-surface border-line hover:border-ink-muted/50'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold w-4 h-4 rounded bg-raised text-ink-muted flex items-center justify-center">
-                        {rank + 1}
+                  {/* Identity and status */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-ink-muted w-4 text-right shrink-0">{rank + 1}</span>
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: boat.color }} aria-hidden="true" />
+                    <span className="text-sm font-bold text-ink truncate min-w-0 flex-1" title={boat.name}>
+                      {boat.name}
+                    </span>
+                    {isClassInPreStartOrCountdown || boat.status === 'PRE_START' ? (
+                      <span className="text-xs font-semibold text-warning-ink shrink-0">Pre-start</span>
+                    ) : boat.status === 'FINISHED' ? (
+                      <span className="text-xs font-semibold text-ink-muted shrink-0">Finished</span>
+                    ) : isOcs ? (
+                      <span className="text-xs font-bold text-danger-ink shrink-0 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+                        OCS
                       </span>
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: boat.color }} />
-                      <span className="text-xs font-bold text-ink truncate max-w-[110px]">
-                        {boat.name}
+                    ) : boat.status === 'RET' || boat.status === 'DNF' || boat.status === 'DNS' || boat.status === 'DSQ' ? (
+                      <span className="text-xs font-bold text-danger-ink shrink-0">{boat.status}</span>
+                    ) : (
+                      <span className={`text-xs font-bold tabular-nums shrink-0 ${rank === 0 ? 'text-success-ink' : 'text-ink-muted'}`}>
+                        {diffFormatted}
                       </span>
-                      <span className="text-xs text-ink-muted">
-                        {boat.sailNumber}
-                      </span>
-                    </div>
+                    )}
+                  </div>
 
-                    <div className="flex items-center gap-1.5">
-                      {isClassInPreStartOrCountdown || boat.status === 'PRE_START' ? (
-                        <span className="text-xs font-bold text-warning-ink bg-warning-ink/20 px-1.5 py-0.5 rounded border border-warning-ink/40">
-                          Pre-start
-                        </span>
-                      ) : boat.status === 'FINISHED' ? (
-                        <span className="text-xs font-bold text-ink bg-raised/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-line/40">
-                          FINISHED
-                        </span>
-                      ) : isOcs ? (
-                        <span className="text-xs font-bold text-danger-ink bg-danger/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-danger-ink/40">
-                          <AlertTriangle className="w-3 h-3" />
-                          OCS
-                        </span>
-                      ) : boat.status === 'RET' || boat.status === 'DNF' || boat.status === 'DNS' || boat.status === 'DSQ' ? (
-                        <span className="text-xs font-bold text-danger-ink bg-danger/20 px-1.5 py-0.5 rounded border border-danger-ink/40">
-                          {boat.status}
-                        </span>
-                      ) : (
+                  {/* Sail number and rating */}
+                  <div className="mt-0.5 pl-[3.25rem] text-xs text-ink-muted truncate">
+                    {[boat.sailNumber, `${boat.handicapSystem} ${safeFixed(boat.handicapRating, 3, '1.000')}`].filter(Boolean).join(' · ')}
+                  </div>
+
+                  {/* Live numbers */}
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <div className="text-ink-muted">SOG</div>
+                      <div className="font-bold text-ink tabular-nums">{safeFixed(boat.sog, 1, '0.0')} kt</div>
+                    </div>
+                    <div>
+                      <div className="text-ink-muted">VMG</div>
+                      <div className="font-bold text-ink tabular-nums">{safeFixed(boat.vmg, 1, '0.0')} kt</div>
+                    </div>
+                    <div>
+                      <div className="text-ink-muted">To mark</div>
+                      <div className="font-bold text-ink tabular-nums">{safeFixed(boat.dtw, 2, '0.00')} NM</div>
+                    </div>
+                  </div>
+
+                  {/* Tracker */}
+                  <div className="mt-2 flex items-center gap-2 text-xs min-w-0">
+                    {boundNode ? (
+                      <>
                         <span
-                          className={`text-xs  font-bold ${
-                            rank === 0 ? 'text-success-ink' : 'text-ink-muted'
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            freshness === 'live' ? 'bg-success-ink' : freshness === 'stale' ? 'bg-warning-ink' : 'bg-ink-muted'
                           }`}
-                        >
-                          {diffFormatted}
+                          aria-hidden="true"
+                        />
+                        <span className="text-ink truncate min-w-0">
+                          {isPhone ? 'Phone' : 'Tracker'} <strong>{boundNode.shortName || boundNode.id}</strong>
+                          <span className="text-ink-muted">
+                            {boundNode.battery !== undefined ? ` · ${formatBattery(boundNode.battery)}` : ''}
+                            {boundNode.gpsFix === false ? ' · no GPS fix' : ''}
+                          </span>
                         </span>
-                      )}
-
-                      {/* Show Boat QR Code (Admins see all; Non-admins only see unbound boats to prevent accidental re-binding) */}
-                      {viewMode !== 'SPECTATOR' && onOpenBoatQr && (isAdmin || !boat.nodeId) && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenBoatQr(boat.id);
-                          }}
-                          className="p-1 rounded hover:bg-accent/20 text-accent transition-colors"
-                          title={`Smart QR Code for ${boat.name} (${boat.sailNumber})`}
+                        <span
+                          className={`ml-auto shrink-0 ${freshness === 'live' ? 'text-ink-muted' : 'text-warning-ink'}`}
+                          title={freshness === 'live' ? 'Tracker is reporting' : 'No recent report from this tracker'}
                         >
-                          <QrCode className="w-3 h-3" />
-                        </button>
-                      )}
-
-                      {/* Bind Node Button */}
-                      {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenNodeBinding(undefined, boat.id);
-                          }}
-                          className="p-1 rounded hover:bg-accent/20 text-accent transition-colors"
-                          title={boundNode ? `Change Meshtastic node for ${boat.name} (Bound: ${boundNode.id})` : `Bind Meshtastic Node to ${boat.name}`}
-                        >
-                          <Link2 className="w-3 h-3" />
-                        </button>
-                      )}
-
-                      {/* Edit Boat Button */}
-                      {viewMode !== 'SPECTATOR' && onEditBoat && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditBoat(boat);
-                          }}
-                          className="p-1 rounded hover:bg-raised text-ink-muted hover:text-accent transition-colors"
-                          title={`Edit ${boat.name} profile, rating, or node`}
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                      )}
-
-                      {/* Delete Boat Button */}
-                      {viewMode !== 'SPECTATOR' && onDeleteBoat && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteBoat(boat.id);
-                          }}
-                          className="p-1 rounded hover:bg-danger/20 text-ink-muted hover:text-danger-ink transition-colors"
-                          title={`Delete ${boat.name} from fleet`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
+                          {freshness === 'offline' ? `Offline · ${formatLastHeard(boundNode.lastPingTime)}` : formatLastHeard(boundNode.lastPingTime)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-ink-muted">No tracker, position not live</span>
+                        {canManage && onOpenNodeBinding && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenNodeBinding(undefined, boat.id);
+                            }}
+                            className="ml-auto shrink-0 font-semibold text-accent hover:underline"
+                          >
+                            Add tracker
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs mt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-success-ink font-bold flex items-center gap-0.5" title="Node Battery Voltage & Level">
-                        Battery {boundNode ? `${boundNode.battery ?? '—'}%${boundNode.voltage ? ` (${boundNode.voltage}V)` : ''}` : '—'}
-                      </span>
-                      <span className="text-accent font-bold flex items-center gap-0.5" title="GPS Satellites in View / Fix">
-                        {boundNode ? (boundNode.gpsFix ? (boundNode.satsInView !== undefined ? `${boundNode.satsInView} satellites` : 'GPS fix') : 'No GPS fix') : 'No tracker'}
-                      </span>
-                    </div>
-                    <span className="text-ink-muted">
-                      {boat.handicapSystem}: <strong className="text-ink">{boat.handicapRating}</strong>
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-ink-muted mt-1">
-                    <span>
-                      SOG: <strong className="text-accent">{safeFixed(boat.sog, 1, '0.0')}kt</strong> • VMG:{' '}
-                      <strong className="text-success-ink">{safeFixed(boat.vmg, 1, '0.0')}kt</strong>
-                    </span>
-                    <span>
-                      DTW: <strong className="text-accent">{safeFixed(boat.dtw, 2, '0.00')}NM</strong>
-                    </span>
-                  </div>
-
-                  {/* Bound Tracker / Node Hardware Telemetry Status */}
-                  {boundNode ? (
-                    <div className="flex items-center justify-between text-xs mt-1 pt-1.5 border-t border-line/70 bg-canvas/50 px-2 py-1 rounded-lg border border-accent/20">
-                      <div className="flex items-center gap-1.5 truncate max-w-[150px]">
-                        <span className="text-accent font-bold">
-                          {boundNode.connectionType === 'PHONE' || boundNode.isDeviceGps ? 'Phone GPS' : 'LoRa tracker'}:
-                        </span>
-                        <strong className="text-ink truncate">{boundNode.shortName || boundNode.id}</strong>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-success-ink font-bold">
-                          Battery {boundNode.battery ?? '—'}%
-                        </span>
-                        <span className="text-ink-muted flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5 text-accent" />
-                          {formatLastHeard(boundNode.lastPingTime)}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-line/40 text-ink-muted px-1">
-                      <span className="flex items-center gap-1 italic text-ink-muted">
-                        No tracker: position not live
-                      </span>
-                      {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenNodeBinding(undefined, boat.id);
-                          }}
-                          className="text-accent hover:underline font-bold"
-                        >
-                          + Bind Tracker
-                        </button>
+                  {/* Actions: only on the boat you selected or follow, so the list stays readable */}
+                  {showActions && (
+                    <div className="mt-3 pt-3 border-t border-line flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant={isFollowing ? 'primary' : 'secondary'}
+                        icon={<Crosshair />}
+                        onClick={() => onToggleFollow(boat.id, boat.name)}
+                        aria-pressed={isFollowing}
+                        className="flex-1"
+                      >
+                        {isFollowing ? 'Following' : 'Follow'}
+                      </Button>
+                      <Button icon={<Eye />} aria-label={`Inspect ${boat.name}`} title="Inspect" onClick={() => onOpenNodeInspector(boundNode || null, boat)} />
+                      {canManage && onOpenBoatQr && (isAdmin || !boat.nodeId) && (
+                        <Button icon={<QrCode />} aria-label={`QR code for ${boat.name}`} title="QR code" onClick={() => onOpenBoatQr(boat.id)} />
+                      )}
+                      {canManage && boundNode && onOpenNodeBinding && (
+                        <Button icon={<Link2 />} aria-label={`Change tracker for ${boat.name}`} title="Change tracker" onClick={() => onOpenNodeBinding(undefined, boat.id)} />
+                      )}
+                      {canManage && onEditBoat && (
+                        <Button icon={<Edit2 />} aria-label={`Edit ${boat.name}`} title="Edit" onClick={() => onEditBoat(boat)} />
+                      )}
+                      {canManage && onDeleteBoat && (
+                        <Button
+                          variant="ghost"
+                          icon={<Trash2 />}
+                          aria-label={`Delete ${boat.name}`}
+                          title="Delete"
+                          onClick={() => onDeleteBoat(boat.id)}
+                          className="text-danger-ink"
+                        />
                       )}
                     </div>
                   )}
-
-                  {/* Quick Actions: Follow & Inspect */}
-                  <div className="mt-2 pt-2 border-t border-line flex items-center justify-between gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleFollow(boat.id, boat.name);
-                      }}
-                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all ${
-                        isFollowing
-                          ? 'bg-warning-ink text-canvas font-bold'
-                          : 'bg-raised hover:bg-raised text-accent'
-                      }`}
-                    >
-                      <Crosshair className={`w-3 h-3 ${isFollowing ? 'animate-spin' : ''}`} />
-                      {isFollowing ? 'Following' : 'Follow Camera'}
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenNodeInspector(boundNode || null, boat);
-                      }}
-                      className="py-1 px-2.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs font-bold flex items-center gap-1 transition-colors"
-                    >
-                      <Eye className="w-3 h-3 text-accent" />
-                      Inspect
-                    </button>
-
-                    {onOpenBoatQr && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenBoatQr(boat.id);
-                        }}
-                        className="py-1 px-2 rounded-lg bg-accent/10 hover:bg-accent/25 border border-accent/30 text-accent text-xs font-bold flex items-center gap-1 transition-all"
-                        title={`Smart QR Code for ${boat.name}`}
-                      >
-                        <QrCode className="w-3 h-3" />
-                        <span>QR</span>
-                      </button>
-                    )}
-                  </div>
                 </div>
               );
             })
@@ -1044,7 +951,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                     <div className="text-right">
                       <span className="text-xs font-bold text-success-ink block" title="Battery Charge & Voltage">
-                        {node.battery !== undefined ? `Battery ${node.battery}%` : 'Battery —'}{node.voltage ? ` (${node.voltage}V)` : ''}
+                        Battery {formatBattery(node.battery)}{node.voltage ? ` (${node.voltage}V)` : ''}
                       </span>
                       <span className="text-xs text-accent block" title="Speed and Satellites">
                         {node.speedKt !== undefined && node.speedKt !== null ? `${safeFixed(node.speedKt, 1, '0.0')} kt` : node.satsInView !== undefined ? `${node.satsInView} satellites` : 'Satellites —'}
