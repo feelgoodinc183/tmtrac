@@ -115,7 +115,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   const snr = node?.snr;
   const rssi = node?.rssi;
   const hops = node?.hops;
-  const hardware = node?.hardwareModel || 'Meshtastic Hardware Node';
+  const hardware = node?.hardwareModel || '—';
   const firmware = node?.firmwareVersion || '—';
   const connType = node?.connectionType || (node?.isBluetoothConnected ? 'BLE' : 'LORA_MESH');
 
@@ -470,12 +470,12 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">MAC Address:</span>
-                  <span className="text-ink">{node?.mac || '24:6F:28:7A:2C:10'}</span>
+                  <span className="text-ink">{node?.mac || '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Region Frequency:</span>
                   <span className="text-warning-ink">
-                    {node?.locationRegion || 'MY_919 (919-923 MHz 500mW)'}
+                    {node?.locationRegion || '—'}
                   </span>
                 </div>
               </div>

@@ -77,7 +77,8 @@ import { roomService } from './services/roomService';
 import { serverNow } from './services/serverClock';
 import { getClassRaceState } from './services/classRaceState';
 import { computeLiveBoatStatus, createTrackerFixApplier, TrackerFix } from './services/trackerFix';
-import { canonicalNodeId, sameNodeId } from './utils/nodeId';
+import { createTrackerRelayGate } from './services/trackerRelay';
+import { canonicalNodeId, clearLegacyTrackerIds, sameNodeId } from './utils/nodeId';
 import {
   addCourseMark,
   removeCourseMark,
@@ -154,9 +155,9 @@ export default function App() {
     createTrackerFixApplier(() => raceStateRef.current, () => marksRef.current)
   );
   const playHornRef = useRef<(frequency?: number, durationMs?: number, forcePlay?: boolean) => void>(() => {});
-  // Last position applied to a boat from each LoRa node, so repeated reports of the same fix
-  // (telemetry, NodeDB refreshes) don't add trail points or re-run scoring
-  const lastNodeFixRef = useRef<Map<string, string>>(new Map());
+  // Decides when a LoRa tracker update is shared with the room and applied to its boat
+  // (binding checked first; repeated fixes not re-scored; relayed at least every 60 s)
+  const [trackerRelay] = useState(() => createTrackerRelayGate());
 
   const applyFixAndBroadcast = (prevBoats: Boat[], fix: TrackerFix): Boat[] => {
     const res = applyTrackerFix(prevBoats, fix);
@@ -181,6 +182,8 @@ export default function App() {
   const isUserAdminOrOfficer = Boolean(isOrganizer || currentUser?.isSuperAdmin || authService.isSuperAdmin());
   // Shown when the server refuses an edit, so a change never looks saved when it wasn't
   const [saveRejection, setSaveRejection] = useState<{ action: string; roomCode: string; at: number } | null>(null);
+  // Boats that pointed at a tracker id from an older version and need their tracker attached again
+  const [trackersToReattach, setTrackersToReattach] = useState<string[]>([]);
 
   useEffect(() => {
     return deviceTrackerService.onEditRejected((rejection) => {
@@ -294,7 +297,7 @@ export default function App() {
     speedKt: null,
     headingDeg: null,
     altitudeMeters: null,
-    batteryLevel: 90,
+    batteryLevel: null,
     timestamp: null,
     error: null,
     isSharing: true,
@@ -430,11 +433,20 @@ export default function App() {
       }
     });
 
-    const unsubRemoteBoats = deviceTrackerService.onRemoteBoats((syncedBoats) => {
-      if (Array.isArray(syncedBoats)) {
-        const clean = syncedBoats.filter((b) => b && isValidNumber(b.lat) && isValidNumber(b.lng));
-        setBoats(deduplicateBoats(clean));
+    // Older versions bound boats to placeholder tracker ids ("!TECHO-…") that no tracker reports.
+    // Clear them so the boat shows "no tracker" instead of silently never updating.
+    const adoptRoomBoats = (incoming: Boat[], canEdit: boolean) => {
+      const clean = incoming.filter((b) => b && isValidNumber(b.lat) && isValidNumber(b.lng));
+      const { boats: fixed, cleared } = clearLegacyTrackerIds(deduplicateBoats(clean));
+      setBoats(fixed);
+      if (cleared.length > 0) {
+        setTrackersToReattach(cleared.map((b) => b.name || b.sailNumber || b.id));
+        if (canEdit) deviceTrackerService.broadcastBoats(fixed);
       }
+    };
+
+    const unsubRemoteBoats = deviceTrackerService.onRemoteBoats((syncedBoats) => {
+      if (Array.isArray(syncedBoats)) adoptRoomBoats(syncedBoats, false);
     });
 
     const unsubRemoteVhf = deviceTrackerService.onRemoteVhf((bulletin) => {
@@ -482,8 +494,7 @@ export default function App() {
       }
       if (session.raceState) setRaceState((prev) => ({ ...prev, ...session.raceState }));
       if (session.boats && Array.isArray(session.boats)) {
-        const cleanBoats = session.boats.filter((b) => b && isValidNumber(b.lat) && isValidNumber(b.lng));
-        setBoats(deduplicateBoats(cleanBoats));
+        adoptRoomBoats(session.boats, session.canEdit === true || session.isAdmin === true);
       }
       if (session.vhfBulletins && Array.isArray(session.vhfBulletins)) setBulletins(session.vhfBulletins);
       if (session.trackers && Array.isArray(session.trackers) && session.trackers.length > 0) {
@@ -539,24 +550,18 @@ export default function App() {
         return [node, ...prevNodes];
       });
 
-      if (!isValidNumber(node.lat) || !isValidNumber(node.lng) || (node.lat === 0 && node.lng === 0)) return;
-
-      const fixKey = `${node.lat},${node.lng}`;
-      const nodeKey = canonicalNodeId(node.id);
-      if (lastNodeFixRef.current.get(nodeKey) === fixKey) return;
-      lastNodeFixRef.current.set(nodeKey, fixKey);
-
       // Only trackers bound to a boat in this room are shared with the room
-      const boundBoat = boatsRef.current.find(
-        (b) => (node.boundBoatId && b.id === node.boundBoatId) || sameNodeId(b.nodeId, node.id)
-      );
-      if (!boundBoat) return;
+      const decision = trackerRelay.decide(node, boatsRef.current);
+      if (!decision.boundBoatId) return;
 
-      deviceTrackerService.broadcastHardwareNode({ ...node, boundBoatId: boundBoat.id });
+      if (decision.relay) {
+        deviceTrackerService.broadcastHardwareNode({ ...node, boundBoatId: decision.boundBoatId });
+      }
+      if (!decision.applyFix) return;
 
       const fix: TrackerFix = {
         trackerId: node.id,
-        boundBoatId: boundBoat.id,
+        boundBoatId: decision.boundBoatId,
         lat: node.lat!,
         lng: node.lng!,
         speedKt: isValidNumber(node.speedKt) ? node.speedKt : undefined,
@@ -2022,6 +2027,15 @@ export default function App() {
     deviceTrackerService.setNodeBoundBoat(effectiveNodeId, boatId || null);
     meshtasticService.setNodeBoundBoatId(nodeId, boatId || null);
     meshtasticService.setNodeBoundBoatId(effectiveNodeId, boatId || null);
+    trackerRelay.forget(effectiveNodeId);
+
+    // A tracker that was on this boat before is now unbound everywhere, or its next packet
+    // would quietly bind it back
+    if (boatId) {
+      nodes
+        .filter((n) => n.boundBoatId === boatId && !sameNodeId(n.id, effectiveNodeId))
+        .forEach((n) => clearTrackerBinding(n.id));
+    }
 
     if (isLocalPhone) {
       deviceTrackerService.updateProfile({ boundBoatId: boatId || null });
@@ -2130,7 +2144,7 @@ export default function App() {
         boatData.nodeId === 'LOCAL_PHONE_GPS' ||
         boatData.nodeId === `!DEV-${profile.deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
 
-      const effectiveNodeId = isLocalPhone ? localNode.id : (boatData.nodeId || null);
+      const effectiveNodeId = isLocalPhone ? localNode.id : (canonicalNodeId(boatData.nodeId) || null);
 
       if (isLocalPhone) {
         deviceTrackerService.updateProfile({ boundBoatId: originalId });
@@ -2178,10 +2192,10 @@ export default function App() {
       if (effectiveNodeId !== undefined) {
         setNodes((prevNodes) =>
           prevNodes.map((n) => {
-            if (effectiveNodeId && (n.id === effectiveNodeId || (isLocalPhone && n.id === localNode.id))) {
+            if (effectiveNodeId && (sameNodeId(n.id, effectiveNodeId) || (isLocalPhone && n.id === localNode.id))) {
               return { ...n, boundBoatId: originalId };
             }
-            if (n.boundBoatId === originalId && n.id !== effectiveNodeId) {
+            if (n.boundBoatId === originalId && !sameNodeId(n.id, effectiveNodeId)) {
               return { ...n, boundBoatId: undefined };
             }
             return n;
@@ -2210,7 +2224,7 @@ export default function App() {
         boatData.nodeId === 'LOCAL_PHONE_GPS' ||
         boatData.nodeId === `!DEV-${profile.deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
 
-      const effectiveNodeId = isLocalPhone ? localNode.id : (boatData.nodeId || null);
+      const effectiveNodeId = isLocalPhone ? localNode.id : (canonicalNodeId(boatData.nodeId) || null);
 
       if (isLocalPhone) {
         deviceTrackerService.updateProfile({ boundBoatId: newId });
@@ -2247,7 +2261,7 @@ export default function App() {
       if (effectiveNodeId) {
         setNodes((prevNodes) =>
           prevNodes.map((n) =>
-            n.id === effectiveNodeId ? { ...n, boundBoatId: newId } : n
+            sameNodeId(n.id, effectiveNodeId) ? { ...n, boundBoatId: newId } : n
           )
         );
       }
@@ -2405,7 +2419,16 @@ export default function App() {
     setShowNodeBinding(true);
   };
 
+  // Forget a tracker's binding in both services, so its next packet doesn't bind it again
+  const clearTrackerBinding = (nodeId: string) => {
+    meshtasticService.setNodeBoundBoatId(nodeId, null);
+    deviceTrackerService.setNodeBoundBoat(nodeId, null);
+    deviceTrackerService.setNodeBoundBoat(canonicalNodeId(nodeId), null);
+    trackerRelay.forget(nodeId);
+  };
+
   const handleDeleteNode = (nodeId: string) => {
+    clearTrackerBinding(nodeId);
     setNodes((prev) => prev.filter((n) => !sameNodeId(n.id, nodeId)));
     setBoats((prev) =>
       prev.map((b) => (sameNodeId(b.nodeId, nodeId) ? { ...b, nodeId: null } : b))
@@ -2544,6 +2567,29 @@ export default function App() {
             aria-label="Dismiss"
             onClick={() => setSaveRejection(null)}
             className="shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-control text-danger-ink hover:brightness-110 cursor-pointer"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {trackersToReattach.length > 0 && (
+        <div
+          role="status"
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[69] w-[min(92vw,560px)] p-3 rounded-xl bg-surface/95 border border-warning-ink/50 text-ink shadow-2xl flex items-start gap-3 text-sm"
+        >
+          <p className="flex-1 min-w-0">
+            <span className="font-semibold">Re-attach {trackersToReattach.length === 1 ? 'a tracker' : `${trackersToReattach.length} trackers`}.</span>{' '}
+            <span className="text-xs text-ink-muted">
+              {trackersToReattach.slice(0, 4).join(', ')}{trackersToReattach.length > 4 ? ` and ${trackersToReattach.length - 4} more` : ''}{' '}
+              {trackersToReattach.length === 1 ? 'was' : 'were'} linked to a tracker id from an older version. Connect the tracker again and pick the boat.
+            </span>
+          </p>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setTrackersToReattach([])}
+            className="shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-control text-warning-ink hover:brightness-110 cursor-pointer"
           >
             <X className="w-4 h-4" aria-hidden="true" />
           </button>
