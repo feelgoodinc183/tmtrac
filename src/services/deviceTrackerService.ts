@@ -138,7 +138,7 @@ export type EditRejectedCallback = (rejection: { action: string; roomCode: strin
 class HybridDeviceTrackerService {
   private profile: DeviceTrackerProfile = getDefaultDeviceProfile();
   private gpsWatchId: number | null = null;
-  private batteryLevel: number | null = 88;
+  private batteryLevel: number | null = null; // until the Battery API reports (not available on iOS)
 
   private currentGpsState: DeviceGpsState;
 
@@ -451,13 +451,14 @@ class HybridDeviceTrackerService {
   // Allow LoRa Gateway / Node (Meshtastic) to broadcast historical backfilled points (from internal flash or burst RF)
   public broadcastHardwareBatch(nodeId: string, points: BackfillPoint[], boundBoatId?: string | null) {
     if (!nodeId || !Array.isArray(points) || points.length === 0) return;
-    const cleanId = nodeId.startsWith('!') ? nodeId.toUpperCase() : `!${nodeId.toUpperCase()}`;
-    const payload: GpsBatchBackfillPayload = {
+    const cleanId = canonicalNodeId(nodeId);
+    const payload: GpsBatchBackfillPayload & { relayedBy: string } = {
       deviceId: cleanId,
       deviceName: `LoRa Node ${cleanId.slice(-4)}`,
       deviceType: 'LORA_MESH',
       boundBoatId: boundBoatId || this.nodeBoatBindings.get(nodeId) || null,
       points,
+      relayedBy: this.profile.deviceId,
     };
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.sendWs('GPS_BATCH_BACKFILL', payload);
@@ -555,26 +556,20 @@ class HybridDeviceTrackerService {
       id: localId,
       longName: `${this.profile.deviceName} (This Device)`,
       shortName: this.profile.deviceId.slice(-4),
-      mac: `GPS:${this.profile.deviceId.slice(-4)}`,
-      battery: this.batteryLevel || 90,
-      voltage: 4.1,
-      satsInView: isActive ? 14 : 0,
-      satsInFix: isActive ? 12 : 0,
-      gpsFix: isActive,
-      altitudeMeters: isActive ? (this.currentGpsState.altitudeMeters || 5) : undefined,
-      speedKt: isActive ? (this.currentGpsState.speedKt ?? 0) : undefined,
-      headingDeg: isActive ? (this.currentGpsState.headingDeg ?? 0) : undefined,
+      mac: '',
+      // Only what the browser reports; the rest stays undefined and shows as a dash
+      battery: this.batteryLevel ?? undefined,
+      gpsFix: hasCoords,
+      altitudeMeters: isActive ? (this.currentGpsState.altitudeMeters ?? undefined) : undefined,
+      speedKt: isActive ? (this.currentGpsState.speedKt ?? undefined) : undefined,
+      headingDeg: isActive ? (this.currentGpsState.headingDeg ?? undefined) : undefined,
       lat: hasCoords ? this.currentGpsState.lat : undefined,
       lng: hasCoords ? this.currentGpsState.lng : undefined,
-      snr: 14,
-      rssi: -45,
-      hops: 0,
       boundBoatId: boundBoatId,
       status: isActive ? 'OPTIMAL' : 'OFFLINE',
       connectionType: this.profile.deviceType === 'TABLET' ? 'TABLET' : this.profile.deviceType === 'PHONE' ? 'PHONE' : 'DEVICE_GPS',
       lastPingTime: isActive ? Date.now() : 0,
-      hardwareModel: `${this.profile.deviceType} Nav Station`,
-      firmwareVersion: 'TMTRAC WebGPS Host',
+      hardwareModel: `${this.profile.deviceType} browser GPS`,
       isDeviceGps: true,
       deviceRole: this.profile.role,
       trail: hasCoords && this.currentGpsState.lat && this.currentGpsState.lng ? [{ lat: this.currentGpsState.lat, lng: this.currentGpsState.lng }] : [],
@@ -598,7 +593,7 @@ class HybridDeviceTrackerService {
       speedKt: this.currentGpsState.speedKt || 0,
       headingDeg: this.currentGpsState.headingDeg || 0,
       altitudeMeters: this.currentGpsState.altitudeMeters || 5,
-      battery: this.batteryLevel || 88,
+      battery: this.batteryLevel ?? undefined,
       timestamp: Date.now(),
       trail: [{ lat: this.currentGpsState.lat ?? 6.308, lng: this.currentGpsState.lng ?? 99.845 }],
       isOnline: true,
@@ -1019,7 +1014,7 @@ class HybridDeviceTrackerService {
         });
       }
     } catch (e) {
-      this.batteryLevel = 90;
+      this.batteryLevel = null;
     }
   }
 
@@ -1435,7 +1430,7 @@ class HybridDeviceTrackerService {
       speedKt: this.currentGpsState.speedKt || 0,
       headingDeg: this.currentGpsState.headingDeg || 0,
       altitudeMeters: this.currentGpsState.altitudeMeters || 10,
-      battery: this.batteryLevel || 90,
+      battery: this.batteryLevel ?? undefined,
       timestamp: pointTimestamp,
     };
 
