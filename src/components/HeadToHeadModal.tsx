@@ -1,6 +1,6 @@
 import React from 'react';
 import { Boat } from '../types/regatta';
-import { X, Swords, Compass, Wind, Award, Zap } from 'lucide-react';
+import { X, Swords } from 'lucide-react';
 import { safeFixed } from '../utils/formatters';
 
 interface HeadToHeadModalProps {

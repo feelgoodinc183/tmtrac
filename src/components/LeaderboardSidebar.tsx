@@ -5,39 +5,28 @@ import {
   Trophy,
   Radio,
   AlertTriangle,
-  ShieldCheck,
-  RefreshCw,
   Cpu,
-  Database,
   Crosshair,
   Eye,
   Bluetooth,
   Navigation,
-  Wifi,
   Smartphone,
   Tablet,
-  Laptop,
   Trash2,
-  Sparkles,
   Plus,
   Edit2,
   Clock,
-  Layers,
   Link2,
   PanelLeftClose,
   X,
   Gauge,
-  Thermometer,
-  Droplets,
-  Wind,
   ArrowUpDown,
   SlidersHorizontal,
-  Check,
   QrCode,
   Settings,
 } from 'lucide-react';
 import { formatLastHeard, safeFixed } from '../utils/formatters';
-import { deduplicateNodes, isNodeWithin240Hours } from '../services/meshtasticBleMqttService';
+import { deduplicateNodes } from '../services/meshtasticBleMqttService';
 
 interface LeaderboardSidebarProps {
   boats: Boat[];

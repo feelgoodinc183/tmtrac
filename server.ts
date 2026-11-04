@@ -6,7 +6,6 @@ import fs from 'fs';
 import crypto from 'crypto';
 import Stripe from 'stripe';
 import { WebSocketServer, WebSocket } from 'ws';
-import mqtt, { MqttClient } from 'mqtt';
 import {
   db,
   initDatabase,
@@ -17,22 +16,18 @@ import {
   insertAuditLog,
   PLAN_CONFIG,
   getAllPackages,
-  getPackageById,
   updatePackage,
   createPackage,
   deletePackage,
   getDatabaseStats,
   importDatabaseJson,
   syncStoreJson,
-  updateTenantSubscription,
-  adjustTenantEventPasses,
   getComprehensiveDiagnostics,
   repairDatabase,
   dbDiagnosticsState,
 } from './src/server/db';
 import {
   serverGateMiddleware,
-  resolveGateContext,
   requireAuth,
   requireTenantAdmin,
   requireSuperAdmin,

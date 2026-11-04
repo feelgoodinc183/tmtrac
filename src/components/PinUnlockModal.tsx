@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, KeyRound, ShieldCheck, AlertCircle } from 'lucide-react';
+import { X, KeyRound, ShieldCheck, AlertCircle } from 'lucide-react';
 import { roomService } from '../services/roomService';
 
 interface PinUnlockModalProps {

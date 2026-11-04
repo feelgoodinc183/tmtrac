@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Wifi, Terminal, Play, Pause, Trash2, Cpu, Radio, ShieldCheck, Smartphone, Send } from 'lucide-react';
+import { X, Wifi, Terminal, Play, Pause, Trash2, Cpu, Radio, Smartphone, Send } from 'lucide-react';
 import { meshtasticService } from '../services/meshtasticBleMqttService';
 import { deviceTrackerService } from '../services/deviceTrackerService';
 

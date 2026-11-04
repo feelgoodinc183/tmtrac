@@ -1,6 +1,6 @@
 import React from 'react';
 import { RacePlaybackState, RaceHighlightMoment } from '../types/regatta';
-import { Play, Pause, RotateCcw, FastForward, Rewind, Clock, Activity, X, Sparkles, Flag } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, Rewind, Activity, X, Sparkles } from 'lucide-react';
 
 interface RacePlaybackScrubberProps {
   playback: RacePlaybackState;

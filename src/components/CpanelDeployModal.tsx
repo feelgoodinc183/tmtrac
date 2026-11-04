@@ -7,16 +7,13 @@ import {
   FileArchive,
   Check,
   Copy,
-  ExternalLink,
   ShieldCheck,
   Terminal,
   FolderArchive,
   FileCode,
-  Layers,
   HelpCircle,
   RefreshCw,
   Sparkles,
-  ArrowRight,
   Zap,
 } from 'lucide-react';
 

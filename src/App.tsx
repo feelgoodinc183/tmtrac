@@ -23,9 +23,7 @@ import {
   CompetitorImportRecord,
 } from './types/regatta';
 import {
-  INITIAL_BOATS,
   INITIAL_MARKS,
-  INITIAL_NODES,
   INITIAL_RACE_STATE,
   INITIAL_RACE_CLASSES,
   REGATTA_LOCATIONS,
@@ -71,7 +69,7 @@ import { FrontLandingPage } from './components/FrontLandingPage';
 import { SuperAdminModal } from './components/SuperAdminModal';
 import { authService } from './services/authService';
 import { tenantService } from './services/tenantService';
-import { UserAccount, Tenant, PlanTier } from './types/regatta';
+import { UserAccount, Tenant } from './types/regatta';
 import { getSavedCourseProfiles } from './services/courseProfileService';
 import { generateRaceHighlights, recordedRaceDurationSec } from './services/highlightService';
 import { meshtasticService } from './services/meshtasticBleMqttService';
@@ -88,9 +86,8 @@ import {
   generateCoursePreset,
   evaluateBoatCourseProgress,
   replayBatchThroughCourseProgress,
-  calculateBearingDeg,
 } from './services/courseService';
-import { MapPin, Navigation, Trophy, Compass, ArrowLeft, Radio, Zap, X } from 'lucide-react';
+import { Navigation, Trophy, X } from 'lucide-react';
 
 const isValidNumber = (val: any): boolean => typeof val === 'number' && Number.isFinite(val) && !Number.isNaN(val);
 

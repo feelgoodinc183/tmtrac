@@ -5,8 +5,6 @@ import {
   Copy,
   Check,
   Printer,
-  ExternalLink,
-  Anchor,
   Smartphone,
   CheckCircle2,
   AlertTriangle,

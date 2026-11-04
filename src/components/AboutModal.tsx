@@ -2,7 +2,6 @@ import React from 'react';
 import {
   X,
   Building2,
-  Phone,
   Mail,
   MapPin,
   Globe,

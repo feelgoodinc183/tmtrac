@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CourseMark, DeviceGpsState } from '../types/regatta';
-import { MapPin, Trash2, ArrowUp, ArrowDown, Navigation, Check, X, Shield, Compass, RotateCcw } from 'lucide-react';
+import { MapPin, Trash2, ArrowUp, ArrowDown, Navigation, Check, X } from 'lucide-react';
 import { safeFixed } from '../utils/formatters';
 
 interface MarkDetailModalProps {

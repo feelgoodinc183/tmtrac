@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  User,
   Trophy,
   Anchor,
-  Wind,
   Shield,
   Calendar,
   MapPin,

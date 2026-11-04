@@ -7,17 +7,8 @@ import {
   Lock,
   ShieldCheck,
   User,
-  Compass,
-  Clock,
-  Trophy,
-  Sliders,
-  Settings,
-  Menu,
-  Building2,
-  Crown,
   Home,
   ShieldAlert,
-  Layers,
   Sun,
 } from 'lucide-react';
 import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount, PlanTier } from '../types/regatta';

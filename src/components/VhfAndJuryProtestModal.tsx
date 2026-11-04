@@ -7,14 +7,9 @@ import {
   Send,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   ShieldAlert,
-  FileText,
   Lock,
-  Download,
   Flame,
-  Volume2,
-  Users
 } from 'lucide-react';
 
 interface VhfAndJuryProtestModalProps {

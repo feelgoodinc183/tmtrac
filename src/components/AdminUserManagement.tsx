@@ -5,7 +5,6 @@ import {
   Shield,
   ShieldAlert,
   Search,
-  Filter,
   KeyRound,
   Trash2,
   CheckCircle2,
@@ -14,11 +13,7 @@ import {
   AlertTriangle,
   Crown,
   Anchor,
-  Flag,
   X,
-  Mail,
-  Lock,
-  Compass,
 } from 'lucide-react';
 import { UserAccount } from '../types/regatta';
 import { authService } from '../services/authService';

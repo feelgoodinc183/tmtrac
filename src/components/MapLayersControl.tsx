@@ -12,9 +12,7 @@ import {
   Waves,
   CloudRain,
   Map,
-  ChevronDown,
   X,
-  RotateCcw,
 } from 'lucide-react';
 
 interface MapLayersControlProps {

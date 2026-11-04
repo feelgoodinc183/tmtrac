@@ -3,18 +3,14 @@ import {
   X,
   Check,
   Building2,
-  Trophy,
   ShieldCheck,
   ArrowRight,
   Crown,
-  Sparkles,
   CreditCard,
   ExternalLink,
   Ticket,
-  Calendar,
   CheckCircle2,
   AlertCircle,
-  Clock,
 } from 'lucide-react';
 import { PlanTier, PricingPackage, Tenant } from '../types/regatta';
 import { tenantService } from '../services/tenantService';

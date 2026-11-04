@@ -1,5 +1,5 @@
 import express from 'express';
-import { db, insertAuditLog } from './db';
+import { db } from './db';
 import { findActiveUserByToken } from './sessions';
 import { Tenant, PlanTier, UserAccount } from '../types/regatta';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Boat, CourseMark, RaceClass, RaceClassDefinition, RaceState } from '../types/regatta';
+import { Boat, CourseMark, RaceClassDefinition, RaceState } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
 import { Button } from './ui/Button';
 
@@ -13,7 +13,6 @@ import {
   addCourseMark,
   removeCourseMark,
   moveMarkOrder,
-  updateMarkCoordinates,
   updateMarkSettings,
   generateCoursePreset,
 } from '../services/courseService';
@@ -25,7 +24,6 @@ import {
   Volume2,
   VolumeX,
   AlertTriangle,
-  CheckCircle,
   Flag,
   Wind,
   Radio,
@@ -33,14 +31,11 @@ import {
   Trash2,
   MapPin,
   Send,
-  Sliders,
-  ShieldAlert,
   ChevronDown,
   ChevronUp,
   Layers,
   Trophy,
   X,
-  Sailboat,
   Route,
 } from 'lucide-react';
 

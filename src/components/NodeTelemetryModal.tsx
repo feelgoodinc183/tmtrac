@@ -11,17 +11,13 @@ import {
   CheckCircle2,
   Anchor,
   Activity,
-  Layers,
   Crosshair,
-  Maximize2,
   Trash2,
-  MapPin,
   RefreshCw,
   Sliders,
   Check,
   Play,
   Pause,
-  Timer,
   Zap,
   Gauge,
   Thermometer,
@@ -29,9 +25,7 @@ import {
   Wind,
   MessageSquare,
   Send,
-  Filter,
   Terminal,
-  ArrowDownCircle,
 } from 'lucide-react';
 import { MeshtasticNode, Boat } from '../types/regatta';
 import { formatLastHeard, safeFixed } from '../utils/formatters';

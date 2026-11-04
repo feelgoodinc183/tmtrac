@@ -4,15 +4,8 @@ import {
   Navigation,
   CheckCircle2,
   AlertCircle,
-  Anchor,
-  Compass,
-  Radio,
-  Sparkles,
-  Smartphone,
   ShieldCheck,
   Search,
-  Check,
-  Plus,
 } from 'lucide-react';
 import { Boat, DeviceGpsState } from '../types/regatta';
 import { deviceTrackerService } from '../services/deviceTrackerService';

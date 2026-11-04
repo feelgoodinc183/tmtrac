@@ -1,4 +1,4 @@
-import { Boat, BoatRaceResult, BoatStatus, CompletedRace, MarkRounding, SeriesStanding, SeriesScoreEntry } from '../types/regatta';
+import { Boat, BoatRaceResult, BoatStatus, CompletedRace, SeriesStanding, SeriesScoreEntry } from '../types/regatta';
 
 /**
  * Calculates RRS Appendix A Low Point score for a finish rank or penalty status

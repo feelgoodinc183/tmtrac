@@ -8,14 +8,8 @@ import {
   FileText,
   Plus,
   RefreshCw,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  Calendar,
-  Key,
   Smartphone,
   Globe,
-  Radio,
   ArrowUpRight,
 } from 'lucide-react';
 import { Tenant, AuditLogEntry, RegattaRoomSummary } from '../types/regatta';

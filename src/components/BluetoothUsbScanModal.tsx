@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MeshtasticNode, Boat, HardwareConnection } from '../types/regatta';
 import {
   X,
@@ -9,11 +9,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Terminal,
-  Zap,
-  HardDrive,
   Plug,
   Wifi,
-  Send,
   PlusCircle,
   TowerControl,
   ExternalLink,
@@ -25,7 +22,6 @@ import { formatLastHeard, safeFixed } from '../utils/formatters';
 import {
   meshtasticService,
   MqttConfig,
-  DEFAULT_MQTT_CONFIG,
   loadSavedMqttConfig,
   saveMqttConfig,
   normalizeMqttWsUrl,

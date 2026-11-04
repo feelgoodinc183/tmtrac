@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Boat, MeshtasticNode, HandicapSystem, RaceClass, RaceClassDefinition } from '../types/regatta';
-import { X, Radio, Anchor, CheckCircle2, Link2, Unlink, Smartphone, Tablet, Bluetooth, Cpu, AlertCircle, QrCode } from 'lucide-react';
+import { X, Radio, Anchor, CheckCircle2, Link2, Unlink, Smartphone, Tablet, Bluetooth, AlertCircle, QrCode } from 'lucide-react';
 import { formatLastHeard, safeFixed } from '../utils/formatters';
 
 interface NodeBindingModalProps {

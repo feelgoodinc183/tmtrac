@@ -5,37 +5,17 @@ import {
   Compass,
   Zap,
   Radio,
-  Trophy,
-  Route,
-  Layers,
   ShieldAlert,
   Bot,
-  RotateCcw,
   Database,
-  Sun,
-  Volume2,
-  VolumeX,
-  User,
-  LogIn,
   QrCode,
   Link2,
   Bluetooth,
   Globe,
   Info,
-  CheckCircle2,
-  Play,
-  Square,
-  AlertTriangle,
   Clock,
-  ArrowRight,
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
   BarChart2,
   Signal,
-  Battery,
-  ShieldCheck,
-  Lock,
   Building2,
 } from 'lucide-react';
 import {
@@ -48,7 +28,7 @@ import {
   UserAccount,
   CompletedRace,
 } from '../types/regatta';
-import { formatTime, safeFixed } from '../utils/formatters';
+import { safeFixed } from '../utils/formatters';
 import { APP_VERSION } from '../appVersion';
 
 export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';

@@ -9,24 +9,14 @@ import {
   AdaptiveThrottleConfig,
 } from '../types/regatta';
 import { REGATTA_LOCATIONS } from '../services/initialData';
-import { loadSavedMqttConfig, saveMqttConfig, meshtasticService, normalizeMqttWsUrl } from '../services/meshtasticBleMqttService';
+import { saveMqttConfig, meshtasticService } from '../services/meshtasticBleMqttService';
 import {
   X,
   Compass,
-  Wind,
-  Wifi,
-  Radio,
   Globe,
   Terminal,
-  Activity,
-  Zap,
   CheckCircle2,
-  Layers,
   MapPin,
-  RefreshCw,
-  Sliders,
-  Play,
-  Pause,
   Server,
   Plus,
   Trash2,
@@ -39,8 +29,6 @@ import {
   ShieldCheck,
   Gauge,
   Smartphone,
-  AlertTriangle,
-  Clock,
 } from 'lucide-react';
 
 export const STORAGE_KEY_MY_MESH_CONFIG = 'tmtrac_my_mesh_config_v2';
