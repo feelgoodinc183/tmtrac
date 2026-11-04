@@ -34,3 +34,23 @@ export function nodeNumFromId(id: string | null | undefined): number | null {
   if (!/^![0-9a-f]{8}$/.test(canon)) return null;
   return parseInt(canon.slice(1), 16) >>> 0;
 }
+
+/**
+ * Tracker ids written by older versions that no real tracker will ever report: "!TECHO-…" placeholders
+ * from before the node id was known, and the fake USB node. Boats bound to these never update.
+ */
+export function isLegacyPlaceholderNodeId(id: string | null | undefined): boolean {
+  if (!id) return false;
+  return /^!TECHO-/i.test(id.trim()) || /^!USB01$/i.test(id.trim());
+}
+
+/** Clears legacy placeholder tracker ids from boats; returns the boats that were changed */
+export function clearLegacyTrackerIds<T extends { nodeId: string | null }>(boats: T[]): { boats: T[]; cleared: T[] } {
+  const cleared: T[] = [];
+  const next = boats.map((b) => {
+    if (!isLegacyPlaceholderNodeId(b.nodeId)) return b;
+    cleared.push(b);
+    return { ...b, nodeId: null };
+  });
+  return { boats: cleared.length ? next : boats, cleared };
+}

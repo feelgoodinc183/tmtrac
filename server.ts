@@ -673,7 +673,10 @@ async function startServer() {
                 return;
               }
 
-              (ws as any).deviceId = payload.deviceId;
+              // As for GPS_BROADCAST: a relayed tracker's history doesn't take over this socket's identity
+              if (!payload.relayedBy) {
+                (ws as any).deviceId = payload.deviceId;
+              }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const existingTrail = existing.trail || [];
               const newCoords = payload.points.map((p: any) => ({ lat: p.lat, lng: p.lng }));
