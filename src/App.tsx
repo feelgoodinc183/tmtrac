@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Boat,
-  BoatStatus,
   ChatMessage,
   CourseMark,
   MeshtasticNode,
@@ -77,6 +76,8 @@ import { deviceTrackerService, getDefaultDeviceProfile } from './services/device
 import { roomService } from './services/roomService';
 import { serverNow } from './services/serverClock';
 import { getClassRaceState } from './services/classRaceState';
+import { computeLiveBoatStatus, createTrackerFixApplier, TrackerFix } from './services/trackerFix';
+import { canonicalNodeId, sameNodeId } from './utils/nodeId';
 import {
   addCourseMark,
   removeCourseMark,
@@ -88,7 +89,7 @@ import {
   replayBatchThroughCourseProgress,
 } from './services/courseService';
 import { Navigation, Trophy, X } from 'lucide-react';
-import { formatBattery } from './utils/formatters';
+import { formatBattery, nodeStatusFromLastPing } from './utils/formatters';
 
 const isValidNumber = (val: any): boolean => typeof val === 'number' && Number.isFinite(val) && !Number.isNaN(val);
 
@@ -112,8 +113,9 @@ export function deduplicateNodes(nodeList: MeshtasticNode[]): MeshtasticNode[] {
   const result: MeshtasticNode[] = [];
   for (const n of nodeList) {
     if (!n || !n.id) continue;
-    if (!seenIds.has(n.id)) {
-      seenIds.add(n.id);
+    const id = canonicalNodeId(n.id);
+    if (!seenIds.has(id)) {
+      seenIds.add(id);
       result.push(n);
     }
   }
@@ -121,74 +123,6 @@ export function deduplicateNodes(nodeList: MeshtasticNode[]): MeshtasticNode[] {
 }
 
 
-/**
- * Automatically computes live boat status with full RRS compliance:
- * - If race concludes or ends: unfinished racing boats become DNF, boats in pre-start become DNS.
- * - If boat crosses finish line: becomes FINISHED.
- * - Preserves existing final statuses (FINISHED, DSQ, RET, DNF, DNS).
- */
-export function computeLiveBoatStatus(
-  currentStatus: BoatStatus,
-  progress: { isFinished: boolean; isOcs: boolean },
-  classState: { status: string; countdownSeconds?: number; startSequenceActive?: boolean },
-  elapsedSec?: number,
-  roundingsCount?: number
-): BoatStatus {
-  // Preserve final locked outcomes
-  if (
-    currentStatus === 'FINISHED' ||
-    currentStatus === 'DSQ' ||
-    currentStatus === 'RET' ||
-    currentStatus === 'DNF' ||
-    currentStatus === 'DNS'
-  ) {
-    return currentStatus;
-  }
-
-  // If boat crossed finish line
-  if (progress.isFinished) {
-    return 'FINISHED';
-  }
-
-  // If race class has concluded/finished
-  if (classState.status === 'FINISHED') {
-    const hasStarted =
-      (elapsedSec && elapsedSec > 0) ||
-      (roundingsCount && roundingsCount > 0) ||
-      currentStatus === 'RACING' ||
-      currentStatus === 'OCS' ||
-      currentStatus === 'CLEARED_OCS';
-    return currentStatus === 'PRE_START' || !hasStarted ? 'DNS' : 'DNF';
-  }
-
-  // In Pre-start or countdown
-  const isPreStartOrCountdown =
-    classState.status === 'PRE_START' ||
-    classState.status === 'COUNTDOWN' ||
-    (typeof classState.countdownSeconds === 'number' && classState.countdownSeconds > 0);
-
-  if (isPreStartOrCountdown) {
-    return 'PRE_START';
-  }
-
-  if (currentStatus === 'CLEARED_OCS') {
-    return 'CLEARED_OCS';
-  }
-
-  if (progress.isOcs) {
-    return 'OCS';
-  }
-
-  if (currentStatus === 'OCS' && !progress.isOcs) {
-    return 'RACING';
-  }
-
-  if (currentStatus === 'PRE_START' && classState.status === 'RACING') {
-    return 'RACING';
-  }
-
-  return currentStatus;
-}
 
 export default function App() {
   const [raceState, setRaceState] = useState<RaceState>(INITIAL_RACE_STATE);
@@ -205,8 +139,34 @@ export default function App() {
     return INITIAL_RACE_CLASSES;
   });
   const [boats, setBoats] = useState<Boat[]>([]);
+  const boatsRef = useRef(boats);
+  boatsRef.current = boats;
   const [nodes, setNodes] = useState<MeshtasticNode[]>([]);
   const [marks, setMarks] = useState<CourseMark[]>(INITIAL_MARKS);
+
+  // Tracker subscriptions are set up once, so they read race state, marks and boats through refs
+  // to always score against the current values rather than the ones from the first render.
+  const raceStateRef = useRef(raceState);
+  raceStateRef.current = raceState;
+  const marksRef = useRef(marks);
+  marksRef.current = marks;
+  const [applyTrackerFix] = useState(() =>
+    createTrackerFixApplier(() => raceStateRef.current, () => marksRef.current)
+  );
+  const playHornRef = useRef<(frequency?: number, durationMs?: number, forcePlay?: boolean) => void>(() => {});
+  // Last position applied to a boat from each LoRa node, so repeated reports of the same fix
+  // (telemetry, NodeDB refreshes) don't add trail points or re-run scoring
+  const lastNodeFixRef = useRef<Map<string, string>>(new Map());
+
+  const applyFixAndBroadcast = (prevBoats: Boat[], fix: TrackerFix): Boat[] => {
+    const res = applyTrackerFix(prevBoats, fix);
+    if (!res.changed) return prevBoats;
+    if (res.rounding) {
+      playHornRef.current(res.rounding.isFinished ? 880 : 660, res.rounding.isFinished ? 1000 : 400);
+    }
+    deviceTrackerService.broadcastBoats(res.boats);
+    return res.boats;
+  };
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null);
   const [activeRoomCode, setActiveRoomCode] = useState<string>(() => roomService.getActiveRoomCode());
   const [isOrganizer, setIsOrganizer] = useState<boolean>(() => roomService.isOrganizer());
@@ -388,56 +348,15 @@ export default function App() {
 
       // If our local device GPS is bound to a boat, update the boat directly with real-time coordinates
       if (gps && isValidNumber(gps.lat) && isValidNumber(gps.lng) && gps.lat !== 0 && gps.lng !== 0 && gps.profile?.boundBoatId) {
-        const targetBoatId = gps.profile.boundBoatId;
-        const targetDeviceId = gps.profile.deviceId;
-        const localNodeId = localNode.id;
-        setBoats((prevBoats) => {
-          let hasChange = false;
-          const updated = prevBoats.map((b) => {
-            if (b.id === targetBoatId || b.nodeId === targetDeviceId || b.nodeId === localNodeId) {
-              hasChange = true;
-              const oldTrail = b.trail || [];
-              const sog = isValidNumber(gps.speedKt) ? gps.speedKt! : b.sog;
-              const cog = isValidNumber(gps.headingDeg) ? gps.headingDeg! : b.cog;
-              const newTrail = [...oldTrail, { lat: gps.lat!, lng: gps.lng! }].slice(-1000);
-              
-              const boatClassState = getClassRaceState(raceState, b.class);
-              const tempBoat = { ...b, lat: gps.lat!, lng: gps.lng!, sog, cog, trail: newTrail };
-              const progress = evaluateBoatCourseProgress(tempBoat, marks, boatClassState.countdownSeconds, b.lat, b.lng);
-              
-              const updatedStatus = computeLiveBoatStatus(
-                b.status,
-                progress,
-                boatClassState,
-                b.elapsedSeconds,
-                b.markRoundings?.length
-              );
-
-              if (progress.newlyRounded) {
-                playHornSound(progress.isFinished ? 880 : 660, progress.isFinished ? 1000 : 400);
-              }
-
-              return {
-                ...b,
-                nodeId: b.nodeId || localNodeId,
-                lat: gps.lat!,
-                lng: gps.lng!,
-                sog,
-                cog,
-                heading: cog,
-                trail: newTrail,
-                markRoundings: progress.updatedRoundings,
-                dtw: progress.dtwNm,
-                status: updatedStatus,
-              };
-            }
-            return b;
-          });
-          if (hasChange) {
-            deviceTrackerService.broadcastBoats(updated);
-          }
-          return updated;
-        });
+        const fix: TrackerFix = {
+          trackerId: localNode.id,
+          boundBoatId: gps.profile.boundBoatId,
+          lat: gps.lat!,
+          lng: gps.lng!,
+          speedKt: isValidNumber(gps.speedKt) ? gps.speedKt! : undefined,
+          headingDeg: isValidNumber(gps.headingDeg) ? gps.headingDeg! : undefined,
+        };
+        setBoats((prevBoats) => applyFixAndBroadcast(prevBoats, fix));
       }
     });
 
@@ -461,53 +380,15 @@ export default function App() {
 
             // If this tracker is bound to a race boat, update the boat's coordinates immediately
             if (member.boundBoatId || member.deviceId) {
-              setBoats((prevBoats) => {
-                let hasChange = false;
-                const updated = prevBoats.map((b) => {
-                  if (b.id === member.boundBoatId || b.nodeId === member.deviceId) {
-                    hasChange = true;
-                    const oldTrail = b.trail || [];
-                    const sog = isValidNumber(member.speedKt) ? member.speedKt : b.sog;
-                    const cog = isValidNumber(member.headingDeg) ? member.headingDeg : b.cog;
-                    const newTrail = [...oldTrail, { lat: member.lat, lng: member.lng }].slice(-1000);
-
-                    const boatClassState = getClassRaceState(raceState, b.class);
-                    const tempBoat = { ...b, lat: member.lat, lng: member.lng, sog, cog, trail: newTrail };
-                    const progress = evaluateBoatCourseProgress(tempBoat, marks, boatClassState.countdownSeconds, b.lat, b.lng);
-
-                    const updatedStatus = computeLiveBoatStatus(
-                      b.status,
-                      progress,
-                      boatClassState,
-                      b.elapsedSeconds,
-                      b.markRoundings?.length
-                    );
-
-                    if (progress.newlyRounded) {
-                      playHornSound(progress.isFinished ? 880 : 660, progress.isFinished ? 1000 : 400);
-                    }
-
-                    return {
-                      ...b,
-                      nodeId: b.nodeId || member.deviceId,
-                      lat: member.lat,
-                      lng: member.lng,
-                      sog,
-                      cog,
-                      heading: cog,
-                      trail: newTrail,
-                      markRoundings: progress.updatedRoundings,
-                      dtw: progress.dtwNm,
-                      status: updatedStatus,
-                    };
-                  }
-                  return b;
-                });
-                if (hasChange) {
-                  deviceTrackerService.broadcastBoats(updated);
-                }
-                return updated;
-              });
+              const fix: TrackerFix = {
+                trackerId: member.deviceId,
+                boundBoatId: member.boundBoatId,
+                lat: member.lat,
+                lng: member.lng,
+                speedKt: isValidNumber(member.speedKt) ? member.speedKt : undefined,
+                headingDeg: isValidNumber(member.headingDeg) ? member.headingDeg : undefined,
+              };
+              setBoats((prevBoats) => applyFixAndBroadcast(prevBoats, fix));
             }
           }
         });
@@ -647,76 +528,41 @@ export default function App() {
     const unsubMeshtasticNode = meshtasticService.onNodeUpdate((node) => {
       if (!node) return;
       setNodes((prevNodes) => {
-        const idx = prevNodes.findIndex((n) => n.id === node.id);
+        const idx = prevNodes.findIndex((n) => sameNodeId(n.id, node.id));
         if (idx >= 0) {
           const updated = [...prevNodes];
-          const oldTrail = prevNodes[idx].trail || [];
-          const validLat = isValidNumber(node.lat) && node.lat !== 0 ? node.lat : prevNodes[idx].lat;
-          const validLng = isValidNumber(node.lng) && node.lng !== 0 ? node.lng : prevNodes[idx].lng;
-          const newTrail = (validLat && validLng) 
-            ? [...oldTrail, { lat: validLat, lng: validLng }].slice(-1000)
-            : oldTrail;
-          const boundBoatId = (node.boundBoatId !== undefined && node.boundBoatId !== null) ? node.boundBoatId : prevNodes[idx].boundBoatId;
-          updated[idx] = { ...prevNodes[idx], ...node, boundBoatId, lat: validLat, lng: validLng, trail: newTrail };
+          const boundBoatId = node.boundBoatId ?? prevNodes[idx].boundBoatId;
+          // The service keeps each node's trail from that node's own packets
+          updated[idx] = { ...prevNodes[idx], ...node, boundBoatId };
           return updated;
-        } else {
-          return [node, ...prevNodes];
         }
+        return [node, ...prevNodes];
       });
 
-      // Update bound boat's live telemetry if available
-      if (isValidNumber(node.lat) && isValidNumber(node.lng) && node.lat !== 0 && node.lng !== 0) {
-        // Broadcast hardware node to the server so all remote spectators & fleet members see it publicly
-        deviceTrackerService.broadcastHardwareNode(node);
+      if (!isValidNumber(node.lat) || !isValidNumber(node.lng) || (node.lat === 0 && node.lng === 0)) return;
 
-        setBoats((prevBoats) => {
-          let hasChange = false;
-          const updated = prevBoats.map((b) => {
-            if (b.nodeId === node.id || (node.boundBoatId && b.id === node.boundBoatId)) {
-              hasChange = true;
-              const oldTrail = b.trail || [];
-              const sog = isValidNumber(node.speedKt) && node.speedKt! > 0 ? node.speedKt! : b.sog;
-              const cog = isValidNumber(node.headingDeg) ? node.headingDeg! : b.cog;
-              const newTrail = [...oldTrail, { lat: node.lat!, lng: node.lng! }].slice(-1000);
+      const fixKey = `${node.lat},${node.lng}`;
+      const nodeKey = canonicalNodeId(node.id);
+      if (lastNodeFixRef.current.get(nodeKey) === fixKey) return;
+      lastNodeFixRef.current.set(nodeKey, fixKey);
 
-              const boatClassState = getClassRaceState(raceState, b.class);
-              const tempBoat = { ...b, lat: node.lat!, lng: node.lng!, sog, cog, trail: newTrail };
-              const progress = evaluateBoatCourseProgress(tempBoat, marks, boatClassState.countdownSeconds, b.lat, b.lng);
+      // Only trackers bound to a boat in this room are shared with the room
+      const boundBoat = boatsRef.current.find(
+        (b) => (node.boundBoatId && b.id === node.boundBoatId) || sameNodeId(b.nodeId, node.id)
+      );
+      if (!boundBoat) return;
 
-              const updatedStatus = computeLiveBoatStatus(
-                b.status,
-                progress,
-                boatClassState,
-                b.elapsedSeconds,
-                b.markRoundings?.length
-              );
+      deviceTrackerService.broadcastHardwareNode({ ...node, boundBoatId: boundBoat.id });
 
-              if (progress.newlyRounded) {
-                playHornSound(progress.isFinished ? 880 : 660, progress.isFinished ? 1000 : 400);
-              }
-
-              return {
-                ...b,
-                nodeId: b.nodeId || node.id,
-                lat: node.lat!,
-                lng: node.lng!,
-                sog,
-                cog,
-                heading: cog,
-                trail: newTrail,
-                markRoundings: progress.updatedRoundings,
-                dtw: progress.dtwNm,
-                status: updatedStatus,
-              };
-            }
-            return b;
-          });
-          if (hasChange) {
-            deviceTrackerService.broadcastBoats(updated);
-          }
-          return updated;
-        });
-      }
+      const fix: TrackerFix = {
+        trackerId: node.id,
+        boundBoatId: boundBoat.id,
+        lat: node.lat!,
+        lng: node.lng!,
+        speedKt: isValidNumber(node.speedKt) ? node.speedKt : undefined,
+        headingDeg: isValidNumber(node.headingDeg) ? node.headingDeg : undefined,
+      };
+      setBoats((prevBoats) => applyFixAndBroadcast(prevBoats, fix));
     });
 
     const unsubMeshtasticPacket = meshtasticService.onPacketLog((_pkt) => {
@@ -741,16 +587,16 @@ export default function App() {
       setBoats((prevBoats) => {
         let hasChange = false;
         const updated = prevBoats.map((b) => {
-          if (b.nodeId === payload.deviceId || (payload.boundBoatId && b.id === payload.boundBoatId)) {
+          if (sameNodeId(b.nodeId, payload.deviceId) || (payload.boundBoatId && b.id === payload.boundBoatId)) {
             hasChange = true;
             const oldTrail = b.trail || [];
             const newCoords = payload.points.map((p) => ({ lat: p.lat, lng: p.lng }));
             const mergedTrail = [...oldTrail, ...newCoords].slice(-2000);
 
-            const boatClassState = getClassRaceState(raceState, b.class);
+            const boatClassState = getClassRaceState(raceStateRef.current, b.class);
             const replayedBoat = replayBatchThroughCourseProgress(
               { ...b, trail: mergedTrail },
-              marks,
+              marksRef.current,
               payload.points,
               boatClassState.countdownSeconds
             );
@@ -788,6 +634,26 @@ export default function App() {
       unsubMqttStatus();
       unsubBatchBackfill();
     };
+  }, []);
+
+  // Tracker status follows how recently each node was heard (live / stale / offline), even when
+  // no packets arrive, so a tracker that goes quiet is shown as such.
+  useEffect(() => {
+    const refreshStatuses = () => {
+      setNodes((prev) => {
+        let changed = false;
+        const next = prev.map((n) => {
+          const status = nodeStatusFromLastPing(n.lastPingTime);
+          if (status === n.status) return n;
+          changed = true;
+          return { ...n, status };
+        });
+        return changed ? next : prev;
+      });
+    };
+    refreshStatuses();
+    const timer = setInterval(refreshStatuses, 15_000);
+    return () => clearInterval(timer);
   }, []);
 
   // Selected Regional Location (Default to Langkawi International Regatta Circuit, Malaysia)
@@ -1098,6 +964,8 @@ export default function App() {
       console.warn('Audio synthesis unavailable:', e);
     }
   };
+
+  playHornRef.current = playHornSound;
 
   // Replay scrubber tick loop - 250ms high-resolution timer for smooth motion
   useEffect(() => {
@@ -1445,25 +1313,6 @@ export default function App() {
         return n;
       })
     );
-  };
-
-  const handleMoveNodePosition = (nodeId: string, lat: number, lng: number) => {
-    if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    let boundBoatId: string | undefined;
-    setNodes((prev) =>
-      prev.map((n) => {
-        if (n.id === nodeId) {
-          boundBoatId = n.boundBoatId;
-          const nextTrail = [...(n.trail || []), { lat, lng }].slice(-1000);
-          return { ...n, lat, lng, trail: nextTrail, lastHeard: Date.now() };
-        }
-        return n;
-      })
-    );
-
-    if (boundBoatId) {
-      handleMoveBoatPosition(boundBoatId, lat, lng);
-    }
   };
 
   const handleUpdateMarkSettings = (markId: string, updates: Partial<CourseMark>) => {
@@ -2116,7 +1965,7 @@ export default function App() {
     }
 
     // 2. Check nodes state
-    const foundNode = nodes.find((n) => n.id === nodeId);
+    const foundNode = nodes.find((n) => sameNodeId(n.id, nodeId));
     if (foundNode && isValidNumber(foundNode.lat) && isValidNumber(foundNode.lng) && foundNode.lat !== 0 && foundNode.lng !== 0) {
       return {
         lat: foundNode.lat!,
@@ -2154,7 +2003,7 @@ export default function App() {
       nodeId === 'LOCAL_PHONE_GPS' ||
       nodeId === `!DEV-${profile.deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
 
-    const effectiveNodeId = isLocalPhone ? localNode.id : nodeId;
+    const effectiveNodeId = isLocalPhone ? localNode.id : canonicalNodeId(nodeId);
 
     // Persist binding into both background communication services
     deviceTrackerService.setNodeBoundBoat(nodeId, boatId || null);
@@ -2170,11 +2019,11 @@ export default function App() {
 
     setNodes((prev) =>
       prev.map((n) => {
-        if (n.id === nodeId || n.id === effectiveNodeId || (isLocalPhone && n.id === localNode.id)) {
+        if (sameNodeId(n.id, nodeId) || sameNodeId(n.id, effectiveNodeId) || (isLocalPhone && n.id === localNode.id)) {
           return { ...n, boundBoatId: boatId || undefined };
         }
         // If node was previously bound to this boat, unbind it
-        if (boatId && n.boundBoatId === boatId && n.id !== nodeId && n.id !== effectiveNodeId) {
+        if (boatId && n.boundBoatId === boatId && !sameNodeId(n.id, nodeId) && !sameNodeId(n.id, effectiveNodeId)) {
           return { ...n, boundBoatId: undefined };
         }
         return n;
@@ -2200,12 +2049,12 @@ export default function App() {
             heading: newCog,
             trail: newTrail,
           };
-        } else if (boatId && b.nodeId === effectiveNodeId && b.id !== boatId) {
+        } else if (boatId && sameNodeId(b.nodeId, effectiveNodeId) && b.id !== boatId) {
           // Clear previous boat bound to this node
           return { ...b, nodeId: null };
         } else if (!boatId || boatId === '') {
           // Unbinding this node from any boat
-          if (b.nodeId === nodeId || b.nodeId === effectiveNodeId || (isLocalPhone && b.nodeId === localNode.id)) {
+          if (sameNodeId(b.nodeId, nodeId) || sameNodeId(b.nodeId, effectiveNodeId) || (isLocalPhone && b.nodeId === localNode.id)) {
             return { ...b, nodeId: null };
           }
         }
@@ -2523,83 +2372,31 @@ export default function App() {
     }
   };
 
+  // Adding or connecting a tracker only lists it. It is never turned into a boat automatically:
+  // the user binds it to an existing boat, or creates one, in the binding window.
   const handleAddScannedNode = (newNode: MeshtasticNode) => {
-    let boundBoatId = newNode.boundBoatId;
-    const cleanNodeTag = (newNode.shortName || newNode.id.replace(/[^a-zA-Z0-9]/g, '').slice(-4)).toUpperCase();
-    const cleanNodeKey = newNode.id.replace(/^!+/, '').replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
-    const newBoatId = `boat-${cleanNodeKey}`;
-
-    const fallbackLat = (newNode.lat && newNode.lat !== 0) ? newNode.lat : selectedLocation.centerLat;
-    const fallbackLng = (newNode.lng && newNode.lng !== 0) ? newNode.lng : selectedLocation.centerLng;
-
-    const autoBoat: Boat = {
-      id: newBoatId,
-      name: newNode.longName.replace(/LilyGO /i, '').slice(0, 20) || `T-Echo (${cleanNodeTag})`,
-      sailNumber: `TE-${cleanNodeTag}`,
-      class: raceState.activeClass && raceState.activeClass !== 'ALL' ? raceState.activeClass : 'IRC RACING',
-      handicapSystem: 'IRC',
-      handicapRating: 1.000,
-      skipper: 'T-Echo Pilot',
-      color: '#00D4FF',
-      nodeId: newNode.id,
-      status: 'RACING',
-      lat: fallbackLat,
-      lng: fallbackLng,
-      sog: newNode.speedKt || 0.0,
-      cog: newNode.headingDeg || 0,
-      heading: newNode.headingDeg || 0,
-      vmg: 0,
-      dtw: 0,
-      markRoundings: [],
-      elapsedSeconds: 0,
-      correctedSeconds: 0,
-      trail: [{ lat: fallbackLat, lng: fallbackLng }],
-    };
-
-    setBoats((prev) => {
-      // Find if boat already exists for this node or boat id
-      const existingIdx = prev.findIndex(
-        (b) => b.id === newBoatId || b.nodeId === newNode.id || (boundBoatId && b.id === boundBoatId)
-      );
-
-      if (existingIdx >= 0) {
-        const existing = prev[existingIdx];
-        const updated = [...prev];
-        updated[existingIdx] = {
-          ...existing,
-          nodeId: existing.nodeId || newNode.id,
-          lat: (newNode.lat && newNode.lat !== 0) ? newNode.lat : existing.lat,
-          lng: (newNode.lng && newNode.lng !== 0) ? newNode.lng : existing.lng,
-          sog: (newNode.speedKt !== undefined && newNode.speedKt > 0) ? newNode.speedKt : existing.sog,
-          cog: (newNode.headingDeg !== undefined) ? newNode.headingDeg : existing.cog,
-        };
-        const deduped = deduplicateBoats(updated);
-        deviceTrackerService.broadcastBoats(deduped);
-        return deduped;
-      }
-
-      const next = deduplicateBoats([autoBoat, ...prev]);
-      deviceTrackerService.broadcastBoats(next);
-      return next;
-    });
-
-    const finalizedNode = { ...newNode, boundBoatId: boundBoatId || newBoatId };
-
     setNodes((prev) => {
-      const idx = prev.findIndex((n) => n.id === finalizedNode.id);
+      const idx = prev.findIndex((n) => sameNodeId(n.id, newNode.id));
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = { ...prev[idx], ...finalizedNode };
+        updated[idx] = { ...prev[idx], ...newNode, boundBoatId: newNode.boundBoatId ?? prev[idx].boundBoatId };
         return deduplicateNodes(updated);
       }
-      return deduplicateNodes([finalizedNode, ...prev]);
+      return deduplicateNodes([newNode, ...prev]);
     });
   };
 
+  const handleRequestBindNode = (nodeId: string) => {
+    setShowHardwareScan(false);
+    setBindingTargetNodeId(nodeId);
+    setBindingTargetBoatId(undefined);
+    setShowNodeBinding(true);
+  };
+
   const handleDeleteNode = (nodeId: string) => {
-    setNodes((prev) => prev.filter((n) => n.id !== nodeId));
+    setNodes((prev) => prev.filter((n) => !sameNodeId(n.id, nodeId)));
     setBoats((prev) =>
-      prev.map((b) => (b.nodeId === nodeId ? { ...b, nodeId: null } : b))
+      prev.map((b) => (sameNodeId(b.nodeId, nodeId) ? { ...b, nodeId: null } : b))
     );
     if (followedTargetId === nodeId) {
       setFollowedTargetId(null);
@@ -2897,7 +2694,6 @@ export default function App() {
               onDeleteMark={handleDeleteMark}
               onMoveMarkPosition={handleMoveMarkPosition}
               onMoveBoatPosition={handleMoveBoatPosition}
-              onMoveNodePosition={handleMoveNodePosition}
               onUpdateMarkSettings={handleUpdateMarkSettings}
               onMoveMarkOrder={handleMoveMarkOrder}
               onApplyCoursePreset={handleApplyCoursePreset}
@@ -2950,7 +2746,6 @@ export default function App() {
                 onDeleteMark={handleDeleteMark}
                 onMoveMarkPosition={handleMoveMarkPosition}
                 onMoveBoatPosition={handleMoveBoatPosition}
-                onMoveNodePosition={handleMoveNodePosition}
                 onUpdateMarkSettings={handleUpdateMarkSettings}
                 onMoveMarkOrder={handleMoveMarkOrder}
                 onApplyCoursePreset={handleApplyCoursePreset}
@@ -3258,6 +3053,7 @@ export default function App() {
             setHardwareConn((prev) => ({ ...prev, ...partial }))
           }
           onAddScannedNode={handleAddScannedNode}
+          onRequestBindNode={handleRequestBindNode}
           onDeleteNode={handleDeleteNode}
           onClose={() => setShowHardwareScan(false)}
         />

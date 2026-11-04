@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { formatBattery, formatLastHeard, safeFixed, trackerFreshness } from '../utils/formatters';
 import { Button } from './ui/Button';
+import { sameNodeId } from '../utils/nodeId';
 import { deduplicateNodes } from '../services/meshtasticBleMqttService';
 
 interface LeaderboardSidebarProps {
@@ -453,7 +454,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               const isSelected = selectedBoatId === boat.id;
               const isFollowing = followedTargetId === boat.id;
               const isOcs = boat.status === 'OCS';
-              const boundNode = nodes.find((n) => n.boundBoatId === boat.id || n.id === boat.nodeId);
+              const boundNode = nodes.find((n) => n.boundBoatId === boat.id || sameNodeId(n.id, boat.nodeId));
 
               const boatClsState = raceState.classStates?.[boat.class] || (raceState.activeClass === boat.class ? {
                 status: raceState.status,

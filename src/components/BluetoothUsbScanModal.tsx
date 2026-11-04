@@ -8,7 +8,6 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
-  Terminal,
   Plug,
   Wifi,
   PlusCircle,
@@ -17,7 +16,9 @@ import {
   Trash2,
   Clock,
   Gauge,
+  Link2,
 } from 'lucide-react';
+import { Button } from './ui/Button';
 import { formatBattery, formatLastHeard, safeFixed } from '../utils/formatters';
 import {
   meshtasticService,
@@ -34,6 +35,8 @@ interface BluetoothUsbScanModalProps {
   hardwareConn: HardwareConnection;
   onUpdateHardwareConn: (conn: Partial<HardwareConnection>) => void;
   onAddScannedNode: (node: MeshtasticNode) => void;
+  /** Opens the binding window for this node, where it can be linked to a boat or a boat created for it */
+  onRequestBindNode?: (nodeId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
   onClose: () => void;
 }
@@ -44,6 +47,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   hardwareConn,
   onUpdateHardwareConn,
   onAddScannedNode,
+  onRequestBindNode,
   onDeleteNode,
   onClose,
 }) => {
@@ -51,13 +55,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   const [isScanningBle, setIsScanningBle] = useState(false);
   const [bleError, setBleError] = useState<string | null>(null);
 
-  // USB Serial state
-  const [isConnectingUsb, setIsConnectingUsb] = useState(false);
-  const [usbError, setUsbError] = useState<string | null>(null);
-  const [selectedBaud, setSelectedBaud] = useState<number>(115200);
-  const [serialLogs, setSerialLogs] = useState<string[]>([
-    '[USB Serial] Ready for USB-C node attachment (LoRa Device, Heltec V3, RAK4631, ESP32-S3)',
-  ]);
+  const [bleNotice, setBleNotice] = useState<string | null>(null);
 
   // MQTT state
   const [mqttConfig, setMqttConfig] = useState<MqttConfig>(() => loadSavedMqttConfig());
@@ -100,28 +98,23 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   const [discoveredLoraNodeId, setDiscoveredLoraNodeId] = useState('');
   const [discoveredLoraNodeName, setDiscoveredLoraNodeName] = useState('');
 
-  // Handle Real Web Bluetooth API Connection for T-Echo
+  // Connect a Meshtastic tracker over Web Bluetooth
   const handleWebBluetoothScan = async () => {
     setIsScanningBle(true);
     setBleError(null);
+    setBleNotice(null);
 
     try {
-      const fallbackLat = boats[0]?.lat || 6.3080;
-      const fallbackLng = boats[0]?.lng || 99.8200;
-
-      const res = await meshtasticService.connectTEchoBle(fallbackLat, fallbackLng);
-      if (res.success && res.node) {
-        onAddScannedNode(res.node);
+      const res = await meshtasticService.connectTEchoBle();
+      if (res.success) {
+        if (res.node) onAddScannedNode(res.node);
         onUpdateHardwareConn({
           bluetoothConnected: true,
           bluetoothDeviceName: res.deviceName,
           activePort: 'BLE',
         });
-        setSerialLogs((prev) => [
-          `[BLE Paired] Connected to ${res.deviceName} (${res.nodeId})`,
-          `[Telemetry] Real-time GATT notify stream online!`,
-          ...prev,
-        ]);
+        // Connected, but still waiting for the tracker to identify itself
+        if (res.error) setBleNotice(res.error);
       } else {
         setBleError(res.error || 'Failed to connect to LoRa Device via Bluetooth');
       }
@@ -129,66 +122,6 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
       setBleError(err?.message || 'Bluetooth connection failed unexpectedly');
     } finally {
       setIsScanningBle(false);
-    }
-  };
-
-  // Real Web Serial USB Connection
-  const handleWebSerialConnect = async () => {
-    setIsConnectingUsb(true);
-    setUsbError(null);
-
-    try {
-      if (!('serial' in navigator)) {
-        throw new Error('Web Serial API is not supported in this browser. Use Chrome or Edge on a computer, or connect over Bluetooth or MQTT.');
-      }
-
-      const port = await (navigator as any).serial.requestPort();
-      await port.open({ baudRate: selectedBaud });
-
-      onUpdateHardwareConn({
-        usbConnected: true,
-        usbPortName: 'USB Serial (COM / ttyACM0)',
-        baudRate: selectedBaud,
-        activePort: 'USB',
-      });
-
-      const usbNode: MeshtasticNode = {
-        id: '!USB01',
-        longName: 'USB Master LoRa Device Node',
-        shortName: 'USB1',
-        mac: 'USB:TTY:ACM0',
-        battery: 100,
-        voltage: 5.0,
-        satsInView: 0,
-        satsInFix: 0,
-        gpsFix: false,
-        altitudeMeters: undefined,
-        speedKt: 0,
-        headingDeg: 0,
-        lat: 0,
-        lng: 0,
-        snr: 0,
-        rssi: 0,
-        hops: 0,
-        boundBoatId: null,
-        status: 'OPTIMAL',
-        connectionType: 'USB',
-        lastPingTime: Date.now(),
-        hardwareModel: 'LoRa Device (USB-C Mode)',
-        firmwareVersion: 'v2.5.x',
-        trail: [],
-      };
-      onAddScannedNode(usbNode);
-
-      setSerialLogs((prev) => [
-        `[USB Connected] Opened serial port at ${selectedBaud} baud!`,
-        `[Meshtastic USB] Stream connected live!`,
-        ...prev,
-      ]);
-    } catch (err: any) {
-      setUsbError(err.message || 'Failed to open USB Serial Port.');
-    } finally {
-      setIsConnectingUsb(false);
     }
   };
 
@@ -255,7 +188,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-ink-muted truncate">
-                Connect LoRa Device via Bluetooth LE, USB-C Serial, or Stream over MQTT
+                Connect a LoRa tracker over Bluetooth, or receive trackers over MQTT
               </p>
             </div>
           </div>
@@ -293,10 +226,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
             }`}
           >
             <Usb className="w-4 h-4" />
-            USB Serial
-            {hardwareConn.usbConnected && (
-              <span className="w-2 h-2 rounded-full bg-accent" />
-            )}
+            USB (not available yet)
           </button>
 
           <button
@@ -388,14 +318,14 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                       <ExternalLink className="w-3 h-3 text-accent" />
                       Open in New Tab (Direct BLE)
                     </button>
-                    <button
-                      onClick={() => setActiveTab('USB')}
-                      className="px-2.5 py-1 bg-success-ink/10 hover:bg-success-ink/20 text-success-ink text-xs rounded-lg border border-success-ink/30 font-bold flex items-center gap-1 transition-all"
-                    >
-                      <Plug className="w-3 h-3" />
-                      Try USB Serial
-                    </button>
                   </div>
+                </div>
+              )}
+
+              {bleNotice && (
+                <div className="p-3 bg-warning-ink/10 border border-warning-ink/40 rounded-xl text-xs text-warning-ink flex items-start gap-2" role="status">
+                  <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{bleNotice}</span>
                 </div>
               )}
 
@@ -445,9 +375,11 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                                 </p>
                                 {node.lat && node.lng ? (
                                   <p className="text-xs text-ink">
-                                    GPS: <strong className="text-ink">{safeFixed(node.lat, 5)}°N, {safeFixed(node.lng, 5)}°E</strong> • SOG: <strong className="text-accent">{safeFixed(node.speedKt, 1, '0.0')}kt</strong> • COG: <strong className="text-success-ink">{node.headingDeg ?? 0}°</strong>
+                                    GPS: <strong className="text-ink">{safeFixed(node.lat, 5)}°N, {safeFixed(node.lng, 5)}°E</strong> • SOG: <strong className="text-accent">{node.speedKt !== undefined ? `${safeFixed(node.speedKt, 1)} kt` : '—'}</strong> • COG: <strong className="text-success-ink">{node.headingDeg !== undefined ? `${node.headingDeg}°` : '—'}</strong>
                                   </p>
-                                ) : null}
+                                ) : (
+                                  <p className="text-xs text-ink-muted">No position reported yet</p>
+                                )}
                                 <p className="text-xs text-ink-muted flex items-center gap-1 mt-0.5">
                                   <Clock className="w-2.5 h-2.5 text-accent" />
                                   Last Heard: <strong className="text-accent">{formatLastHeard(node.lastPingTime)}</strong>
@@ -459,6 +391,18 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                               <span className="text-xs bg-success-ink/10 text-success-ink px-2 py-0.5 rounded border border-success-ink/20">
                                 {node.connectionType}
                               </span>
+                              {onRequestBindNode && (() => {
+                                const boundBoat = boats.find((b) => b.id === node.boundBoatId);
+                                return (
+                                  <Button
+                                    icon={<Link2 />}
+                                    onClick={() => onRequestBindNode(node.id)}
+                                    title={boundBoat ? `Bound to ${boundBoat.name}. Change boat` : 'Bind this tracker to a boat'}
+                                  >
+                                    {boundBoat ? boundBoat.name : 'Bind to boat'}
+                                  </Button>
+                                );
+                              })()}
                               {onDeleteNode && (
                                 <button
                                   onClick={() => onDeleteNode(node.id)}
@@ -500,80 +444,14 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
 
           {/* USB SERIAL TAB */}
           {activeTab === 'USB' && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-canvas border border-line space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Plug className="w-5 h-5 text-success-ink" />
-                    <h4 className="text-xs font-bold text-ink">USB-C Serial Interface</h4>
-                  </div>
-                  {hardwareConn.usbConnected ? (
-                    <span className="text-xs bg-success-ink/10 text-success-ink px-2.5 py-1 rounded-full border border-success-ink/30 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      CONNECTED ({hardwareConn.baudRate} BAUD)
-                    </span>
-                  ) : (
-                    <span className="text-xs text-ink-muted">DISCONNECTED</span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-ink-muted block mb-1">
-                      Baud Rate
-                    </label>
-                    <select
-                      value={selectedBaud}
-                      onChange={(e) => setSelectedBaud(Number(e.target.value))}
-                      className="w-full bg-surface border border-line rounded-lg p-2 text-xs text-success-ink focus:border-success-ink outline-none"
-                    >
-                      <option value={115200}>115200 Baud (Meshtastic Standard)</option>
-                      <option value={9600}>9600 Baud (NMEA GPS Standard)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-ink-muted block mb-1">
-                      Protocol
-                    </label>
-                    <div className="bg-surface border border-line rounded-lg p-2 text-xs text-ink">
-                      Meshtastic Serial Protobuf
-                    </div>
-                  </div>
-                </div>
+            <div className="p-4 rounded-xl bg-canvas border border-line space-y-2">
+              <div className="flex items-center gap-2.5">
+                <Plug className="w-5 h-5 text-ink-muted" />
+                <h4 className="text-xs font-bold text-ink">USB connection: not available yet</h4>
               </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleWebSerialConnect}
-                  disabled={isConnectingUsb}
-                  className="w-full py-3 px-4 bg-success-ink hover:brightness-110 disabled:opacity-50 text-canvas font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <Plug className="w-4 h-4" />
-                  {isConnectingUsb ? 'Connecting USB...' : 'Accept USB Connection'}
-                </button>
-              </div>
-
-              {usbError && (
-                <div className="p-3 bg-danger/10 border border-danger-ink/30 rounded-xl text-xs text-danger-ink flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{usbError}</span>
-                </div>
-              )}
-
-              <div className="bg-canvas border border-line rounded-xl p-3 text-xs space-y-1.5 h-36 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between text-xs text-ink-muted border-b border-line pb-1 mb-2">
-                  <span className="text-success-ink flex items-center gap-1">
-                    <Terminal className="w-3.5 h-3.5" /> USB SERIAL LOG
-                  </span>
-                  <span>115200 8N1</span>
-                </div>
-                {serialLogs.map((log, idx) => (
-                  <div key={idx} className="text-ink-muted text-xs truncate">
-                    &gt; {log}
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-ink-muted">
+                Reading a tracker over USB isn't supported yet. Connect it over Bluetooth instead, or receive it through MQTT.
+              </p>
             </div>
           )}
 
@@ -727,17 +605,28 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="checkbox"
-                      id="streamOutbound"
-                      checked={mqttConfig.streamOutbound}
-                      onChange={(e) => setMqttConfig({ ...mqttConfig, streamOutbound: e.target.checked })}
-                      className="accent-line"
-                    />
-                    <label htmlFor="streamOutbound" className="text-xs text-ink select-none">
-                      Stream Local LoRa Device / Telemetry Outbound to MQTT
-                    </label>
+                  <div className="pt-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="streamOutbound"
+                        checked={mqttConfig.streamOutbound}
+                        onChange={(e) => {
+                          updateAndSaveMqttConfig({ streamOutbound: e.target.checked });
+                          meshtasticService.setStreamOutbound(e.target.checked);
+                        }}
+                        className="accent-line"
+                      />
+                      <label htmlFor="streamOutbound" className="text-xs text-ink select-none">
+                        Share tracker positions to this broker
+                      </label>
+                    </div>
+                    {mqttConfig.streamOutbound && (
+                      <p className="text-xs text-warning-ink flex items-center gap-1" role="alert">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        Positions become public: anyone subscribed to this broker can see where your trackers are.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,7 @@
 import mqtt, { MqttClient } from 'mqtt';
 import { meshtasticService } from './meshtasticBleMqttService';
+import { canonicalNodeId } from '../utils/nodeId';
+import { nodeStatusFromLastPing } from '../utils/formatters';
 import {
   DeviceTrackerProfile,
   DeviceGpsState,
@@ -508,41 +510,35 @@ class HybridDeviceTrackerService {
       member.deviceType === 'CUSTOM_MQTT' ||
       /^[0-9a-fA-F]{8}$/.test(member.deviceId);
 
-    const canonicalNodeId = isHardwareLora
-      ? (member.deviceId.startsWith('!') ? member.deviceId.toUpperCase() : `!${member.deviceId.toUpperCase()}`)
+    const nodeId = isHardwareLora
+      ? canonicalNodeId(member.deviceId)
       : `!DEV-${member.deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
 
     const boundBoatId = member.boundBoatId || 
-      this.nodeBoatBindings.get(canonicalNodeId) || 
+      this.nodeBoatBindings.get(nodeId) || 
       this.nodeBoatBindings.get(member.deviceId) || 
       null;
 
+    // Only what the member reported; anything else stays undefined and shows as a dash
     return {
-      id: canonicalNodeId,
+      id: nodeId,
       longName: member.deviceName,
       shortName: member.deviceId.slice(-4).toUpperCase(),
-      mac: isHardwareLora ? `LORA:${member.deviceId.slice(-4).toUpperCase()}` : `GPS:${member.deviceId.slice(-4).toUpperCase()}`,
-      battery: member.battery || 85,
-      voltage: 3.95,
-      satsInView: 12,
-      satsInFix: 10,
+      mac: '',
+      battery: member.battery,
       gpsFix: typeof member.lat === 'number' && typeof member.lng === 'number' && member.lat !== 0 && member.lng !== 0,
-      altitudeMeters: member.altitudeMeters || 8,
+      altitudeMeters: member.altitudeMeters,
       speedKt: member.speedKt,
       headingDeg: member.headingDeg,
       lat: member.lat,
       lng: member.lng,
-      snr: 12,
-      rssi: -52,
-      hops: 0,
       boundBoatId: boundBoatId,
-      status: 'OPTIMAL',
+      status: nodeStatusFromLastPing(member.timestamp),
       connectionType: isHardwareLora 
         ? 'LORA_MESH' 
         : (member.deviceType === 'TABLET' ? 'TABLET' : member.deviceType === 'PHONE' ? 'PHONE' : 'DEVICE_GPS'),
-      lastPingTime: member.timestamp || Date.now(),
+      lastPingTime: member.timestamp || 0,
       hardwareModel: `${member.deviceType} (${member.role})`,
-      firmwareVersion: 'TMTRAC WebGPS v2.5',
       isDeviceGps: !isHardwareLora,
       deviceRole: member.role,
       trail: member.trail,
@@ -906,9 +902,12 @@ class HybridDeviceTrackerService {
     } catch (e) {}
   }
 
-  // Broadcast a connected Bluetooth / USB / LoRa hardware node to the server so other users see it publicly
+  // Relay a LoRa tracker that is bound to a boat in this room to the room. The caller checks the
+  // binding; strangers heard over the mesh or MQTT are never relayed. `relayedBy` tells the server
+  // this is not the sending device's own position, so it doesn't take over this socket's identity.
   public broadcastHardwareNode(node: MeshtasticNode) {
-    if (!node || typeof node.lat !== 'number' || typeof node.lng !== 'number' || node.lat === 0 || node.lng === 0) return;
+    if (!node || !node.boundBoatId) return;
+    if (typeof node.lat !== 'number' || typeof node.lng !== 'number' || node.lat === 0 || node.lng === 0) return;
     const modelStr = (node.hardwareModel || '').toLowerCase();
     const devType: TrackerDeviceType = modelStr.includes('heltec')
       ? 'LORA_HELTEC'
@@ -918,23 +917,23 @@ class HybridDeviceTrackerService {
       ? 'CUSTOM_MQTT'
       : 'LORA_TECHO';
 
-    const payload: HybridFleetMember = {
-      deviceId: node.id,
+    const payload: HybridFleetMember & { relayedBy: string } = {
+      deviceId: canonicalNodeId(node.id),
       deviceName: node.longName || node.shortName || node.id,
       deviceType: devType,
       role: (node.deviceRole as any) || 'COMPETITOR',
-      boundBoatId: node.boundBoatId || null,
+      boundBoatId: node.boundBoatId,
       color: '#00FF9D',
       lat: node.lat,
       lng: node.lng,
-      accuracy: 3,
-      speedKt: node.speedKt || 0,
-      headingDeg: node.headingDeg || 0,
-      altitudeMeters: node.altitudeMeters || 0,
-      battery: node.battery || 85,
-      timestamp: Date.now(),
+      speedKt: node.speedKt,
+      headingDeg: node.headingDeg,
+      altitudeMeters: node.altitudeMeters,
+      battery: node.battery,
+      timestamp: node.lastPingTime || Date.now(),
       isLocalUser: false,
       trail: node.trail || [{ lat: node.lat, lng: node.lng }],
+      relayedBy: this.profile.deviceId,
     };
     this.sendWs('GPS_BROADCAST', payload);
     if (this.broadcastChannel) {
@@ -1104,11 +1103,11 @@ class HybridDeviceTrackerService {
       role: payload.role || 'COMPETITOR',
       lat: payload.lat,
       lng: payload.lng,
-      accuracy: payload.accuracy || 10,
-      speedKt: typeof payload.speedKt === 'number' ? payload.speedKt : 0,
-      headingDeg: typeof payload.headingDeg === 'number' ? payload.headingDeg : 0,
+      accuracy: typeof payload.accuracy === 'number' ? payload.accuracy : undefined,
+      speedKt: typeof payload.speedKt === 'number' ? payload.speedKt : undefined,
+      headingDeg: typeof payload.headingDeg === 'number' ? payload.headingDeg : undefined,
       altitudeMeters: payload.altitudeMeters,
-      battery: payload.battery || 85,
+      battery: typeof payload.battery === 'number' ? payload.battery : undefined,
       timestamp: payload.timestamp || Date.now(),
       isLocalUser: false,
       boundBoatId: payload.boundBoatId || null,

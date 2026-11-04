@@ -1,5 +1,7 @@
 import mqtt, { MqttClient } from 'mqtt';
 import { MeshtasticNode, BackfillPoint } from '../types/regatta';
+import { canonicalNodeId, nodeNumFromId } from '../utils/nodeId';
+import { nodeStatusFromLastPing } from '../utils/formatters';
 
 // Core Meshtastic BLE Service & Characteristic UUIDs
 export const MESHTASTIC_SERVICE_UUID = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
@@ -158,10 +160,14 @@ export const DEFAULT_MQTT_CONFIG: MqttConfig = {
   username: 'meshdev',
   password: 'large4cats',
   enabled: false,
-  streamOutbound: true,
+  // Off by default: when on, every tracker position is published to the broker, which for the
+  // public Meshtastic broker means anyone can see it.
+  streamOutbound: false,
 };
 
 export const STORAGE_KEY_MQTT_CONFIG = 'tmtrac_mqtt_config_v2';
+// Set once the one-time reset of "share positions to the broker" has run on this browser
+const STORAGE_KEY_OUTBOUND_RESET = 'tmtrac_mqtt_outbound_off_v1';
 
 // 240-Hour NodeDB Display Filter Cutoff (10 Days = 240 * 3600 * 1000 ms)
 export const NODE_DB_MAX_AGE_HOURS = 240;
@@ -179,12 +185,10 @@ export function isNodeWithin240Hours(node: MeshtasticNode | null | undefined): b
 }
 
 /**
- * Normalizes a node ID to its canonical uppercase '!HEX' representation
+ * Canonical node id: "!" plus 8 lowercase hex digits for Meshtastic nodes (see utils/nodeId).
  */
 export function getCanonicalNodeId(id: string): string {
-  if (!id) return '';
-  const clean = id.trim().toUpperCase();
-  return clean.startsWith('!') ? clean : `!${clean}`;
+  return canonicalNodeId(id);
 }
 
 /**
@@ -231,7 +235,7 @@ export function deduplicateNodes(nodes: MeshtasticNode[]): MeshtasticNode[] {
         sensorModel: primary.sensorModel || secondary.sensorModel || (primary.temperature !== undefined ? 'BME280' : undefined),
         boundBoatId: primary.boundBoatId || secondary.boundBoatId || null,
         isBluetoothConnected: primary.isBluetoothConnected || secondary.isBluetoothConnected || false,
-        lastPingTime: Math.max(primary.lastPingTime || 0, secondary.lastPingTime || 0, Date.now()),
+        lastPingTime: Math.max(primary.lastPingTime || 0, secondary.lastPingTime || 0),
       };
 
       map.set(canonicalId, mergedNode);
@@ -297,10 +301,19 @@ export function normalizeMqttWsUrl(rawUrl: string): string {
 export function loadSavedMqttConfig(): MqttConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_MQTT_CONFIG);
+    // Configs saved before broker sharing defaulted to off had it on; turn it off once.
+    const needsOutboundReset = localStorage.getItem(STORAGE_KEY_OUTBOUND_RESET) !== '1';
+    if (needsOutboundReset) {
+      localStorage.setItem(STORAGE_KEY_OUTBOUND_RESET, '1');
+    }
     if (saved) {
       const parsed = JSON.parse(saved);
+      if (needsOutboundReset && parsed.streamOutbound) {
+        parsed.streamOutbound = false;
+        localStorage.setItem(STORAGE_KEY_MQTT_CONFIG, JSON.stringify(parsed));
+      }
       const brokerUrl = parsed.brokerUrl ? normalizeMqttWsUrl(parsed.brokerUrl) : DEFAULT_MQTT_CONFIG.brokerUrl;
-      return { ...DEFAULT_MQTT_CONFIG, ...parsed, brokerUrl };
+      return { ...DEFAULT_MQTT_CONFIG, ...parsed, brokerUrl, streamOutbound: parsed.streamOutbound === true };
     }
   } catch (e) {
     console.warn('Failed to load saved MQTT config:', e);
@@ -324,24 +337,8 @@ export function saveMqttConfig(config: Partial<MqttConfig>): MqttConfig {
   }
 }
 
-export interface AutoGpsSyncState {
-  enabled: boolean;
-  intervalSec: number;
-  lastSyncTimestamp: number | null;
-  lastLat: number | null;
-  lastLng: number | null;
-  speedKt: number;
-  headingDeg: number;
-  altitudeMeters: number;
-  accuracyMeters: number | null;
-  statusMessage: string | null;
-  syncCount: number;
-  isSyncing: boolean;
-}
-
 type NodeUpdateCallback = (node: MeshtasticNode) => void;
 type PacketCallback = (pktLog: any) => void;
-type AutoGpsCallback = (state: AutoGpsSyncState) => void;
 
 class MeshtasticBleMqttService {
   private gattDevice: any = null;
@@ -350,27 +347,8 @@ class MeshtasticBleMqttService {
   private toRadioChar: any = null;
   private fromNumChar: any = null;
   private nusTxChar: any = null;
-  private nusRxChar: any = null;
   private pollIntervalTimer: any = null;
 
-  // Auto GPS Sync Timer & Watch ID
-  private autoGpsTimer: any = null;
-  private autoGpsWatchId: number | null = null;
-  private autoGpsState: AutoGpsSyncState = {
-    enabled: false,
-    intervalSec: 3,
-    lastSyncTimestamp: null,
-    lastLat: null,
-    lastLng: null,
-    speedKt: 0,
-    headingDeg: 0,
-    altitudeMeters: 10,
-    accuracyMeters: null,
-    statusMessage: null,
-    syncCount: 0,
-    isSyncing: false,
-  };
-  private autoGpsCallbacks: AutoGpsCallback[] = [];
 
   private mqttClient: MqttClient | null = null;
   private isMqttConnected = false;
@@ -384,7 +362,9 @@ class MeshtasticBleMqttService {
   private nodeBindings: Map<string, string> = new Map();
   
   // Track live node state to update dynamically when BLE telemetry arrives
-  private tEchoNodeState: MeshtasticNode | null = null; 
+  private tEchoNodeState: MeshtasticNode | null = null;
+  // Battery level read from the BLE battery service before the tracker's node id is known
+  private pendingBatteryLevel: number | undefined;
   private discoveredBleNodes: Map<string, MeshtasticNode> = new Map();
 
   // Packet Log Ring Buffer Storage (per-node and global)
@@ -398,33 +378,34 @@ class MeshtasticBleMqttService {
   private mqttConfig: MqttConfig = { ...DEFAULT_MQTT_CONFIG };
 
   public getNodeHistory(nodeId: string): BackfillPoint[] {
-    const canonicalId = nodeId.startsWith('!') ? nodeId : `!${nodeId}`;
-    return this.nodePositionBuffers.get(canonicalId) || this.nodePositionBuffers.get(nodeId) || [];
+    return this.nodePositionBuffers.get(canonicalNodeId(nodeId)) || [];
   }
 
   public setNodeBoundBoatId(nodeId: string, boatId: string | null) {
-    const canonicalId = nodeId.startsWith('!') ? nodeId : `!${nodeId}`;
+    const canonicalId = canonicalNodeId(nodeId);
     if (boatId) {
       this.nodeBindings.set(canonicalId, boatId);
-      this.nodeBindings.set(nodeId, boatId);
     } else {
       this.nodeBindings.delete(canonicalId);
-      this.nodeBindings.delete(nodeId);
     }
 
-    if (this.tEchoNodeState && (this.tEchoNodeState.id === nodeId || this.tEchoNodeState.id === canonicalId)) {
+    if (this.tEchoNodeState && this.tEchoNodeState.id === canonicalId) {
       this.tEchoNodeState.boundBoatId = boatId;
     }
 
-    const existing = this.discoveredBleNodes.get(canonicalId) || this.discoveredBleNodes.get(nodeId);
+    const existing = this.discoveredBleNodes.get(canonicalId);
     if (existing) {
       existing.boundBoatId = boatId;
     }
   }
 
   public getNodeBoundBoatId(nodeId: string): string | null {
-    const canonicalId = nodeId.startsWith('!') ? nodeId : `!${nodeId}`;
-    return this.nodeBindings.get(canonicalId) || this.nodeBindings.get(nodeId) || null;
+    return this.nodeBindings.get(canonicalNodeId(nodeId)) || null;
+  }
+
+  /** Turn sharing of tracker positions to the MQTT broker on or off for this session */
+  public setStreamOutbound(enabled: boolean) {
+    this.mqttConfig = { ...this.mqttConfig, streamOutbound: enabled };
   }
 
   public onMqttStatusChange(cb: (status: { connected: boolean; brokerUrl?: string; error?: string }) => void) {
@@ -496,23 +477,8 @@ class MeshtasticBleMqttService {
     };
   }
 
-  public onAutoGpsStateChange(cb: AutoGpsCallback) {
-    this.autoGpsCallbacks.push(cb);
-    cb({ ...this.autoGpsState });
-    return () => {
-      this.autoGpsCallbacks = this.autoGpsCallbacks.filter((c) => c !== cb);
-    };
-  }
-
-  public emitAutoGpsState() {
-    this.autoGpsCallbacks.forEach((cb) => cb({ ...this.autoGpsState }));
-  }
-
-  public getAutoGpsState(): AutoGpsSyncState {
-    return { ...this.autoGpsState };
-  }
-
   public emitNode(node: MeshtasticNode) {
+    node.status = nodeStatusFromLastPing(node.lastPingTime);
     this.nodeCallbacks.forEach((cb) => cb(node));
   }
 
@@ -727,17 +693,28 @@ class MeshtasticBleMqttService {
   }
 
   /**
-   * Sends a live LoRa text message or broadcast to the mesh using proper Meshtastic ToRadio/MeshPacket protocol
+   * Sends a text message to the mesh through the connected tracker (Bluetooth ToRadio), or
+   * publishes it to the connected MQTT broker. Reports failure, with a reason, when there is no
+   * way to send it or every write failed.
    */
   public async sendLoraTextMessage(
     text: string,
     destinationNodeId: string = '^all'
-  ): Promise<{ success: boolean; packetId?: number; error?: string }> {
+  ): Promise<{ success: boolean; packetId?: number; via?: 'BLE' | 'MQTT'; error?: string }> {
     const cleanText = (text || '').trim();
     if (!cleanText) return { success: false, error: 'Message cannot be empty' };
 
-    const myNodeId = this.connectedNodeId || '!TECHO-LOCAL';
-    const myName = this.connectedDeviceName || 'LilyGO T-Echo';
+    const hasBle = Boolean(this.toRadioChar && this.isBleConnected);
+    const hasMqtt = Boolean(this.mqttClient && this.mqttClient.connected);
+    if (!hasBle && !hasMqtt) {
+      return {
+        success: false,
+        error: 'No tracker is connected. Connect one over Bluetooth (or connect to an MQTT broker) to send messages.',
+      };
+    }
+
+    const myNodeId = this.connectedNodeId || 'this device';
+    const myName = this.connectedDeviceName || undefined;
 
     const { packetV1, packetV2, packetId, toNodeNum, fromNodeNum } = this.buildMeshtasticTextToRadioPacket(
       cleanText,
@@ -751,7 +728,64 @@ class MeshtasticBleMqttService {
       destinationNodeId.toUpperCase() === '!FFFFFFFF';
     const targetDisplay = isBroadcast ? 'Broadcast (^all)' : `Direct (${destinationNodeId})`;
 
-    const pkt: MeshtasticPacketLog = {
+    let via: 'BLE' | 'MQTT' | undefined;
+    const errors: string[] = [];
+
+    // 1. Hand the packet to the tracker over Bluetooth
+    if (hasBle) {
+      const write = async (packet: Uint8Array) => {
+        if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
+          await this.toRadioChar.writeValueWithoutResponse(packet);
+        } else {
+          await this.toRadioChar.writeValue(packet);
+        }
+      };
+      try {
+        await write(packetV1);
+        via = 'BLE';
+      } catch (err: any) {
+        try {
+          await write(packetV2);
+          via = 'BLE';
+        } catch (e2: any) {
+          errors.push(`Bluetooth write failed: ${e2?.message || err?.message || 'unknown error'}`);
+        }
+      }
+    }
+
+    // 2. Otherwise publish to the MQTT broker
+    if (!via && hasMqtt) {
+      try {
+        const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
+        const hasChannel = cleanBase.split('/').length >= 4;
+        const dest = canonicalNodeId(destinationNodeId) || '^all';
+        const topic = hasChannel ? `${cleanBase}/${dest}` : `${cleanBase}/LongFast/${dest}`;
+
+        const mqttPayload = JSON.stringify({
+          channel: 0,
+          from: fromNodeNum || undefined,
+          to: toNodeNum,
+          type: 'sendtext',
+          sender: myName,
+          payload: { text: cleanText },
+          id: packetId,
+          timestamp: Math.floor(Date.now() / 1000),
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          this.mqttClient!.publish(topic, mqttPayload, { qos: 0 }, (err) => (err ? reject(err) : resolve()));
+        });
+        via = 'MQTT';
+      } catch (mqttErr: any) {
+        errors.push(`MQTT publish failed: ${mqttErr?.message || 'unknown error'}`);
+      }
+    }
+
+    if (!via) {
+      return { success: false, error: errors.join(' ') || 'Message could not be sent.' };
+    }
+
+    this.emitPacketLog({
       id: `pkt-tx-${packetId || Date.now()}`,
       timestamp: new Date().toLocaleTimeString(),
       rawTimestamp: Date.now(),
@@ -759,280 +793,24 @@ class MeshtasticBleMqttService {
       fromNodeName: myName,
       toNode: destinationNodeId,
       portnum: 'TEXT_MESSAGE_APP',
-      snr: 9.8,
-      rssi: -52,
       hops: 0,
-      payload: `LoRa TX [${targetDisplay}]: "${cleanText}"`,
+      payload: `TX via ${via === 'BLE' ? 'tracker (Bluetooth)' : 'MQTT broker'} [${targetDisplay}]: "${cleanText}"`,
       textMessage: cleanText,
-    };
-
-
-    // 1. If BLE characteristic is available, write to ToRadio
-    if (this.toRadioChar) {
-      try {
-        if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
-          await this.toRadioChar.writeValueWithoutResponse(packetV1);
-        } else {
-          await this.toRadioChar.writeValue(packetV1);
-        }
-        console.log(`[BLE] Transmitted LoRa text message over ToRadio characteristic (Packet ID: 0x${packetId.toString(16).toUpperCase()})`);
-      } catch (err: any) {
-        console.warn('[BLE ToRadio TX Note] Standard packet format failed, attempting V2 fallback:', err);
-        try {
-          if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
-            await this.toRadioChar.writeValueWithoutResponse(packetV2);
-          } else {
-            await this.toRadioChar.writeValue(packetV2);
-          }
-        } catch (e2) {
-          console.warn('[BLE ToRadio TX Fallback]', e2);
-        }
-      }
-    }
-
-    // 2. Also stream via Nordic UART TX if NUS is connected
-    if (this.nusRxChar) {
-      try {
-        const enc = new TextEncoder();
-        await this.nusRxChar.writeValue(enc.encode(`MSG:${cleanText}\n`));
-      } catch (_) {}
-    }
-
-    // 3. Publish to MQTT if MQTT broker is connected
-    if (this.mqttClient && this.mqttClient.connected) {
-      try {
-        const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
-        const hasChannel = cleanBase.split('/').length >= 4;
-        const topic = hasChannel
-          ? `${cleanBase}/${destinationNodeId.startsWith('!') ? destinationNodeId : `!${destinationNodeId}`}`
-          : `${cleanBase}/LongFast/${destinationNodeId.startsWith('!') ? destinationNodeId : `!${destinationNodeId}`}`;
-
-        const mqttPayload = JSON.stringify({
-          channel: 0,
-          from: fromNodeNum || myNodeId,
-          to: toNodeNum,
-          type: 'sendtext',
-          sender: myName,
-          payload: {
-            text: cleanText,
-          },
-          id: packetId,
-          timestamp: Math.floor(Date.now() / 1000),
-        });
-
-        this.mqttClient.publish(topic, mqttPayload, { qos: 0 });
-        console.log(`[MQTT] Published LoRa text message to topic: ${topic}`);
-      } catch (mqttErr) {
-        console.warn('[MQTT TX Error]', mqttErr);
-      }
-    }
-
-    this.emitPacketLog(pkt);
-    return { success: true, packetId };
+    });
+    return { success: true, packetId, via };
   }
 
   public getConnectedNodeState(): MeshtasticNode | null {
     return this.tEchoNodeState;
   }
 
-  // --- AUTOMATIC GPS SYNC ENGINE (Pre-set configurable interval in seconds) ---
-  public startAutoGpsSync(intervalSec: number = 3) {
-    if (this.autoGpsTimer) {
-      clearInterval(this.autoGpsTimer);
-      this.autoGpsTimer = null;
-    }
-
-    const safeInterval = Math.max(1, Math.min(intervalSec, 300));
-    this.autoGpsState = {
-      ...this.autoGpsState,
-      enabled: true,
-      intervalSec: safeInterval,
-      statusMessage: `Auto-sync active (every ${safeInterval}s)`,
-    };
-    this.emitAutoGpsState();
-
-    // Trigger immediate sync on start
-    this.performGpsSync();
-
-    // Start background periodic interval
-    this.autoGpsTimer = setInterval(() => {
-      if (this.autoGpsState.enabled) {
-        this.performGpsSync();
-      }
-    }, safeInterval * 1000);
-
-    // Also register geolocation watchPosition for continuous instant updates when on the move
-    if ('geolocation' in navigator && this.autoGpsWatchId === null) {
-      try {
-        this.autoGpsWatchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            if (!this.autoGpsState.enabled) return;
-            this.handleGeolocationPosition(pos);
-          },
-          (_err) => {},
-          { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
-        );
-      } catch (_) {}
-    }
-  }
-
-  public stopAutoGpsSync() {
-    if (this.autoGpsTimer) {
-      clearInterval(this.autoGpsTimer);
-      this.autoGpsTimer = null;
-    }
-    if (this.autoGpsWatchId !== null && 'geolocation' in navigator) {
-      try {
-        navigator.geolocation.clearWatch(this.autoGpsWatchId);
-      } catch (_) {}
-      this.autoGpsWatchId = null;
-    }
-
-    this.autoGpsState = {
-      ...this.autoGpsState,
-      enabled: false,
-      isSyncing: false,
-      statusMessage: 'Auto-sync paused',
-    };
-    this.emitAutoGpsState();
-  }
-
-  public setAutoGpsInterval(intervalSec: number) {
-    const safeInterval = Math.max(1, Math.min(intervalSec, 300));
-    if (this.autoGpsState.enabled) {
-      this.startAutoGpsSync(safeInterval);
-    } else {
-      this.autoGpsState = {
-        ...this.autoGpsState,
-        intervalSec: safeInterval,
-      };
-      this.emitAutoGpsState();
-    }
-  }
-
-  public updateNodePosition(nodeId: string, lat: number, lng: number, speedKt?: number, headingDeg?: number) {
-    const canon = getCanonicalNodeId(nodeId);
-    const existing = this.discoveredBleNodes.get(canon) || (this.tEchoNodeState?.id === nodeId || this.tEchoNodeState?.id === canon ? this.tEchoNodeState : null);
-    const updated = this.upsertDiscoveredNode(canon, {
-      lat,
-      lng,
-      speedKt: speedKt ?? existing?.speedKt ?? 0,
-      headingDeg: headingDeg ?? existing?.headingDeg ?? 0,
-      lastPingTime: Date.now(),
-    });
-    this.emitPacketLog({
-      id: `pkt-manual-pos-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      rawTimestamp: Date.now(),
-      fromNode: updated.id,
-      fromNodeName: updated.longName,
-      toNode: '^all',
-      portnum: 'POSITION_APP',
-      payload: `Manual position calibration: ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E`,
-      position: {
-        lat,
-        lng,
-        alt: updated.altitudeMeters,
-        speedKt: updated.speedKt || 0,
-        headingDeg: updated.headingDeg || 0,
-        sats: updated.satsInView,
-      },
-    });
-  }
-
-  public async forceImmediateGpsSync(): Promise<{ success: boolean; lat?: number; lng?: number; source?: string; error?: string }> {
-    if (!('geolocation' in navigator)) {
-      return { success: false, error: 'Browser does not support Geolocation API' };
-    }
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude, speed, heading, altitude } = pos.coords;
-          const spdKt = speed && speed > 0 ? +(speed * 1.94384).toFixed(1) : 0;
-          const hdg = heading !== null && !isNaN(heading) ? Math.round(heading) : 0;
-          const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : undefined;
-          this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt);
-          resolve({ success: true, lat: latitude, lng: longitude, source: 'Device High-Accuracy GPS' });
-        },
-        (err) => {
-          resolve({ success: false, error: err.message });
-        },
-        { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
-      );
-    });
-  }
-
-  // Trigger one-shot or periodic GPS acquisition
-  public performGpsSync(): Promise<boolean> {
-    if (!('geolocation' in navigator)) {
-      this.autoGpsState = {
-        ...this.autoGpsState,
-        statusMessage: 'Geolocation is not supported in this browser.',
-      };
-      this.emitAutoGpsState();
-      return Promise.resolve(false);
-    }
-
-    this.autoGpsState = {
-      ...this.autoGpsState,
-      isSyncing: true,
-    };
-    this.emitAutoGpsState();
-
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          this.handleGeolocationPosition(pos);
-          resolve(true);
-        },
-        (err) => {
-          this.autoGpsState = {
-            ...this.autoGpsState,
-            isSyncing: false,
-            statusMessage: `GPS error: ${err.message}`,
-          };
-          this.emitAutoGpsState();
-          resolve(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: Math.max(2000, this.autoGpsState.intervalSec * 1000 - 200),
-          maximumAge: 1000,
-        }
-      );
-    });
-  }
-
-  private handleGeolocationPosition(pos: GeolocationPosition) {
-    const { latitude, longitude, speed: geoSpeed, heading: geoHeading, altitude, accuracy } = pos.coords;
-    const spdKt = geoSpeed && geoSpeed > 0 ? +(geoSpeed * 1.94384).toFixed(1) : (this.tEchoNodeState?.speedKt || 0);
-    const hdg = geoHeading !== null && !isNaN(geoHeading) ? Math.round(geoHeading) : (this.tEchoNodeState?.headingDeg || 0);
-    const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : undefined;
-    const acc = accuracy ? Math.round(accuracy) : null;
-
-    this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt);
-
-    this.autoGpsState = {
-      ...this.autoGpsState,
-      isSyncing: false,
-      lastSyncTimestamp: Date.now(),
-      lastLat: latitude,
-      lastLng: longitude,
-      speedKt: spdKt,
-      headingDeg: hdg,
-      altitudeMeters: alt,
-      accuracyMeters: acc,
-      syncCount: this.autoGpsState.syncCount + 1,
-      statusMessage: `Synced @ ${new Date().toLocaleTimeString()} (±${acc ?? '?'}m)`,
-    };
-    this.emitAutoGpsState();
-  }
-
   // --- WEB BLUETOOTH T-ECHO CONNECT ---
-  public async connectTEchoBle(
-    initialLat?: number,
-    initialLng?: number
-  ): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
+  /**
+   * Connects to a Meshtastic tracker over Web Bluetooth. The tracker's node only appears once
+   * the tracker has reported its own node number (MyNodeInfo); nothing is emitted before then,
+   * and its position only ever comes from packets the tracker sends.
+   */
+  public async connectTEchoBle(): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
     if (!('bluetooth' in navigator)) {
       return { success: false, deviceName: '', nodeId: '', error: 'Web Bluetooth API is not supported in this browser. Please use Google Chrome, Edge, or Brave.' };
     }
@@ -1070,13 +848,22 @@ class MeshtasticBleMqttService {
       }
 
       this.gattDevice = device;
-      this.connectedDeviceName = device.name || 'LilyGO T-Echo nRF52840';
+      this.connectedDeviceName = device.name || '';
+      this.connectedNodeId = '';
+      this.tEchoNodeState = null;
+      this.pendingBatteryLevel = undefined;
 
       device.addEventListener('gattserverdisconnected', () => {
         this.isBleConnected = false;
         if (this.pollIntervalTimer) {
           clearInterval(this.pollIntervalTimer);
           this.pollIntervalTimer = null;
+        }
+        // Keep the node and its last-heard time; it goes stale, then offline, on its own
+        if (this.tEchoNodeState) {
+          this.tEchoNodeState = { ...this.tEchoNodeState, isBluetoothConnected: false };
+          this.discoveredBleNodes.set(this.tEchoNodeState.id, this.tEchoNodeState);
+          this.emitNode(this.tEchoNodeState);
         }
         console.warn('T-Echo BLE Device Disconnected');
       });
@@ -1099,7 +886,7 @@ class MeshtasticBleMqttService {
           const isIframe = window.self !== window.top;
           let detailedErr = `BLE Connection Error: Connection attempt failed. (${secondConnectErr.message || secondConnectErr}).`;
           if (isIframe) {
-            detailedErr += ' Web Bluetooth GATT access may be restricted inside this iframe preview. Please click "Open in New Tab" at top right to pair directly, or use USB Serial / Simulated BLE.';
+            detailedErr += ' Web Bluetooth may be blocked inside this embedded preview. Open the app in its own tab and try again.';
           } else {
             detailedErr += ' Ensure your T-Echo node is powered ON, Bluetooth is enabled, and it is NOT currently connected to the Meshtastic Mobile App or another device.';
           }
@@ -1115,102 +902,56 @@ class MeshtasticBleMqttService {
       this.gattServer = server;
       this.isBleConnected = true;
 
-      // Extract node ID from MAC/Name or generate consistent ID
-      const rawId = device.id ? device.id.slice(0, 6).toUpperCase() : Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase();
-      this.connectedNodeId = `!TECHO-${rawId}`;
-
-      // Check for Battery Service
-      let batteryPct: number | undefined;
-      let voltage: number | undefined;
+      // Battery level from the standard BLE battery service, if the tracker exposes it. It's
+      // applied to the tracker's node once the tracker has told us its node number.
       try {
         const batService = await server.getPrimaryService('battery_service');
         const batChar = await batService.getCharacteristic('00002a19-0000-1000-8000-00805f9b34fb');
         const val = await batChar.readValue();
-        batteryPct = val.getUint8(0);
-        voltage = +(3.3 + (batteryPct / 100) * 0.9).toFixed(2);
+        this.pendingBatteryLevel = val.getUint8(0);
       } catch (batErr) {
         console.log('Battery service not exposed or skipped:', batErr);
       }
 
-      // Determine real initial coordinates using browser/device geolocation if available
-      let realLat = initialLat;
-      let realLng = initialLng;
-      let realHeading = 0;
-      let realSpeed = 0.0;
-      let realAlt: number | undefined;
-
-      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-        try {
-          const pos: GeolocationPosition = await new Promise((res, rej) => {
-            navigator.geolocation.getCurrentPosition(res, rej, {
-              enableHighAccuracy: true,
-              timeout: 4000,
-              maximumAge: 10000,
-            });
-          });
-          if (pos && pos.coords) {
-            realLat = pos.coords.latitude;
-            realLng = pos.coords.longitude;
-            if (pos.coords.speed && pos.coords.speed > 0) {
-              realSpeed = +(pos.coords.speed * 1.94384).toFixed(1);
-            }
-            if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
-              realHeading = Math.round(pos.coords.heading);
-            }
-            if (pos.coords.altitude !== null && !isNaN(pos.coords.altitude)) {
-              realAlt = +(pos.coords.altitude).toFixed(1);
-            }
-            console.log(`[BLE Auto-Geo] Initialized T-Echo coordinates at device location: ${realLat.toFixed(5)}, ${realLng.toFixed(5)}`);
-          }
-        } catch (geoErr) {
-          console.log('[BLE Auto-Geo] Geolocation timeout or denied, using initial coords:', geoErr);
-        }
-      }
-
-      const hasPosition = typeof realLat === 'number' && typeof realLng === 'number' && (realLat !== 0 || realLng !== 0);
-
-      this.tEchoNodeState = {
-        id: this.connectedNodeId,
-        longName: this.connectedDeviceName,
-        shortName: 'TECHO',
-        mac: `BLE:${rawId}`,
-        battery: batteryPct,
-        voltage: voltage,
-        gpsFix: hasPosition,
-        altitudeMeters: realAlt,
-        speedKt: realSpeed,
-        headingDeg: realHeading,
-        lat: hasPosition ? realLat : undefined,
-        lng: hasPosition ? realLng : undefined,
-        hops: 0,
-        boundBoatId: null,
-        status: 'OPTIMAL',
-        connectionType: 'BLE',
-        isBluetoothConnected: true,
-        lastPingTime: Date.now(),
-        hardwareModel: 'LilyGO T-Echo (nRF52840 / SX1262)',
-        firmwareVersion: 'v2.5.x',
-        trail: hasPosition ? [{ lat: realLat as number, lng: realLng as number }] : [],
-      };
-
-      this.emitNode(this.tEchoNodeState);
-
-      // Scan and bind to all available characteristics (Meshtastic Standard, Alt, and Nordic UART)
+      // Subscribe to the Meshtastic characteristics and request the config / NodeDB dump
       await this.setupBleCharacteristics(server);
 
       // Start periodic packet reader / heartbeat query
       this.startBleHeartbeatPolling();
 
+      // Wait for MyNodeInfo so the tracker is listed under its real node id
+      const myId = await this.waitForMyNodeId(10_000);
+      if (!myId) {
+        return {
+          success: true,
+          deviceName: this.connectedDeviceName,
+          nodeId: '',
+          error: 'Connected, but the tracker has not reported its node id yet. It will appear in the list once it does.',
+        };
+      }
+
       return {
         success: true,
         deviceName: this.connectedDeviceName,
-        nodeId: this.connectedNodeId,
-        node: this.tEchoNodeState,
+        nodeId: myId,
+        node: this.tEchoNodeState ?? undefined,
       };
     } catch (err: any) {
       console.error('BLE Connect error:', err);
       return { success: false, deviceName: '', nodeId: '', error: err.message || 'Bluetooth connection failed.' };
     }
+  }
+
+  private waitForMyNodeId(timeoutMs: number): Promise<string | null> {
+    return new Promise((resolve) => {
+      const started = Date.now();
+      const check = () => {
+        if (this.connectedNodeId) return resolve(this.connectedNodeId);
+        if (!this.isBleConnected || Date.now() - started >= timeoutMs) return resolve(null);
+        setTimeout(check, 200);
+      };
+      check();
+    });
   }
 
   // Find and setup GATT characteristics across Meshtastic and Nordic UART profiles
@@ -1320,10 +1061,6 @@ class MeshtasticBleMqttService {
             this.handleBleNotification(evt.target.value);
           });
           console.log('[BLE] Subscribed to Nordic UART TX stream');
-        } catch (e) {}
-
-        try {
-          this.nusRxChar = await nusService.getCharacteristic(NORDIC_UART_CHAR_RX);
         } catch (e) {}
       }
     } catch (e) {}
@@ -1561,81 +1298,97 @@ class MeshtasticBleMqttService {
 
 
 
-  // Helper to upsert a discovered node in the registry and emit update
+  /**
+   * Adds or updates a node from data that node reported, and emits it.
+   *
+   * - Only fields present in `partial` change; nothing is filled in with made-up defaults.
+   * - `lastPingTime` only moves when the caller says the node was just heard (or gives the
+   *   time the radio last heard it); otherwise the previous value is kept.
+   * - A node's position only comes from that node's own packets.
+   */
   private upsertDiscoveredNode(
     nodeId: string,
     partial: Partial<MeshtasticNode>,
-    isLocalBleDevice: boolean = false
+    isLocalBleDevice: boolean = false,
+    source: 'BLE' | 'MQTT' = 'BLE'
   ): MeshtasticNode {
-    const canonicalId = nodeId.startsWith('!') ? nodeId.toUpperCase() : `!${nodeId.toUpperCase()}`;
-    const hexSuffix = canonicalId.replace('!', '').slice(-4) || 'MESH';
-    const existing = this.discoveredBleNodes.get(canonicalId) || (isLocalBleDevice ? this.tEchoNodeState : null);
+    const canonicalId = canonicalNodeId(nodeId);
+    const hexSuffix = canonicalId.replace('!', '').slice(-4);
+    const existing = this.discoveredBleNodes.get(canonicalId);
+    // The tracker connected over Bluetooth stays the local device even when it is also heard via MQTT
+    const isLocal = isLocalBleDevice || (Boolean(this.connectedNodeId) && canonicalId === this.connectedNodeId);
 
-    const updatedLat = partial.lat !== undefined && partial.lat !== null && partial.lat !== 0 
-      ? partial.lat 
-      : existing?.lat;
-    const updatedLng = partial.lng !== undefined && partial.lng !== null && partial.lng !== 0 
-      ? partial.lng 
-      : existing?.lng;
+    const hasNewPosition =
+      typeof partial.lat === 'number' && typeof partial.lng === 'number' &&
+      Number.isFinite(partial.lat) && Number.isFinite(partial.lng) &&
+      (partial.lat !== 0 || partial.lng !== 0);
+    const lat = hasNewPosition ? partial.lat : existing?.lat;
+    const lng = hasNewPosition ? partial.lng : existing?.lng;
 
-    let updatedTrail = existing?.trail || [];
-    if (typeof updatedLat === 'number' && typeof updatedLng === 'number' && !isNaN(updatedLat) && !isNaN(updatedLng) && (updatedLat !== 0 || updatedLng !== 0)) {
-      updatedTrail = [...updatedTrail, { lat: updatedLat, lng: updatedLng }].slice(-1000);
+    let trail = existing?.trail || [];
+    if (hasNewPosition) {
+      const last = trail[trail.length - 1];
+      if (!last || last.lat !== lat || last.lng !== lng) {
+        trail = [...trail, { lat: lat as number, lng: lng as number }].slice(-1000);
+      }
     }
 
     const nodeTemp = partial.temperature !== undefined ? partial.temperature : existing?.temperature;
     const nodeHum = partial.humidity !== undefined ? partial.humidity : (partial.relativeHumidity !== undefined ? partial.relativeHumidity : existing?.humidity);
-    const nodePress = partial.barometricPressure !== undefined ? partial.barometricPressure : existing?.barometricPressure;
-    const nodeGas = partial.gasResistance !== undefined ? partial.gasResistance : existing?.gasResistance;
-    const nodeIaq = partial.iaq !== undefined ? partial.iaq : existing?.iaq;
 
     const node: MeshtasticNode = {
       id: canonicalId,
-      longName: partial.longName || existing?.longName || `LoRa Node ${hexSuffix}`,
+      longName: partial.longName || existing?.longName || `Node ${hexSuffix}`,
       shortName: partial.shortName || existing?.shortName || hexSuffix,
-      mac: partial.mac || existing?.mac || `BLE:${hexSuffix}`,
+      mac: partial.mac || existing?.mac || '',
       battery: partial.battery ?? existing?.battery,
       voltage: partial.voltage ?? existing?.voltage,
       satsInView: partial.satsInView ?? existing?.satsInView,
       satsInFix: partial.satsInFix ?? existing?.satsInFix,
-      gpsFix: (typeof updatedLat === 'number' && typeof updatedLng === 'number' && (updatedLat !== 0 || updatedLng !== 0)),
+      gpsFix: typeof lat === 'number' && typeof lng === 'number',
       altitudeMeters: partial.altitudeMeters ?? existing?.altitudeMeters,
-      speedKt: partial.speedKt ?? existing?.speedKt ?? 0.0,
-      headingDeg: partial.headingDeg ?? existing?.headingDeg ?? 0,
-      lat: updatedLat,
-      lng: updatedLng,
+      speedKt: partial.speedKt ?? existing?.speedKt,
+      headingDeg: partial.headingDeg ?? existing?.headingDeg,
+      lat,
+      lng,
       snr: partial.snr ?? existing?.snr,
       rssi: partial.rssi ?? existing?.rssi,
-      hops: partial.hops ?? existing?.hops ?? (isLocalBleDevice ? 0 : undefined),
-      boundBoatId: partial.boundBoatId !== undefined && partial.boundBoatId !== null ? partial.boundBoatId : (this.nodeBindings.get(canonicalId) || existing?.boundBoatId || null),
-      status: 'OPTIMAL',
-      connectionType: isLocalBleDevice ? 'BLE' : (partial.connectionType || existing?.connectionType || 'LORA_MESH'),
-      isBluetoothConnected: isLocalBleDevice,
-      lastPingTime: partial.lastPingTime ?? Date.now(),
-      hardwareModel: partial.hardwareModel || existing?.hardwareModel || (isLocalBleDevice ? 'LilyGO T-Echo (nRF52840)' : 'LoRa Mesh Node'),
-      firmwareVersion: 'v2.5.x',
+      hops: partial.hops ?? existing?.hops,
+      boundBoatId: partial.boundBoatId ?? this.nodeBindings.get(canonicalId) ?? existing?.boundBoatId ?? null,
+      status: existing?.status ?? 'OFFLINE',
+      connectionType: isLocal ? 'BLE' : (partial.connectionType || existing?.connectionType || (source === 'MQTT' ? 'MQTT' : 'LORA_MESH')),
+      isBluetoothConnected: isLocal ? this.isBleConnected : false,
+      lastPingTime: partial.lastPingTime ?? existing?.lastPingTime ?? 0,
+      hardwareModel: partial.hardwareModel || existing?.hardwareModel,
+      firmwareVersion: partial.firmwareVersion || existing?.firmwareVersion,
       channelUtil: partial.channelUtil ?? existing?.channelUtil,
       airUtilTx: partial.airUtilTx ?? existing?.airUtilTx,
-      trail: updatedTrail,
+      trail,
 
-      // Environmental & iBME280 Sensor Data
+      // Environmental sensor data
       temperature: nodeTemp,
       humidity: nodeHum,
       relativeHumidity: nodeHum,
-      barometricPressure: nodePress,
-      gasResistance: nodeGas,
-      iaq: nodeIaq,
-      sensorModel: partial.sensorModel || existing?.sensorModel || (nodeTemp !== undefined ? 'BME280' : undefined),
+      barometricPressure: partial.barometricPressure ?? existing?.barometricPressure,
+      gasResistance: partial.gasResistance ?? existing?.gasResistance,
+      iaq: partial.iaq ?? existing?.iaq,
+      sensorModel: partial.sensorModel || existing?.sensorModel,
     };
 
     this.discoveredBleNodes.set(canonicalId, node);
-    if (isLocalBleDevice) {
+    if (isLocal) {
       this.tEchoNodeState = node;
     }
 
     this.emitNode(node);
 
-    if (this.mqttConfig.enabled && this.mqttConfig.streamOutbound && typeof node.lat === 'number' && typeof node.lng === 'number') {
+    // Only share a fresh position from this node, and never echo MQTT traffic back to the broker
+    if (
+      source !== 'MQTT' &&
+      hasNewPosition &&
+      this.mqttConfig.enabled &&
+      this.mqttConfig.streamOutbound
+    ) {
       this.publishNodeToMqtt(node);
     }
 
@@ -1715,7 +1468,7 @@ class MeshtasticBleMqttService {
     const reader = new ProtoReader(infoBytes);
     let myNodeNum: number | null = null;
     let hasGps = false;
-    let firmwareVersion = 'v2.5.x';
+    let firmwareVersion: string | undefined;
 
     while (reader.hasMore()) {
       const tag = reader.readTag();
@@ -1733,19 +1486,19 @@ class MeshtasticBleMqttService {
     }
 
     if (myNodeNum !== null) {
-      const myHexId = `!${(myNodeNum >>> 0).toString(16).padStart(8, '0').toUpperCase()}`;
+      const myHexId = canonicalNodeId(myNodeNum);
       this.connectedNodeId = myHexId;
       const node = this.upsertDiscoveredNode(myHexId, {
-        id: myHexId,
-        longName: this.connectedDeviceName || `T-Echo Base (${myHexId.slice(-4)})`,
-        shortName: myHexId.slice(-4),
+        longName: this.connectedDeviceName || undefined,
         connectionType: 'BLE',
-        isBluetoothConnected: true,
-        gpsFix: hasGps,
-        firmwareVersion: firmwareVersion,
+        firmwareVersion,
+        battery: this.pendingBatteryLevel,
+        // The tracker is talking to us over Bluetooth right now
+        lastPingTime: Date.now(),
       }, true);
+      this.pendingBatteryLevel = undefined;
       this.tEchoNodeState = node;
-      console.log(`[BLE] MyNodeInfo decoded: ${myHexId} (${firmwareVersion})`);
+      console.log(`[BLE] MyNodeInfo decoded: ${myHexId}${firmwareVersion ? ` (${firmwareVersion})` : ''}${hasGps ? ', has GPS' : ''}`);
     }
   }
 
@@ -1757,9 +1510,10 @@ class MeshtasticBleMqttService {
     let nodeNum: number | null = null;
     let user: { id?: string; longName?: string; shortName?: string; hwModel?: string } = {};
     let pos: { lat: number | null; lng: number | null; alt: number | null; speedKt: number | null; headingDeg: number | null; sats: number | null } = { lat: null, lng: null, alt: null, speedKt: null, headingDeg: null, sats: null };
-    let snr = 8.0;
+    let snr: number | undefined;
+    let lastHeardSec: number | undefined;
     let metrics: { batteryLevel?: number; voltage?: number; channelUtil?: number; airUtilTx?: number } = {};
-    let hopsAway = 1;
+    let hopsAway: number | undefined;
 
     while (reader.hasMore()) {
       const tag = reader.readTag();
@@ -1805,12 +1559,14 @@ class MeshtasticBleMqttService {
         }
       } else if (tag.fieldNum === 4 && tag.wireType === 5) { // snr
         snr = +reader.readFloat().toFixed(1);
+      } else if (tag.fieldNum === 5 && tag.wireType === 5) { // last_heard (seconds since epoch)
+        lastHeardSec = reader.readFixed32() >>> 0;
       } else if (tag.fieldNum === 6 && tag.wireType === 2) { // device_metrics
         const mReader = new ProtoReader(reader.readBytes());
         while (mReader.hasMore()) {
           const mTag = mReader.readTag();
           if (!mTag) break;
-          if (mTag.fieldNum === 1 && mTag.wireType === 0) metrics.batteryLevel = Math.min(100, Math.max(0, mReader.readVarint()));
+          if (mTag.fieldNum === 1 && mTag.wireType === 0) metrics.batteryLevel = Math.max(0, mReader.readVarint()); // 101 = external power
           else if (mTag.fieldNum === 2 && mTag.wireType === 5) metrics.voltage = +mReader.readFloat().toFixed(2);
           else if (mTag.fieldNum === 3 && mTag.wireType === 5) metrics.channelUtil = +mReader.readFloat().toFixed(1);
           else if (mTag.fieldNum === 4 && mTag.wireType === 5) metrics.airUtilTx = +mReader.readFloat().toFixed(1);
@@ -1824,12 +1580,20 @@ class MeshtasticBleMqttService {
     }
 
     if (nodeNum !== null || user.id) {
-      const canonicalId = user.id ? (user.id.startsWith('!') ? user.id.toUpperCase() : `!${user.id.toUpperCase()}`) : `!${(nodeNum! >>> 0).toString(16).padStart(8, '0').toUpperCase()}`;
-      const isLocal = this.connectedNodeId ? (canonicalId === this.connectedNodeId) : (hopsAway === 0);
+      const canonicalId = canonicalNodeId(user.id || nodeNum!);
+      // Only the tracker's own entry is local, and we only know which that is once MyNodeInfo arrived
+      const isLocal = Boolean(this.connectedNodeId) && canonicalId === this.connectedNodeId;
+
+      // The radio's NodeDB says when it last heard each node; a node it never heard has no time.
+      // Our own tracker is connected right now.
+      const lastPingTime = isLocal
+        ? Date.now()
+        : (lastHeardSec && lastHeardSec > 0 ? Math.min(lastHeardSec * 1000, Date.now()) : undefined);
 
       const discovered = this.upsertDiscoveredNode(canonicalId, {
-        longName: user.longName || (isLocal ? this.connectedDeviceName : `Node ${canonicalId.slice(-4)}`),
-        shortName: user.shortName || canonicalId.slice(-4),
+        longName: user.longName || (isLocal ? this.connectedDeviceName || undefined : undefined),
+        shortName: user.shortName,
+        hardwareModel: user.hwModel,
         lat: (pos.lat !== null && !isNaN(pos.lat) && pos.lat !== 0) ? pos.lat : undefined,
         lng: (pos.lng !== null && !isNaN(pos.lng) && pos.lng !== 0) ? pos.lng : undefined,
         altitudeMeters: pos.alt ?? undefined,
@@ -1840,9 +1604,10 @@ class MeshtasticBleMqttService {
         voltage: metrics.voltage ?? undefined,
         channelUtil: metrics.channelUtil ?? undefined,
         airUtilTx: metrics.airUtilTx ?? undefined,
-        snr: snr,
+        snr,
         hops: isLocal ? 0 : hopsAway,
         connectionType: isLocal ? 'BLE' : 'LORA_MESH',
+        lastPingTime,
       }, isLocal);
 
       this.emitPacketLog({
@@ -1853,10 +1618,9 @@ class MeshtasticBleMqttService {
         fromNodeName: discovered.longName,
         toNode: '^all',
         portnum: 'NODEINFO_APP',
-        snr: snr,
-        rssi: isLocal ? -58 : -72,
+        snr,
         hops: isLocal ? 0 : hopsAway,
-        payload: `NodeDB Entry: ${discovered.longName} (${discovered.id}) ${discovered.lat ? `Pos:${discovered.lat.toFixed(4)},${discovered.lng?.toFixed(4)}` : 'No GPS Fix'} Hops:${hopsAway}`,
+        payload: `NodeDB Entry: ${discovered.longName} (${discovered.id}) ${discovered.lat ? `Pos:${discovered.lat.toFixed(4)},${discovered.lng?.toFixed(4)}` : 'No GPS Fix'}${hopsAway !== undefined ? ` Hops:${hopsAway}` : ''}`,
       });
 
       console.log(`[BLE] Discovered LoRa Node from NodeDB: ${discovered.id} (${discovered.longName})`);
@@ -1872,9 +1636,8 @@ class MeshtasticBleMqttService {
     let toNum: number | null = null;
     let portnum = 0;
     let payloadBytes: Uint8Array | null = null;
-    let rxSnr = 8.0;
-    let rxRssi = -70;
-    let hopLimit = 3;
+    let rxSnr: number | undefined;
+    let rxRssi: number | undefined;
 
     while (reader.hasMore()) {
       const tag = reader.readTag();
@@ -1895,8 +1658,6 @@ class MeshtasticBleMqttService {
         }
       } else if (tag.fieldNum === 7 && tag.wireType === 5) { // rx_snr
         rxSnr = +reader.readFloat().toFixed(1);
-      } else if (tag.fieldNum === 8 && tag.wireType === 0) { // hop_limit
-        hopLimit = reader.readVarint();
       } else if (tag.fieldNum === 11 && (tag.wireType === 0 || tag.wireType === 5)) { // rx_rssi
         rxRssi = reader.readInt32();
         if (rxRssi > 0) rxRssi = -rxRssi;
@@ -1906,14 +1667,16 @@ class MeshtasticBleMqttService {
     }
 
     if (fromNum !== null) {
-      const senderId = `!${(fromNum >>> 0).toString(16).padStart(8, '0').toUpperCase()}`;
-      const isLocal = this.connectedNodeId ? (senderId === this.connectedNodeId) : false;
+      const senderId = canonicalNodeId(fromNum);
+      const isLocal = Boolean(this.connectedNodeId) && senderId === this.connectedNodeId;
 
       let updates: Partial<MeshtasticNode> = {
         snr: rxSnr,
         rssi: rxRssi,
-        hops: isLocal ? 0 : Math.max(1, 3 - hopLimit),
+        hops: isLocal ? 0 : undefined,
         connectionType: isLocal ? 'BLE' : 'LORA_MESH',
+        // We just received a packet from this node
+        lastPingTime: Date.now(),
       };
       let logPayload = `PortNum ${portnum}`;
       let textMsg: string | undefined;
@@ -1936,8 +1699,7 @@ class MeshtasticBleMqttService {
             if (pos.sats !== null) updates.satsInFix = pos.sats;
 
             // GNSS satellite atomic hardware timestamp (pos.time is in seconds since epoch from GPS receiver)
-            const gnssSatelliteTime = (pos.time !== null && pos.time > 1000000000) ? pos.time * 1000 : Date.now();
-            updates.lastPingTime = gnssSatelliteTime;
+            const gnssSatelliteTime = (pos.time !== null && pos.time > 1000000000) ? Math.min(pos.time * 1000, Date.now()) : Date.now();
 
             // Buffer point for Store-and-Forward trajectory replay and mark rounding backfill
             const backfillPt: BackfillPoint = {
@@ -1949,11 +1711,10 @@ class MeshtasticBleMqttService {
               accuracy: (pos.sats && pos.sats >= 4) ? Math.max(2, 20 - pos.sats) : 5,
               timestamp: gnssSatelliteTime,
             };
-            const canonicalSender = senderId.startsWith('!') ? senderId : `!${senderId}`;
-            const buf = this.nodePositionBuffers.get(canonicalSender) || [];
+            const buf = this.nodePositionBuffers.get(senderId) || [];
             buf.push(backfillPt);
             if (buf.length > 2000) buf.shift();
-            this.nodePositionBuffers.set(canonicalSender, buf);
+            this.nodePositionBuffers.set(senderId, buf);
 
             const timeStr = new Date(gnssSatelliteTime).toISOString().slice(11, 19);
             logPayload = `GNSS Sat Fix: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} SOG:${pos.speedKt ?? 0}kt COG:${pos.headingDeg ?? 0}° [GPS Time: ${timeStr}Z]`;
@@ -1994,7 +1755,7 @@ class MeshtasticBleMqttService {
         rawTimestamp: Date.now(),
         fromNode: senderNode.id,
         fromNodeName: senderNode.longName,
-        toNode: toNum ? `!${(toNum >>> 0).toString(16).padStart(8, '0').toUpperCase()}` : '^all',
+        toNode: toNum && toNum !== 0xFFFFFFFF ? canonicalNodeId(toNum) : '^all',
         portnum: portnum === 1 ? 'TEXT_MESSAGE_APP' : (portnum === 3 ? 'POSITION_APP' : (portnum === 4 ? 'NODEINFO_APP' : (portnum === 67 ? 'TELEMETRY_APP' : 'ROUTING_APP'))),
         snr: rxSnr,
         rssi: rxRssi,
@@ -2170,75 +1931,28 @@ class MeshtasticBleMqttService {
     }
   }
 
-  // Manually synchronize or update T-Echo telemetry with live device GPS or custom calibration
-  public syncWithDeviceGps(
-    lat: number,
-    lng: number,
-    speedKt = 0,
-    headingDeg = 0,
-    altitudeMeters?: number,
-    sats?: number
-  ) {
-    if (!this.tEchoNodeState) {
-      this.tEchoNodeState = {
-        id: this.connectedNodeId || '!TECHO-LIVE',
-        longName: this.connectedDeviceName || 'LilyGO T-Echo nRF52840',
-        shortName: 'TECHO',
-        mac: 'BLE:ECHO01',
-        satsInFix: sats,
-        gpsFix: true,
-        altitudeMeters,
-        speedKt,
-        headingDeg,
-        lat,
-        lng,
-        hops: 0,
-        boundBoatId: null,
-        status: 'OPTIMAL',
-        connectionType: 'BLE',
-        isBluetoothConnected: true,
-        lastPingTime: Date.now(),
-        hardwareModel: 'LilyGO T-Echo (nRF52840 / SX1262)',
-        firmwareVersion: 'v2.5.x',
-        trail: [{ lat, lng }],
-      };
-    } else {
-      this.tEchoNodeState.lat = lat;
-      this.tEchoNodeState.lng = lng;
-      this.tEchoNodeState.speedKt = speedKt;
-      this.tEchoNodeState.headingDeg = headingDeg;
-      if (altitudeMeters !== undefined) this.tEchoNodeState.altitudeMeters = altitudeMeters;
-      if (sats !== undefined) this.tEchoNodeState.satsInFix = sats;
-      this.tEchoNodeState.gpsFix = true;
-      this.tEchoNodeState.lastPingTime = Date.now();
-      const oldTrail = this.tEchoNodeState.trail || [];
-      this.tEchoNodeState.trail = [...oldTrail, { lat, lng }].slice(-1000);
-    }
-
-    this.emitNode(this.tEchoNodeState);
-    if (this.mqttConfig.enabled && this.mqttConfig.streamOutbound) {
-      this.publishNodeToMqtt(this.tEchoNodeState);
-    }
-  }
-
   // --- LORA NODES ADDED BY ID ---
   // Registers a node the user typed in. It has no position or readings until it sends a packet.
   public registerDiscoveredLoraNode(id: string, longName: string): MeshtasticNode {
+    const canonicalId = canonicalNodeId(id);
+    const existing = this.discoveredBleNodes.get(canonicalId);
+    if (existing) return existing;
     const loraNode: MeshtasticNode = {
-      id: id.startsWith('!') ? id : `!${id}`,
-      longName: longName || `LoRa Node ${id}`,
-      shortName: id.slice(-4).toUpperCase(),
+      id: canonicalId,
+      longName: longName || `Node ${canonicalId.slice(-4)}`,
+      shortName: canonicalId.slice(-4),
       mac: '',
       gpsFix: false,
-      boundBoatId: null,
-      status: 'OPTIMAL',
+      boundBoatId: this.nodeBindings.get(canonicalId) ?? null,
+      status: 'OFFLINE',
       connectionType: 'LORA_MESH',
       isBluetoothConnected: false,
-      lastPingTime: Date.now(),
-      hardwareModel: 'LoRa Mesh Node',
+      // Not heard yet
+      lastPingTime: 0,
       trail: [],
     };
 
+    this.discoveredBleNodes.set(canonicalId, loraNode);
     this.emitNode(loraNode);
     return loraNode;
   }
@@ -2400,30 +2114,29 @@ class MeshtasticBleMqttService {
       ? `${cleanBase}/${node.id.startsWith('!') ? node.id : `!${node.id}`}`
       : `${cleanBase}/LongFast/${node.id.startsWith('!') ? node.id : `!${node.id}`}`;
 
-    // Convert hex nodeId (e.g. !12345678) to integer uint32 if valid hex
-    const hexClean = node.id.replace('!', '').replace(/[^0-9a-fA-F]/g, '');
-    const fromUint32 = hexClean.length === 8 ? parseInt(hexClean, 16) : 0;
+    if (typeof node.lat !== 'number' || typeof node.lng !== 'number') return;
+    const fromUint32 = nodeNumFromId(node.id);
+    const reportedAtSec = Math.floor((node.lastPingTime || Date.now()) / 1000);
 
-    // Build 100% Meshtastic JSON Spec Compliant Payload
+    // Meshtastic JSON position; only fields the tracker actually reported are included
     const payload = JSON.stringify({
       channel: 0,
-      from: fromUint32 || node.id,
+      from: fromUint32 ?? node.id,
       type: 'position',
       sender: node.longName || node.id,
       payload: {
         latitude_i: Math.round(node.lat * 1e7),
         longitude_i: Math.round(node.lng * 1e7),
-        altitude: Math.round(node.altitudeMeters || 0),
-        // ground_speed in Meshtastic spec is in m/s (1 knot = 0.514444 m/s)
-        ground_speed: +(Math.round((node.speedKt || 0) * 0.514444)).toFixed(1),
-        ground_track: Math.round(node.headingDeg || 0),
+        altitude: node.altitudeMeters !== undefined ? Math.round(node.altitudeMeters) : undefined,
+        // ground_speed is m/s in the Meshtastic spec (1 knot = 0.514444 m/s)
+        ground_speed: node.speedKt !== undefined ? +(node.speedKt * 0.514444).toFixed(1) : undefined,
+        ground_track: node.headingDeg !== undefined ? Math.round(node.headingDeg) : undefined,
         battery_level: node.battery !== undefined ? Math.round(node.battery) : undefined,
         voltage: node.voltage !== undefined ? +node.voltage.toFixed(2) : undefined,
         sats_in_view: node.satsInView,
-        precision_bits: 32,
-        time: Math.floor(Date.now() / 1000),
+        time: reportedAtSec,
       },
-      timestamp: Math.floor(Date.now() / 1000),
+      timestamp: reportedAtSec,
     });
 
     this.mqttClient.publish(topic, payload, { qos: 0 });
@@ -2434,68 +2147,52 @@ class MeshtasticBleMqttService {
       const text = payload.toString('utf-8');
       const json = JSON.parse(text);
 
-      // Convert uint32 integer ID or string to canonical '!hex' format
-      let nodeId = 'NODE';
-      if (typeof json.from === 'number') {
-        nodeId = `!${(json.from >>> 0).toString(16).padStart(8, '0')}`;
-      } else if (typeof json.from === 'string' && json.from.trim()) {
-        const raw = json.from.trim();
-        nodeId = raw.startsWith('!') ? raw : `!${raw}`;
+      let nodeId = '';
+      if (typeof json.from === 'number' || (typeof json.from === 'string' && json.from.trim())) {
+        nodeId = canonicalNodeId(json.from);
       } else {
-        const lastPart = topic.split('/').pop() || 'NODE';
-        nodeId = lastPart.startsWith('!') ? lastPart : `!${lastPart}`;
+        nodeId = canonicalNodeId(topic.split('/').pop() || '');
       }
+      if (!nodeId) return;
 
       this.emitPacketLog({
         id: 'pkt-' + Date.now(),
         timestamp: new Date().toLocaleTimeString(),
         fromNode: nodeId,
-        toNode: json.to || '^all',
+        toNode: typeof json.to === 'number' && json.to !== 0xFFFFFFFF ? canonicalNodeId(json.to) : '^all',
         portnum: json.type === 'position' ? 'POSITION_APP' : (json.type === 'telemetry' ? 'TELEMETRY_APP' : (json.type === 'nodeinfo' ? 'NODEINFO_APP' : 'TEXT_MESSAGE_APP')),
-        snr: json.snr,
-        rssi: json.rssi,
+        snr: typeof json.snr === 'number' ? json.snr : undefined,
+        rssi: typeof json.rssi === 'number' ? json.rssi : undefined,
         payload: text.slice(0, 100),
       });
 
       if (json.type === 'position' && json.payload) {
         const p = json.payload;
-        const lat = typeof p.latitude_i === 'number' ? p.latitude_i / 1e7 : (typeof p.lat === 'number' ? p.lat : (typeof p.latitude === 'number' ? p.latitude : undefined));
-        const lng = typeof p.longitude_i === 'number' ? p.longitude_i / 1e7 : (typeof p.lng === 'number' ? p.lng : (typeof p.longitude === 'number' ? p.longitude : undefined));
-        // ground_speed in Meshtastic position protobuf is in m/s (1 m/s = 1.94384 knots)
-        const speed = typeof p.ground_speed === 'number' ? +(p.ground_speed * 1.94384).toFixed(1) : (typeof p.speed === 'number' ? p.speed : 0);
-        const heading = p.ground_track ?? p.heading ?? 0;
+        const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+        const lat = num(p.latitude_i) !== undefined ? p.latitude_i / 1e7 : (num(p.lat) ?? num(p.latitude));
+        const lng = num(p.longitude_i) !== undefined ? p.longitude_i / 1e7 : (num(p.lng) ?? num(p.longitude));
+        // ground_speed in the Meshtastic position message is m/s (1 m/s = 1.94384 knots)
+        const speedKt = num(p.ground_speed) !== undefined ? +(p.ground_speed * 1.94384).toFixed(1) : num(p.speed);
+        const headingDeg = num(p.ground_track) ?? num(p.heading);
 
-        if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
-          const existing = this.tEchoNodeState?.id === nodeId ? this.tEchoNodeState : null;
-          const node: MeshtasticNode = {
-            id: nodeId,
-            longName: json.sender || (existing ? existing.longName : `MQTT Node ${nodeId.slice(-4)}`),
-            shortName: nodeId.slice(-4).toUpperCase(),
-            mac: `MQTT:${nodeId.slice(-4)}`,
-            battery: p.battery_level ?? existing?.battery,
-            voltage: p.voltage ?? existing?.voltage,
-            satsInView: p.sats_in_view ?? existing?.satsInView,
-            satsInFix: existing?.satsInFix,
-            gpsFix: true,
-            altitudeMeters: p.altitude ?? existing?.altitudeMeters,
-            speedKt: speed,
-            headingDeg: heading,
-            lat: lat,
-            lng: lng,
-            snr: json.snr ?? existing?.snr,
-            rssi: json.rssi ?? existing?.rssi,
-            hops: json.hops_away ?? existing?.hops,
-            boundBoatId: existing?.boundBoatId || null,
-            status: 'OPTIMAL',
-            connectionType: 'MQTT',
-            isBluetoothConnected: false,
-            lastPingTime: Date.now(),
-            hardwareModel: 'MQTT Gateway Feed',
-            firmwareVersion: 'v2.5.x',
-            trail: existing?.trail ? [...existing.trail, { lat, lng }].slice(-1000) : [{ lat, lng }],
-          };
-          this.emitNode(node);
-        }
+        if (lat === undefined || lng === undefined || (lat === 0 && lng === 0)) return;
+
+        this.upsertDiscoveredNode(nodeId, {
+          longName: typeof json.sender === 'string' && json.sender ? json.sender : undefined,
+          battery: num(p.battery_level),
+          voltage: num(p.voltage),
+          satsInView: num(p.sats_in_view),
+          altitudeMeters: num(p.altitude),
+          speedKt,
+          headingDeg,
+          lat,
+          lng,
+          snr: num(json.snr),
+          rssi: num(json.rssi),
+          hops: num(json.hops_away),
+          connectionType: 'MQTT',
+          lastPingTime: Date.now(),
+        }, false, 'MQTT');
       }
     } catch (e) {
       console.warn('MQTT payload parse error:', e);
@@ -2503,7 +2200,6 @@ class MeshtasticBleMqttService {
   }
 
   public disconnectAll() {
-    this.stopAutoGpsSync();
     if (this.pollIntervalTimer) {
       clearInterval(this.pollIntervalTimer);
       this.pollIntervalTimer = null;
@@ -2517,7 +2213,6 @@ class MeshtasticBleMqttService {
     this.toRadioChar = null;
     this.fromNumChar = null;
     this.nusTxChar = null;
-    this.nusRxChar = null;
 
     if (this.mqttClient) {
       this.mqttClient.end();

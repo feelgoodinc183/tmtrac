@@ -583,7 +583,12 @@ async function startServer() {
                 return;
               }
 
-              (ws as any).deviceId = payload.deviceId;
+              // A phone relaying a LoRa tracker it's connected to sends `relayedBy`. That position
+              // belongs to the tracker, not to this socket, so it must not take over the socket's
+              // identity (which is what gets marked offline when the socket closes).
+              if (!payload.relayedBy) {
+                (ws as any).deviceId = payload.deviceId;
+              }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const updatedTracker = {
                 ...existing,

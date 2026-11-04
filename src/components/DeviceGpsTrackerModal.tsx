@@ -455,8 +455,8 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                               </div>
                               <div className="text-xs text-ink-muted mt-0.5">
                                 <span>{safeFixed(member.lat, 4)}°N, {safeFixed(member.lng, 4)}°E</span> •{' '}
-                                <span className="text-accent font-bold">{safeFixed(member.speedKt, 1, '0.0')} kt</span> •{' '}
-                                <span className="text-success-ink">{member.headingDeg ?? 0}°</span>
+                                <span className="text-accent font-bold">{safeFixed(member.speedKt, 1, '—')} kt</span> •{' '}
+                                <span className="text-success-ink">{member.headingDeg !== undefined ? `${member.headingDeg}°` : '—'}</span>
                               </div>
                             </div>
                           </div>
@@ -596,8 +596,8 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                             </div>
                             <div className="text-xs text-ink-muted mt-0.5">
                               <span>{safeFixed(member.lat, 4)}°N, {safeFixed(member.lng, 4)}°E</span> •{' '}
-                              <span className="text-accent font-bold">{safeFixed(member.speedKt, 1, '0.0')} kt</span> •{' '}
-                              <span className="text-success-ink">{member.headingDeg ?? 0}°</span>
+                              <span className="text-accent font-bold">{safeFixed(member.speedKt, 1, '—')} kt</span> •{' '}
+                              <span className="text-success-ink">{member.headingDeg !== undefined ? `${member.headingDeg}°` : '—'}</span>
                             </div>
                           </div>
                         </div>

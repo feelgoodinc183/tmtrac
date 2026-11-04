@@ -13,11 +13,6 @@ import {
   Activity,
   Crosshair,
   Trash2,
-  RefreshCw,
-  Sliders,
-  Check,
-  Play,
-  Pause,
   Zap,
   Gauge,
   Thermometer,
@@ -28,10 +23,9 @@ import {
   Terminal,
 } from 'lucide-react';
 import { MeshtasticNode, Boat } from '../types/regatta';
-import { formatBattery, formatLastHeard, safeFixed } from '../utils/formatters';
+import { formatBattery, formatLastHeard, safeFixed, trackerFreshness } from '../utils/formatters';
 import {
   meshtasticService,
-  AutoGpsSyncState,
   MeshtasticPacketLog,
 } from '../services/meshtasticBleMqttService';
 
@@ -45,8 +39,6 @@ interface NodeTelemetryModalProps {
   onDeleteNode?: (nodeId: string) => void;
 }
 
-const PRESET_INTERVALS = [1, 2, 3, 5, 10, 15, 30, 60];
-
 export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   node,
   boat,
@@ -56,25 +48,12 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   onToggleFollow,
   onDeleteNode,
 }) => {
-  const [isCalibrating, setIsCalibrating] = useState(false);
-  const [customLat, setCustomLat] = useState('');
-  const [customLng, setCustomLng] = useState('');
-  const [syncStatus, setSyncStatus] = useState<string | null>(null);
-  const [isGeoLoading, setIsGeoLoading] = useState(false);
-
-  // Auto GPS Sync state
-  const [autoGps, setAutoGps] = useState<AutoGpsSyncState>(meshtasticService.getAutoGpsState());
-  const [selectedInterval, setSelectedInterval] = useState<number>(autoGps.intervalSec || 3);
-  const [customIntervalInput, setCustomIntervalInput] = useState<string>('');
-  const [showCustomInterval, setShowCustomInterval] = useState(false);
-  const [countdownSec, setCountdownSec] = useState<number>(3);
-
   // Real-time Packet Log state
   const [packetLogs, setPacketLogs] = useState<MeshtasticPacketLog[]>([]);
   const [packetFilter, setPacketFilter] = useState<'ALL' | 'TEXT' | 'TELEMETRY' | 'POSITION'>('ALL');
   const [outboundMessage, setOutboundMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [messageFeedback, setMessageFeedback] = useState<string | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState<{ ok: boolean; text: string } | null>(null);
   const packetsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll] = useState(true);
 
@@ -119,39 +98,6 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  useEffect(() => {
-    const unsub = meshtasticService.onAutoGpsStateChange((state) => {
-      setAutoGps(state);
-      setSelectedInterval(state.intervalSec);
-    });
-    return unsub;
-  }, []);
-
-  // Countdown timer for next sync tick
-  useEffect(() => {
-    if (!autoGps.enabled) {
-      setCountdownSec(selectedInterval);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      if (autoGps.lastSyncTimestamp) {
-        const elapsedSec = Math.floor((Date.now() - autoGps.lastSyncTimestamp) / 1000);
-        const rem = Math.max(0, autoGps.intervalSec - (elapsedSec % autoGps.intervalSec));
-        setCountdownSec(rem === 0 ? autoGps.intervalSec : rem);
-      }
-    }, 500);
-
-    return () => clearInterval(timer);
-  }, [autoGps.enabled, autoGps.intervalSec, autoGps.lastSyncTimestamp, selectedInterval]);
-
-  useEffect(() => {
-    if (node) {
-      setCustomLat(node.lat?.toFixed(6) || '');
-      setCustomLng(node.lng?.toFixed(6) || '');
-    }
-  }, [node]);
-
   if (!isOpen || (!node && !boat)) return null;
 
   // Telemetry: only what the tracker reported; missing readings show as a dash
@@ -159,10 +105,13 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   const voltage = node?.voltage;
   const satsInView = node?.satsInView;
   const satsInFix = node?.satsInFix;
-  const speed = boat ? (boat.sog ?? 0) : (node?.speedKt ?? 0);
-  const heading = boat ? (boat.cog ?? 0) : (node?.headingDeg ?? 0);
-  const lat = boat ? (boat.lat ?? 0) : (node?.lat ?? 0);
-  const lng = boat ? (boat.lng ?? 0) : (node?.lng ?? 0);
+  const speed = boat ? boat.sog : node?.speedKt;
+  const heading = boat ? boat.cog : node?.headingDeg;
+  // Position as reported by the tracker (or the boat's last known position); none means none
+  const lat = boat ? boat.lat : node?.lat;
+  const lng = boat ? boat.lng : node?.lng;
+  const hasPosition = typeof lat === 'number' && typeof lng === 'number' && (lat !== 0 || lng !== 0);
+  const freshness = node ? trackerFreshness(node.lastPingTime) : null;
   const snr = node?.snr;
   const rssi = node?.rssi;
   const hops = node?.hops;
@@ -178,64 +127,6 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   const iaq = node?.iaq;
   const sensorModel = node?.sensorModel || (pressure || temperature ? 'BME280 / BMP280' : undefined);
 
-  const handleToggleAutoSync = () => {
-    if (autoGps.enabled) {
-      meshtasticService.stopAutoGpsSync();
-      setSyncStatus('Auto GPS sync paused.');
-      setTimeout(() => setSyncStatus(null), 3000);
-    } else {
-      meshtasticService.startAutoGpsSync(selectedInterval);
-      setSyncStatus(`Auto GPS sync started: updating every ${selectedInterval}s`);
-      setTimeout(() => setSyncStatus(null), 3000);
-    }
-  };
-
-  const handleSelectInterval = (secs: number) => {
-    setSelectedInterval(secs);
-    setShowCustomInterval(false);
-    meshtasticService.setAutoGpsInterval(secs);
-  };
-
-  const handleApplyCustomInterval = () => {
-    const parsed = parseInt(customIntervalInput, 10);
-    if (!isNaN(parsed) && parsed >= 1 && parsed <= 300) {
-      setSelectedInterval(parsed);
-      setShowCustomInterval(false);
-      meshtasticService.setAutoGpsInterval(parsed);
-    }
-  };
-
-  const handleSaveCustomCoords = () => {
-    const parsedLat = parseFloat(customLat);
-    const parsedLng = parseFloat(customLng);
-    if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
-      if (node) {
-        meshtasticService.updateNodePosition(node.id, parsedLat, parsedLng);
-      }
-      setIsCalibrating(false);
-      setSyncStatus(`Coordinates manually set to ${parsedLat.toFixed(5)}, ${parsedLng.toFixed(5)}`);
-      setTimeout(() => setSyncStatus(null), 3500);
-    }
-  };
-
-  const handleForceGpsSync = async () => {
-    setIsGeoLoading(true);
-    setSyncStatus('Querying live GPS positioning & BME280 sensor telemetry...');
-    try {
-      const res = await meshtasticService.forceImmediateGpsSync();
-      if (res.success && res.lat && res.lng) {
-        setSyncStatus(`Synced via ${res.source || 'GPS'}: ${res.lat.toFixed(5)}°N, ${res.lng.toFixed(5)}°E`);
-      } else {
-        setSyncStatus(res.error || 'Failed to acquire location');
-      }
-    } catch (e: any) {
-      setSyncStatus(`Sync error: ${e.message}`);
-    } finally {
-      setIsGeoLoading(false);
-      setTimeout(() => setSyncStatus(null), 4000);
-    }
-  };
-
   const handleSendLoraTextMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!outboundMessage.trim()) return;
@@ -247,16 +138,22 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
       const destination = node ? node.id : '^all';
       const res = await meshtasticService.sendLoraTextMessage(outboundMessage.trim(), destination);
       if (res.success) {
-        setMessageFeedback(`Broadcasted over LoRa RF: "${outboundMessage.trim()}"`);
+        setMessageFeedback({
+          ok: true,
+          text: res.via === 'MQTT'
+            ? `Published to the MQTT broker: "${outboundMessage.trim()}"`
+            : `Handed to the tracker to send over LoRa: "${outboundMessage.trim()}"`,
+        });
         setOutboundMessage('');
       } else {
-        setMessageFeedback(`Send error: ${res.error}`);
+        setMessageFeedback({ ok: false, text: `Not sent. ${res.error || 'Unknown error'}` });
       }
     } catch (err: any) {
-      setMessageFeedback(`Transmission failed: ${err.message}`);
+      setMessageFeedback({ ok: false, text: `Not sent. ${err.message}` });
     } finally {
       setIsSendingMessage(false);
-      setTimeout(() => setMessageFeedback(null), 4500);
+      // Confirmations clear themselves; errors stay until the next attempt
+      setTimeout(() => setMessageFeedback((f) => (f && f.ok ? null : f)), 4500);
     }
   };
 
@@ -338,208 +235,44 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
         {/* Modal Scrollable Body */}
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
-          {/* REAL-TIME AUTO GPS SYNC CONTROL BAR */}
-          <div className="p-4 bg-gradient-to-r from-surface/40 via-surface/30 to-surface border border-accent/40 rounded-2xl space-y-3 shadow-lg">
+          {/* Position as reported by the tracker */}
+          <div className="p-4 bg-surface border border-line rounded-2xl space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-accent/20 text-accent rounded-xl border border-accent/40">
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-ink">
-                      Real-time LoRa & GPS Telemetry Stream
-                    </span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold  ${
-                      autoGps.enabled
-                        ? 'bg-success-ink/20 text-success-ink border border-success-ink/40 '
-                        : 'bg-raised text-ink-muted border border-line'
-                    }`}>
-                      {autoGps.enabled ? 'STREAMING ACTIVE' : 'PAUSED'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-ink-muted">
-                    Continuous high-frequency LoRa RF broadcast and position push
-                  </p>
-                </div>
-              </div>
-
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleToggleAutoSync}
-                  className={`px-3 py-1.5 rounded-lg text-xs  font-bold flex items-center gap-1.5 transition-all shadow-md ${
-                    autoGps.enabled
-                      ? 'bg-warning-ink/20 hover:bg-warning-ink/30 text-warning-ink border border-warning-ink/50'
-                      : 'bg-success-ink hover:brightness-110 text-canvas'
+                <Activity className="w-4 h-4 text-accent" />
+                <span className="text-xs font-bold text-ink">Reported position</span>
+              </div>
+              {freshness && (
+                <span
+                  className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                    freshness === 'live'
+                      ? 'bg-success-ink/15 text-success-ink border-success-ink/40'
+                      : freshness === 'stale'
+                      ? 'bg-warning-ink/15 text-warning-ink border-warning-ink/40'
+                      : 'bg-raised text-ink-muted border-line'
                   }`}
                 >
-                  {autoGps.enabled ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                  <span>{autoGps.enabled ? 'Pause Stream' : 'Start Stream'}</span>
-                </button>
-
-                <button
-                  onClick={handleForceGpsSync}
-                  disabled={isGeoLoading || autoGps.isSyncing}
-                  className="px-2.5 py-1.5 rounded-lg bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
-                  title="Force immediate GPS position sync"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${(isGeoLoading || autoGps.isSyncing) ? 'animate-spin' : ''}`} />
-                  <span>Sync Now</span>
-                </button>
-
-                <button
-                  onClick={() => setIsCalibrating(!isCalibrating)}
-                  className="px-2 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs flex items-center gap-1 transition-colors"
-                  title="Enter manual coordinates"
-                >
-                  <Sliders className="w-3.5 h-3.5 text-accent" />
-                  <span>{isCalibrating ? 'Close' : 'Calibrate'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Interval Selector Bar */}
-            <div className="p-2.5 bg-canvas rounded-xl border border-line flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-ink-muted font-bold">
-                  Update Interval:
+                  {freshness === 'live' ? 'Live' : freshness === 'stale' ? 'Stale' : 'Offline'} · {formatLastHeard(node?.lastPingTime)}
                 </span>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {PRESET_INTERVALS.map((secs) => (
-                    <button
-                      key={secs}
-                      onClick={() => handleSelectInterval(secs)}
-                      className={`px-2 py-0.5 rounded-md text-xs  font-bold transition-all ${
-                        selectedInterval === secs && !showCustomInterval
-                          ? 'bg-accent text-on-accent shadow-sm'
-                          : 'bg-raised hover:bg-raised text-ink border border-line/60'
-                      }`}
-                    >
-                      {secs}s
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setShowCustomInterval(!showCustomInterval)}
-                    className={`px-2 py-0.5 rounded-md text-xs  font-bold transition-all ${
-                      showCustomInterval
-                        ? 'bg-accent text-on-accent shadow-sm'
-                        : 'bg-raised hover:bg-raised text-ink border border-line/60'
-                    }`}
-                  >
-                    Custom
-                  </button>
-                </div>
-              </div>
-
-              {/* Countdown or Sync Status Ticker */}
-              <div className="flex items-center gap-2">
-                {autoGps.enabled ? (
-                  <div className="flex items-center gap-1.5 text-xs bg-surface/60 border border-accent/30 px-2 py-0.5 rounded-lg text-accent">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-success-ink opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-success-ink"></span>
-                    </span>
-                    <span>Next update: <strong className="text-ink font-bold">{countdownSec}s</strong></span>
-                    <span className="text-ink-muted">|</span>
-                    <span className="text-ink-muted">Syncs: <strong className="text-accent">{autoGps.syncCount}</strong></span>
-                  </div>
-                ) : (
-                  <span className="text-xs text-ink-muted">
-                    Click 'Start Stream' to broadcast real-time packets
-                  </span>
-                )}
-              </div>
+              )}
             </div>
-
-            {/* Custom Interval Form (if opened) */}
-            {showCustomInterval && (
-              <div className="p-3 bg-canvas rounded-xl border border-accent/40 flex items-center gap-2 animate-fadeIn">
-                <span className="text-xs text-ink">Set custom interval (1 - 300s):</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="300"
-                  value={customIntervalInput}
-                  onChange={(e) => setCustomIntervalInput(e.target.value)}
-                  placeholder="e.g. 8"
-                  className="w-24 px-2.5 py-1 bg-surface border border-line rounded-lg text-ink text-xs focus:border-accent focus:outline-none"
-                />
-                <button
-                  onClick={handleApplyCustomInterval}
-                  className="px-3 py-1 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-lg transition-colors"
-                >
-                  Apply
-                </button>
-              </div>
-            )}
-
-            {/* Current Coordinates & Real-time Metrics Display */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink bg-canvas p-2.5 rounded-lg border border-line">
               <div className="flex items-center justify-between">
-                <span className="text-ink-muted">Current Position: </span>
-                <strong className="text-ink font-bold">{lat.toFixed(5)}° N, {lng.toFixed(5)}° E</strong>
+                <span className="text-ink-muted">Position: </span>
+                <strong className="text-ink font-bold">
+                  {hasPosition ? `${lat!.toFixed(5)}° N, ${lng!.toFixed(5)}° E` : '—'}
+                </strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-ink-muted">GPS Fix & Accuracy: </span>
-                <strong className={node?.gpsFix ? 'text-success-ink' : 'text-warning-ink'}>
-                  {node?.gpsFix ? `3D Lock (${satsInFix ?? '—'} Sats${autoGps.accuracyMeters ? ` • ±${autoGps.accuracyMeters}m` : ''})` : 'Indoor / Acquiring'}
+                <span className="text-ink-muted">GPS fix: </span>
+                <strong className={node?.gpsFix ? 'text-success-ink' : 'text-ink-muted'}>
+                  {node?.gpsFix ? `Yes${satsInFix !== undefined ? ` (${satsInFix} sats)` : ''}` : 'No fix reported'}
                 </strong>
               </div>
             </div>
-
-            {/* Calibration Input Form */}
-            {isCalibrating && (
-              <div className="p-3 bg-canvas rounded-xl border border-accent/40 space-y-2.5 animate-fadeIn">
-                <p className="text-xs text-accent">
-                  Enter exact latitude and longitude coordinates for this node / boat:
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-ink-muted block mb-1">Latitude (°N/S)</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={customLat}
-                      onChange={(e) => setCustomLat(e.target.value)}
-                      placeholder="e.g. 6.3080"
-                      className="w-full px-3 py-1.5 bg-surface border border-line rounded-lg text-ink text-xs focus:border-accent focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-ink-muted block mb-1">Longitude (°E/W)</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={customLng}
-                      onChange={(e) => setCustomLng(e.target.value)}
-                      placeholder="e.g. 99.8200"
-                      className="w-full px-3 py-1.5 bg-surface border border-line rounded-lg text-ink text-xs focus:border-accent focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <button
-                    onClick={() => setIsCalibrating(false)}
-                    className="px-3 py-1 bg-raised text-ink text-xs rounded-lg hover:bg-raised"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveCustomCoords}
-                    className="px-3 py-1 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-lg flex items-center gap-1 shadow-md"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Apply Calibration</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {syncStatus && (
-              <p className="text-xs text-success-ink bg-success-ink/10 p-2 rounded border border-success-ink/30 animate-fadeIn">
-                {syncStatus}
-              </p>
-            )}
+            <p className="text-xs text-ink-muted">
+              Only positions sent by this tracker are shown. This phone's own location is never used for it.
+            </p>
           </div>
 
           {/* Key Quick Stats Bar */}
@@ -569,10 +302,10 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 <Navigation className="w-4 h-4 text-accent" />
               </div>
               <div className="mt-2 text-xl font-bold text-accent">
-                {speed.toFixed(1)} <span className="text-xs text-ink-muted">kt</span>
+                {typeof speed === 'number' ? speed.toFixed(1) : '—'} <span className="text-xs text-ink-muted">kt</span>
               </div>
               <span className="text-xs text-ink-muted mt-1">
-                COG / Bearing: {Math.round(heading)}°
+                COG / Bearing: {typeof heading === 'number' ? `${Math.round(heading)}°` : '—'}
               </span>
             </div>
 
@@ -759,11 +492,11 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Latitude:</span>
-                  <span className="text-ink font-bold">{lat.toFixed(5)}° N</span>
+                  <span className="text-ink font-bold">{hasPosition ? `${lat!.toFixed(5)}° N` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Longitude:</span>
-                  <span className="text-ink font-bold">{lng.toFixed(5)}° E</span>
+                  <span className="text-ink font-bold">{hasPosition ? `${lng!.toFixed(5)}° E` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Channel Utilization:</span>
@@ -940,8 +673,15 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
             </form>
 
             {messageFeedback && (
-              <p className="text-xs text-success-ink bg-success-ink/10 p-1.5 rounded border border-success-ink/30 animate-fadeIn">
-                {messageFeedback}
+              <p
+                role={messageFeedback.ok ? 'status' : 'alert'}
+                className={`text-xs p-1.5 rounded border animate-fadeIn ${
+                  messageFeedback.ok
+                    ? 'text-success-ink bg-success-ink/10 border-success-ink/30'
+                    : 'text-danger-ink bg-danger/10 border-danger-ink/30'
+                }`}
+              >
+                {messageFeedback.text}
               </p>
             )}
           </div>
