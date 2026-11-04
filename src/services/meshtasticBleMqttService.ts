@@ -766,7 +766,6 @@ class MeshtasticBleMqttService {
       textMessage: cleanText,
     };
 
-    let sentViaBle = false;
 
     // 1. If BLE characteristic is available, write to ToRadio
     if (this.toRadioChar) {
@@ -776,7 +775,6 @@ class MeshtasticBleMqttService {
         } else {
           await this.toRadioChar.writeValue(packetV1);
         }
-        sentViaBle = true;
         console.log(`[BLE] Transmitted LoRa text message over ToRadio characteristic (Packet ID: 0x${packetId.toString(16).toUpperCase()})`);
       } catch (err: any) {
         console.warn('[BLE ToRadio TX Note] Standard packet format failed, attempting V2 fallback:', err);
@@ -786,7 +784,6 @@ class MeshtasticBleMqttService {
           } else {
             await this.toRadioChar.writeValue(packetV2);
           }
-          sentViaBle = true;
         } catch (e2) {
           console.warn('[BLE ToRadio TX Fallback]', e2);
         }
@@ -1410,10 +1407,6 @@ class MeshtasticBleMqttService {
     }, 2500);
   }
 
-  private handleFromNumNotification(_dataView: DataView) {
-    if (!this.fromRadioChar) return;
-    this.readAllPendingFromRadio();
-  }
 
   // Parse incoming BLE GATT characteristic notifications (binary Protobuf and text/NMEA)
   private handleBleNotification(dataView: DataView) {
@@ -1570,181 +1563,8 @@ class MeshtasticBleMqttService {
     return { id, longName, shortName };
   }
 
-  // Parse DeviceMetrics protobuf payload
-  private parseProtobufDeviceMetrics(bytes: Uint8Array): {
-    batteryLevel?: number;
-    voltage?: number;
-    channelUtil?: number;
-    airUtilTx?: number;
-  } {
-    let offset = 0;
-    let batteryLevel: number | undefined;
-    let voltage: number | undefined;
-    let channelUtil: number | undefined;
-    let airUtilTx: number | undefined;
 
-    while (offset < bytes.length) {
-      const tagByte = bytes[offset++];
-      const wireType = tagByte & 0x07;
-      const fieldNum = tagByte >> 3;
 
-      if (wireType === 0) {
-        const { value, nextOffset } = this.readVarint(bytes, offset);
-        offset = nextOffset;
-        if (fieldNum === 1) batteryLevel = Math.min(100, Math.max(0, value));
-      } else if (wireType === 5) {
-        if (offset + 4 <= bytes.length) {
-          const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 4);
-          const fVal = dv.getFloat32(0, true);
-          offset += 4;
-          if (fieldNum === 2) voltage = +fVal.toFixed(2);
-          if (fieldNum === 3) channelUtil = +fVal.toFixed(1);
-          if (fieldNum === 4) airUtilTx = +fVal.toFixed(1);
-        } else break;
-      } else if (wireType === 2) {
-        const { nextOffset } = this.readBytes(bytes, offset);
-        offset = nextOffset;
-      } else if (wireType === 1) {
-        offset += 8;
-      } else {
-        break;
-      }
-    }
-
-    return { batteryLevel, voltage, channelUtil, airUtilTx };
-  }
-
-  // Parse EnvironmentMetrics protobuf payload (PortNum 67 / BME280 / BMP280 / BME680)
-  private parseProtobufEnvironmentMetrics(bytes: Uint8Array): {
-    temperature?: number;
-    relativeHumidity?: number;
-    barometricPressure?: number;
-    gasResistance?: number;
-    voltage?: number;
-    current?: number;
-    iaq?: number;
-    windDirection?: number;
-    windSpeed?: number;
-  } {
-    let offset = 0;
-    let temperature: number | undefined;
-    let relativeHumidity: number | undefined;
-    let barometricPressure: number | undefined;
-    let gasResistance: number | undefined;
-    let voltage: number | undefined;
-    let current: number | undefined;
-    let iaq: number | undefined;
-    let windDirection: number | undefined;
-    let windSpeed: number | undefined;
-
-    while (offset < bytes.length) {
-      const tagByte = bytes[offset++];
-      const wireType = tagByte & 0x07;
-      const fieldNum = tagByte >> 3;
-
-      if (wireType === 5) { // 32-bit float
-        if (offset + 4 <= bytes.length) {
-          const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 4);
-          const fVal = dv.getFloat32(0, true);
-          offset += 4;
-          if (fieldNum === 1) temperature = +fVal.toFixed(1);
-          if (fieldNum === 2) relativeHumidity = +fVal.toFixed(1);
-          if (fieldNum === 3) barometricPressure = +fVal.toFixed(1);
-          if (fieldNum === 4) gasResistance = +fVal.toFixed(0);
-          if (fieldNum === 5) voltage = +fVal.toFixed(2);
-          if (fieldNum === 6) current = +fVal.toFixed(1);
-          if (fieldNum === 13) windDirection = Math.round(fVal);
-          if (fieldNum === 14) windSpeed = +(fVal * 1.94384).toFixed(1); // m/s to kt
-        } else break;
-      } else if (wireType === 0) { // varint
-        const { value, nextOffset } = this.readVarint(bytes, offset);
-        offset = nextOffset;
-        if (fieldNum === 7) iaq = value;
-        if (fieldNum === 13) windDirection = value;
-      } else if (wireType === 2) {
-        const { nextOffset } = this.readBytes(bytes, offset);
-        offset = nextOffset;
-      } else if (wireType === 1) {
-        offset += 8;
-      } else {
-        break;
-      }
-    }
-
-    return {
-      temperature,
-      relativeHumidity,
-      barometricPressure,
-      gasResistance,
-      voltage,
-      current,
-      iaq,
-      windDirection,
-      windSpeed,
-    };
-  }
-
-  // Parse overall Telemetry message containing device_metrics (Tag 2) or environment_metrics (Tag 3)
-  private parseProtobufTelemetry(bytes: Uint8Array): {
-    device?: { batteryLevel?: number; voltage?: number; channelUtil?: number; airUtilTx?: number };
-    environment?: {
-      temperature?: number;
-      relativeHumidity?: number;
-      barometricPressure?: number;
-      gasResistance?: number;
-      voltage?: number;
-      current?: number;
-      iaq?: number;
-      windDirection?: number;
-      windSpeed?: number;
-    };
-  } {
-    let offset = 0;
-    let device: any = undefined;
-    let environment: any = undefined;
-
-    while (offset < bytes.length) {
-      const tagByte = bytes[offset++];
-      const wireType = tagByte & 0x07;
-      const fieldNum = tagByte >> 3;
-
-      if (fieldNum === 2 && wireType === 2) { // device_metrics
-        const { data, nextOffset } = this.readBytes(bytes, offset);
-        offset = nextOffset;
-        device = this.parseProtobufDeviceMetrics(data);
-      } else if (fieldNum === 3 && wireType === 2) { // environment_metrics
-        const { data, nextOffset } = this.readBytes(bytes, offset);
-        offset = nextOffset;
-        environment = this.parseProtobufEnvironmentMetrics(data);
-      } else if (wireType === 0) {
-        const { nextOffset } = this.readVarint(bytes, offset);
-        offset = nextOffset;
-      } else if (wireType === 2) {
-        const { nextOffset } = this.readBytes(bytes, offset);
-        offset = nextOffset;
-      } else if (wireType === 5) {
-        offset += 4;
-      } else if (wireType === 1) {
-        offset += 8;
-      } else {
-        break;
-      }
-    }
-
-    // Direct payload fallback
-    if (!device && !environment) {
-      const maybeDev = this.parseProtobufDeviceMetrics(bytes);
-      if (maybeDev.batteryLevel !== undefined || maybeDev.voltage !== undefined) {
-        device = maybeDev;
-      }
-      const maybeEnv = this.parseProtobufEnvironmentMetrics(bytes);
-      if (maybeEnv.temperature !== undefined || maybeEnv.relativeHumidity !== undefined || maybeEnv.barometricPressure !== undefined) {
-        environment = maybeEnv;
-      }
-    }
-
-    return { device, environment };
-  }
 
   // Helper to upsert a discovered node in the registry and emit update
   private upsertDiscoveredNode(

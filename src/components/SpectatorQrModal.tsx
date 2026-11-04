@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Boat, CourseMark, RaceState, RaceHighlightMoment } from '../types/regatta';
+import { INITIAL_RACE_STATE } from '../services/initialData';
 import { generateRaceHighlights, generateHighlightReportText } from '../services/highlightService';
 import { roomService } from '../services/roomService';
 
@@ -67,14 +68,7 @@ export const SpectatorQrModal: React.FC<SpectatorQrModalProps> = ({
   }, [shareUrl]);
 
   // Compute Highlights
-  const defaultRaceState: RaceState = raceState || {
-    status: 'IN_PROGRESS',
-    elapsedSeconds: 1240,
-    windSpeedKt: 12.5,
-    windDirectionDeg: 0,
-    startTime: Date.now() - 1240000,
-    activeRaceClass: 'Class 1',
-  };
+  const defaultRaceState: RaceState = raceState || INITIAL_RACE_STATE;
 
   const highlights: RaceHighlightMoment[] = useMemo(() => {
     return generateRaceHighlights(boats, defaultRaceState, courseMarks);

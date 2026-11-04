@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { KeyRound, Trash2, X, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { roomService } from '../services/roomService';
-import { authService } from '../services/authService';
 
 interface RoomPinModalProps {
   isOpen: boolean;

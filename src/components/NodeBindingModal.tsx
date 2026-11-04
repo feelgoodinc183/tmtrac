@@ -87,9 +87,6 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
   const currentlyBoundBoat = activeNode
     ? (activeNode.boundBoatId ? boats.find((b) => b.id === activeNode.boundBoatId) : boats.find((b) => b.nodeId === activeNode.id))
     : null;
-  const boatCurrentlyBoundNode = activeBoat
-    ? (activeBoat.nodeId ? nodes.find((n) => n.id === activeBoat.nodeId) : nodes.find((n) => n.boundBoatId === activeBoat.id))
-    : null;
 
   const isAlreadyBoundTogether = Boolean(
     activeNode &&

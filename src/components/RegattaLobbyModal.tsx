@@ -28,12 +28,10 @@ interface RegattaLobbyModalProps {
   onClose: () => void;
   activeRoomCode: string;
   isOrganizer: boolean;
-  viewMode: 'RC_CONSOLE' | 'SPECTATOR';
   onSetViewMode: (mode: 'RC_CONSOLE' | 'SPECTATOR') => void;
   connectedPeerCount: number;
   currentUser?: UserAccount | null;
   onOpenAuth?: (mode?: 'login' | 'register') => void;
-  onOpenDashboard?: () => void;
 }
 
 export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
@@ -41,12 +39,10 @@ export const RegattaLobbyModal: React.FC<RegattaLobbyModalProps> = ({
   onClose,
   activeRoomCode,
   isOrganizer,
-  viewMode,
   onSetViewMode,
   connectedPeerCount,
   currentUser,
   onOpenAuth,
-  onOpenDashboard,
 }) => {
   const [activeTab, setActiveTab] = useState<'JOIN' | 'CREATE'>('JOIN');
   const [joinCodeInput, setJoinCodeInput] = useState(activeRoomCode || '');

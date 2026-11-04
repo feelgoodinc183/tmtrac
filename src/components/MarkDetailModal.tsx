@@ -25,7 +25,7 @@ export const MarkDetailModal: React.FC<MarkDetailModalProps> = ({
   totalSequentialMarks,
 }) => {
   const [name, setName] = useState(mark?.name || '');
-  const [type, setType] = useState<CourseMark['type']>(mark?.type || 'STANDARD');
+  const [type, setType] = useState<CourseMark['type']>((mark?.type as CourseMark['type']) || 'CUSTOM_MARK');
   const [lat, setLat] = useState(mark?.lat?.toString() || '');
   const [lng, setLng] = useState(mark?.lng?.toString() || '');
   const [radiusMeters, setRadiusMeters] = useState(mark?.radiusMeters || 40);

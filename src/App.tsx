@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Boat,
   BoatStatus,
@@ -290,9 +290,6 @@ export default function App() {
     setViewMode('RC_CONSOLE');
     setMobileTab('RC_CONSOLE');
   }, [isOrganizer, activeRoomCode]);
-  const [showRcConsoleOverlay, setShowRcConsoleOverlay] = useState<boolean>(false);
-  const [showLeaderboardOverlay, setShowLeaderboardOverlay] = useState<boolean>(false);
-  const [showToolsDrawer, setShowToolsDrawer] = useState<boolean>(false);
   const [showHubModal, setShowHubModal] = useState<boolean>(false);
   const [activeHubTab, setActiveHubTab] = useState<HubTab>('FLEET');
 
@@ -640,7 +637,6 @@ export default function App() {
           updated[idx] = { ...remoteNode, boundBoatId, trail: newTrail };
           return updated;
         } else {
-          const initialTrail = [{ lat: remoteNode.lat!, lng: remoteNode.lng! }];
           return [remoteNode, ...prevNodes];
         }
       });
@@ -1676,7 +1672,7 @@ export default function App() {
         });
       }
 
-      const updatedClassStates = {
+      const updatedClassStates: Record<string, ClassRaceStatus> = {
         ...(prev.classStates || {}),
         [targetClass]: {
           ...curClsState,
@@ -1729,7 +1725,7 @@ export default function App() {
     setRaceState((prev) => {
       const now = serverNow();
       const curClsState = getClassRaceState(prev, targetClass);
-      const updatedClassStates = {
+      const updatedClassStates: Record<string, ClassRaceStatus> = {
         ...(prev.classStates || {}),
         [targetClass]: {
           ...curClsState,
@@ -1818,13 +1814,16 @@ export default function App() {
     deviceTrackerService.broadcastVhf(newNotice);
   };
 
-  const handleTriggerMobAlert = (boatId: string, name: string, lat: number, lng: number) => {
+  // The VHF / Jury console passes only the boat id: take its name and last known position
+  // from the fleet, so the alert always says which boat and where.
+  const handleTriggerMobAlert = (boatId: string, name?: string, lat?: number, lng?: number) => {
+    const boat = boats.find((b) => b.id === boatId);
     setMobAlert({
       id: 'mob-' + Date.now(),
       boatId,
-      boatName: name,
-      lat,
-      lng,
+      boatName: name ?? boat?.name ?? boatId,
+      lat: lat ?? boat?.lat ?? 0,
+      lng: lng ?? boat?.lng ?? 0,
       triggeredAt: Date.now(),
       active: true,
       interceptingBoats: [],
@@ -1836,7 +1835,7 @@ export default function App() {
     setMobAlert(null);
   };
 
-  const handleCreateProtestSnapshot = (boat1Id: string, boat2Id: string, rule: string, notes: string) => {
+  const handleCreateProtestSnapshot = (boat1Id: string, boat2Id: string, rule: string, notes = '') => {
     const boat1 = boats.find((b) => b.id === boat1Id);
     const boat2 = boats.find((b) => b.id === boat2Id);
     if (!boat1 || !boat2) return;
@@ -2087,18 +2086,13 @@ export default function App() {
   };
 
 
-  const handleToggleTelemetryRate = () => {
-    handleUpdateRaceState({
-      telemetryRate: raceState.telemetryRate === 'HIGH_FREQUENCY' ? 'OFFSHORE_LEG' : 'HIGH_FREQUENCY',
-    });
-  };
 
   const handleOpenHeadToHead = (b1: string, b2: string) => {
     setHeadToHeadPair([b1, b2]);
     setShowHeadToHead(true);
   };
 
-  const handleSendChatMessage = (text: string) => {
+  const handleSendChatMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: 'msg-' + Date.now(),
       sender: 'user',
@@ -2108,8 +2102,9 @@ export default function App() {
     setChatMessages((prev) => [...prev, userMsg]);
   };
 
-  const handleAnalyzeImage = (dataUrl: string, promptText: string) => {
-    // Handled in GeminiImageModal
+  // Not connected to an AI service yet: say so instead of showing an empty result
+  const handleAnalyzeImage = async (_imageBase64: string, _prompt: string, _model: string): Promise<string> => {
+    throw new Error('Image analysis is not connected yet.');
   };
 
   const resolveTrackerPosition = (nodeId?: string | null) => {
@@ -2762,11 +2757,6 @@ export default function App() {
             setShowDashboardModal(false);
             setShowLobbyModal(true);
           }}
-          onOpenLobby={() => {
-            setShowDashboardModal(false);
-            setShowLobbyModal(true);
-          }}
-          onOpenSuperAdmin={() => setShowSuperAdminModal(true)}
         />
       </div>
     );
@@ -2833,7 +2823,6 @@ export default function App() {
         onToggleDeviceGps={handleToggleDeviceGps}
         onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
-        boatCount={boats.length}
         connectedPeerCount={connectedPeerCount}
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -2841,12 +2830,8 @@ export default function App() {
         onOpenLobby={() => setShowLobbyModal(true)}
         currentUser={currentUser}
         onOpenDashboard={() => setShowDashboardModal(true)}
-        onOpenTenantDashboard={isUserAdminOrOfficer ? () => setShowTenantDashboard(true) : undefined}
-        onOpenSubscriptionModal={isUserAdminOrOfficer ? () => setShowSubscriptionModal(true) : undefined}
         onOpenSuperAdmin={currentUser?.isSuperAdmin || authService.isSuperAdmin() ? () => setShowSuperAdminModal(true) : undefined}
         onOpenLandingPage={() => setShowLandingPage(true)}
-        tenantName={currentTenant?.name || currentUser?.tenantName || 'RLYC'}
-        planTier={currentTenant?.planTier || currentUser?.planTier || 'FREE'}
         onOpenAuth={(mode) => {
           setAuthModalInitialMode(mode || 'login');
           setShowAuthModal(true);
@@ -2897,7 +2882,6 @@ export default function App() {
             onEndRace={requestEndRace}
             onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
-            directSunlightMode={directSunlightMode}
             raceClasses={raceClasses}
             onOpenClassManager={() => setShowClassManager(true)}
             onOpenResults={() => setShowResultsModal(true)}
@@ -2936,16 +2920,13 @@ export default function App() {
                   deviceGps={deviceGps}
                   onToggleDeviceGps={handleToggleDeviceGps}
                   onDeleteNode={handleDeleteNode}
-                  onClearDemoNodes={handleClearDemoNodes}
                   onOpenAddBoat={handleOpenAddBoat}
                   onEditBoat={handleEditBoat}
                   onDeleteBoat={handleDeleteBoat}
                   onClearDemoBoats={handleClearDemoBoats}
                   raceClasses={raceClasses}
-                  onOpenClassManager={() => setShowClassManager(true)}
                   onOpenResults={() => setShowResultsModal(true)}
                   onOpenBoatQr={handleOpenBoatQr}
-                  onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
                   onEndRace={requestEndRace}
                   onCollapse={() => setIsSidebarOpen(false)}
                   viewMode={viewMode}
@@ -2960,19 +2941,9 @@ export default function App() {
               boats={boats}
               marks={marks}
               nodes={nodes}
-              raceState={raceState}
               selectedBoatId={selectedBoatId}
               onSelectBoat={(id) => setSelectedBoatId(id)}
-              onToggleTelemetryRate={handleToggleTelemetryRate}
               onOpenHeadToHead={handleOpenHeadToHead}
-              onPlayStartSignal={() => playHornSound(880, 1200)}
-              onToggleRaceTimer={() =>
-                handleUpdateRaceState({
-                  startSequenceActive: !raceState.startSequenceActive,
-                })
-              }
-              isMuted={isMuted}
-              onToggleMute={handleToggleMute}
               basemap={basemap}
               onSelectBasemap={setBasemap}
               overlays={overlays}
@@ -2985,20 +2956,13 @@ export default function App() {
               onChangeMapSize={setMapSize}
               directSunlightMode={directSunlightMode}
               followedTargetId={followedTargetId}
-              onToggleFollow={handleToggleFollow}
               onOpenNodeInspector={handleOpenNodeInspector}
               selectedLocation={selectedLocation}
               playbackTimeSec={playback.currentTimeSec}
               maxPlaybackDurationSec={playback.maxDurationSec}
               deviceGps={deviceGps}
-              onToggleDeviceGps={handleToggleDeviceGps}
               showReplayBar={showReplayBar}
               onToggleReplayBar={() => setShowReplayBar((s) => !s)}
-              showRcConsoleOverlay={showRcConsoleOverlay}
-              showLeaderboardOverlay={showLeaderboardOverlay}
-              showToolsDrawer={showToolsDrawer}
-              onOpenTools={() => setShowToolsDrawer((prev) => !prev)}
-              isToolsOpen={showToolsDrawer}
               onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
               isSidebarOpen={isSidebarOpen}
               onAddMark={handleAddMark}
@@ -3018,88 +2982,8 @@ export default function App() {
             />
 
             {/* Translucent Manager Console Overlay on Map */}
-            {showRcConsoleOverlay && (
-              <div className="absolute inset-x-4 top-14 bottom-6 landscape:top-1.5 landscape:bottom-2 landscape:inset-x-6 z-30 flex justify-center items-start pointer-events-none">
-                <div className="pointer-events-auto w-full max-w-2xl h-full max-h-full flex flex-col min-h-0">
-                  <RcCommandConsolePanel
-                    raceState={raceState}
-                    boats={boats}
-                    marks={marks}
-                    onToggleRaceTimer={() =>
-                      handleUpdateRaceState({
-                        startSequenceActive: !raceState.startSequenceActive,
-                      })
-                    }
-                    onResetTimer={() => handleResetTimer()}
-                    onPlayStartSignal={() => playHornSound(880, 1200)}
-                    isMuted={isMuted}
-                    onToggleMute={handleToggleMute}
-                    onUpdateRaceState={handleUpdateRaceState}
-                    onUpdateBoatStatus={handleUpdateBoatStatus}
-                    onUpdateFleetStatus={handleUpdateFleetStatus}
-                    onUpdateWind={handleUpdateWind}
-                    onUpdateMarks={handleUpdateMarks}
-                    onSendVhfNotice={handleSendVhfNotice}
-                    onEndRace={requestEndRace}
-                    onRestartRace={requestRestartRace}
-            onGeneralRecall={requestGeneralRecall}
-                    directSunlightMode={directSunlightMode}
-                    raceClasses={raceClasses}
-                    onOpenClassManager={() => setShowClassManager(true)}
-                    onOpenResults={() => setShowResultsModal(true)}
-                    onOpenCourseProfiles={() => {
-                      setCourseProfileCount(getSavedCourseProfiles().length);
-                      setShowCourseProfilesModal(true);
-                    }}
-                    courseProfileCount={courseProfileCount}
-                    isOverlay={true}
-                    onClose={() => setShowRcConsoleOverlay(false)}
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Translucent Rank (Leaderboard & Mesh Topo) Overlay on Map */}
-            {showLeaderboardOverlay && (
-              <div className="absolute inset-x-4 top-14 bottom-6 landscape:top-1.5 landscape:bottom-2 landscape:inset-x-6 z-30 flex justify-center items-start pointer-events-none">
-                <div className="pointer-events-auto w-full max-w-lg h-full max-h-full flex flex-col min-h-0">
-                  <LeaderboardSidebar
-                    boats={boats}
-                    nodes={nodes}
-                    raceState={raceState}
-                    selectedBoatId={selectedBoatId}
-                    onSelectBoat={(id) => {
-                      setSelectedBoatId(id);
-                      setShowLeaderboardOverlay(false);
-                    }}
-                    onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-                    onOpenHardwareScan={() => setShowHardwareScan(true)}
-                    onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
-                    followedTargetId={followedTargetId}
-                    onToggleFollow={handleToggleFollow}
-                    onOpenNodeInspector={handleOpenNodeInspector}
-                    deviceGps={deviceGps}
-                    onToggleDeviceGps={handleToggleDeviceGps}
-                    onDeleteNode={handleDeleteNode}
-                    onClearDemoNodes={handleClearDemoNodes}
-                    onOpenAddBoat={handleOpenAddBoat}
-                    onEditBoat={handleEditBoat}
-                    onDeleteBoat={handleDeleteBoat}
-                    onClearDemoBoats={handleClearDemoBoats}
-                    raceClasses={raceClasses}
-                    onOpenClassManager={() => setShowClassManager(true)}
-                    onOpenResults={() => setShowResultsModal(true)}
-                    onOpenBoatQr={handleOpenBoatQr}
-                    onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
-                    onEndRace={requestEndRace}
-                    viewMode={viewMode}
-                    isOverlay={true}
-                    isAdmin={isUserAdminOrOfficer}
-                    onClose={() => setShowLeaderboardOverlay(false)}
-                  />
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -3112,19 +2996,9 @@ export default function App() {
                 boats={boats}
                 marks={marks}
                 nodes={nodes}
-                raceState={raceState}
                 selectedBoatId={selectedBoatId}
                 onSelectBoat={(id) => setSelectedBoatId(id)}
-                onToggleTelemetryRate={handleToggleTelemetryRate}
                 onOpenHeadToHead={handleOpenHeadToHead}
-                onPlayStartSignal={() => playHornSound(880, 1200)}
-                onToggleRaceTimer={() =>
-                  handleUpdateRaceState({
-                    startSequenceActive: !raceState.startSequenceActive,
-                  })
-                }
-                isMuted={isMuted}
-                onToggleMute={handleToggleMute}
                 basemap={basemap}
                 onSelectBasemap={setBasemap}
                 overlays={overlays}
@@ -3137,20 +3011,13 @@ export default function App() {
                 onChangeMapSize={setMapSize}
                 directSunlightMode={directSunlightMode}
                 followedTargetId={followedTargetId}
-                onToggleFollow={handleToggleFollow}
                 onOpenNodeInspector={handleOpenNodeInspector}
                 selectedLocation={selectedLocation}
                 playbackTimeSec={playback.currentTimeSec}
                 maxPlaybackDurationSec={playback.maxDurationSec}
                 deviceGps={deviceGps}
-                onToggleDeviceGps={handleToggleDeviceGps}
                 showReplayBar={showReplayBar}
                 onToggleReplayBar={() => setShowReplayBar((s) => !s)}
-                showRcConsoleOverlay={showRcConsoleOverlay}
-                showLeaderboardOverlay={showLeaderboardOverlay}
-                showToolsDrawer={showToolsDrawer}
-                onOpenTools={() => setShowToolsDrawer((prev) => !prev)}
-                isToolsOpen={showToolsDrawer}
                 onAddMark={handleAddMark}
                 onDeleteMark={handleDeleteMark}
                 onMoveMarkPosition={handleMoveMarkPosition}
@@ -3168,88 +3035,8 @@ export default function App() {
               />
 
               {/* Translucent Manager Console Mobile Overlay on Map */}
-              {showRcConsoleOverlay && (
-                <div className="absolute inset-x-2 top-12 bottom-20 landscape:top-1.5 landscape:bottom-2 landscape:inset-x-6 z-30 flex justify-center items-start pointer-events-none">
-                  <div className="pointer-events-auto w-full max-h-full flex flex-col min-h-0">
-                    <RcCommandConsolePanel
-                      raceState={raceState}
-                      boats={boats}
-                      marks={marks}
-                      onToggleRaceTimer={() =>
-                        handleUpdateRaceState({
-                          startSequenceActive: !raceState.startSequenceActive,
-                        })
-                      }
-                      onResetTimer={() => handleResetTimer()}
-                      onPlayStartSignal={() => playHornSound(880, 1200)}
-                      isMuted={isMuted}
-                      onToggleMute={handleToggleMute}
-                      onUpdateRaceState={handleUpdateRaceState}
-                      onUpdateBoatStatus={handleUpdateBoatStatus}
-                      onUpdateFleetStatus={handleUpdateFleetStatus}
-                      onUpdateWind={handleUpdateWind}
-                      onUpdateMarks={handleUpdateMarks}
-                      onSendVhfNotice={handleSendVhfNotice}
-                      onEndRace={requestEndRace}
-                      onRestartRace={requestRestartRace}
-            onGeneralRecall={requestGeneralRecall}
-                      directSunlightMode={directSunlightMode}
-                      raceClasses={raceClasses}
-                      onOpenClassManager={() => setShowClassManager(true)}
-                      onOpenResults={() => setShowResultsModal(true)}
-                      onOpenCourseProfiles={() => {
-                        setCourseProfileCount(getSavedCourseProfiles().length);
-                        setShowCourseProfilesModal(true);
-                      }}
-                      courseProfileCount={courseProfileCount}
-                      isOverlay={true}
-                      onClose={() => setShowRcConsoleOverlay(false)}
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Translucent Rank (Leaderboard & Mesh Topo) Mobile Overlay on Map */}
-              {showLeaderboardOverlay && (
-                <div className="absolute inset-x-2 top-12 bottom-20 landscape:top-1.5 landscape:bottom-2 landscape:inset-x-6 z-30 flex justify-center items-start pointer-events-none">
-                  <div className="pointer-events-auto w-full max-h-full flex flex-col min-h-0">
-                    <LeaderboardSidebar
-                      boats={boats}
-                      nodes={nodes}
-                      raceState={raceState}
-                      selectedBoatId={selectedBoatId}
-                      onSelectBoat={(id) => {
-                        setSelectedBoatId(id);
-                        setShowLeaderboardOverlay(false);
-                      }}
-                      onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-                      onOpenHardwareScan={() => setShowHardwareScan(true)}
-                      onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
-                      followedTargetId={followedTargetId}
-                      onToggleFollow={handleToggleFollow}
-                      onOpenNodeInspector={handleOpenNodeInspector}
-                      deviceGps={deviceGps}
-                      onToggleDeviceGps={handleToggleDeviceGps}
-                      onDeleteNode={handleDeleteNode}
-                      onClearDemoNodes={handleClearDemoNodes}
-                      onOpenAddBoat={handleOpenAddBoat}
-                      onEditBoat={handleEditBoat}
-                      onDeleteBoat={handleDeleteBoat}
-                      onClearDemoBoats={handleClearDemoBoats}
-                      raceClasses={raceClasses}
-                      onOpenClassManager={() => setShowClassManager(true)}
-                      onOpenResults={() => setShowResultsModal(true)}
-                      onOpenBoatQr={handleOpenBoatQr}
-                      onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
-                      onEndRace={requestEndRace}
-                      viewMode={viewMode}
-                      isOverlay={true}
-                      isAdmin={isUserAdminOrOfficer}
-                      onClose={() => setShowLeaderboardOverlay(false)}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -3284,16 +3071,13 @@ export default function App() {
                   deviceGps={deviceGps}
                   onToggleDeviceGps={handleToggleDeviceGps}
                   onDeleteNode={handleDeleteNode}
-                  onClearDemoNodes={handleClearDemoNodes}
                   onOpenAddBoat={handleOpenAddBoat}
                   onEditBoat={handleEditBoat}
                   onDeleteBoat={handleDeleteBoat}
                   onClearDemoBoats={handleClearDemoBoats}
                   raceClasses={raceClasses}
-                  onOpenClassManager={() => setShowClassManager(true)}
                   onOpenResults={() => setShowResultsModal(true)}
                   onOpenBoatQr={handleOpenBoatQr}
-                  onOpenSkipperCheckIn={handleOpenSkipperCheckIn}
                   onEndRace={requestEndRace}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
@@ -3449,7 +3233,6 @@ export default function App() {
                   onEndRace={requestEndRace}
                   onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
-                  directSunlightMode={directSunlightMode}
                   raceClasses={raceClasses}
                   onOpenClassManager={() => setShowClassManager(true)}
                   onOpenResults={() => setShowResultsModal(true)}
@@ -3509,7 +3292,6 @@ export default function App() {
         deviceGps={deviceGps}
         onToggleDeviceGps={handleToggleDeviceGps}
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
-        onOpenSkipperCheckIn={() => handleOpenSkipperCheckIn()}
         onOpenBoatQr={() => handleOpenBoatQr()}
         onOpenNodeBinding={handleOpenNodeBindingWithSelection}
         onOpenHardwareScan={() => setShowHardwareScan(true)}
@@ -3525,42 +3307,14 @@ export default function App() {
           }
         }}
         raceState={raceState}
-        raceClasses={raceClasses}
-        marks={marks}
         viewMode={viewMode}
-        onStartSequence={() => handleToggleRaceTimer()}
-        onStopSequence={() => handleToggleRaceTimer()}
-        onPostpone={() => handleUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300 })}
-        onGeneralRecall={() => requestGeneralRecall(raceState.activeClass)}
-        onAbandon={() => handleUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300 })}
-        onSelectClass={(cls) => handleUpdateRaceState({ activeClass: cls })}
-        onOpenCourseProfiles={() => {
-          setCourseProfileCount(getSavedCourseProfiles().length);
-          setShowCourseProfilesModal(true);
-        }}
-        onOpenClassManager={() => setShowClassManager(true)}
         onOpenVhfJuryModal={() => setShowVhfJuryModal(true)}
         onOpenChat={() => setShowGeminiChat(true)}
-        onOpenResults={() => setShowResultsModal(true)}
-        showReplayBar={showReplayBar}
-        onToggleReplayBar={() => setShowReplayBar((s) => !s)}
-        seriesRaces={seriesRaces}
         activeRoomCode={activeRoomCode}
         connectedPeerCount={connectedPeerCount}
-        onOpenLobby={() => setShowLobbyModal(true)}
         onOpenSpectatorQr={() => setShowSpectatorQr(true)}
         onOpenNmeaMalaysiaModal={() => setShowNmeaMalaysiaModal(true)}
         onOpenOfflineCache={() => setShowOfflineCache(true)}
-        directSunlightMode={directSunlightMode}
-        onToggleSunlightMode={() => setDirectSunlightMode((s) => !s)}
-        isMuted={isMuted}
-        onToggleMute={handleToggleMute}
-        currentUser={currentUser}
-        onOpenDashboard={() => setShowDashboardModal(true)}
-        onOpenAuth={(mode) => {
-          setAuthModalInitialMode(mode || 'login');
-          setShowAuthModal(true);
-        }}
         onOpenAbout={() => setShowAboutModal(true)}
         onOpenTenantDashboard={isUserAdminOrOfficer ? () => setShowTenantDashboard(true) : undefined}
         tenantName={currentTenant?.name || currentUser?.tenantName || 'Royal Langkawi Yacht Club (RLYC)'}
@@ -3608,7 +3362,6 @@ export default function App() {
           selectedLocation={selectedLocation}
           onSelectLocation={handleSelectLocation}
           nodes={nodes}
-          onAddScannedNode={handleAddScannedNode}
           onClose={() => setShowNmeaMalaysiaModal(false)}
         />
       )}
@@ -3645,8 +3398,6 @@ export default function App() {
       {showGeminiChat && (
         <GeminiChatModal
           messages={chatMessages}
-          raceState={raceState}
-          boats={boats}
           onSendMessage={handleSendChatMessage}
           onClose={() => setShowGeminiChat(false)}
         />
@@ -3676,11 +3427,6 @@ export default function App() {
           boats={boats}
           raceState={raceState}
           courseMarks={marks}
-          activeRoomCode={activeRoomCode}
-          onOpenBoatQr={() => {
-            setShowSpectatorQr(false);
-            handleOpenBoatQr();
-          }}
           onSeekReplay={(timeSec) => {
             setShowReplayBar(true);
             setPlayback((p) => ({ ...p, currentTimeSec: timeSec, isPlaying: true }));
@@ -3748,7 +3494,6 @@ export default function App() {
         onBindBoat={(boatId) => handleBindNodeToBoat(deviceTrackerService.getLocalNode().id, boatId)}
         onToggleDeviceGps={handleToggleDeviceGps}
         onFollowTarget={handleToggleFollow}
-        onOpenNodeInspector={handleOpenNodeInspector}
       />
 
       {/* Official Race Results & Scoring Modal (Phase 4 Automation) */}
@@ -3758,7 +3503,6 @@ export default function App() {
         boats={boats}
         raceState={raceState}
         raceClasses={raceClasses}
-        courseMarks={marks}
         seriesRaces={seriesRaces}
         onUpdateBoatStatus={handleUpdateBoatStatus}
         onSaveRaceToSeries={handleSaveRaceToSeries}
@@ -3785,14 +3529,12 @@ export default function App() {
         currentWindSpeed={raceState.windSpeedKt}
         activeProfileId={activeCourseProfileId}
         onApplyCourse={handleApplyCourseProfile}
-        directSunlightMode={directSunlightMode}
       />
 
       {/* About Developer & System Information Modal */}
       <AboutModal
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
-        directSunlightMode={directSunlightMode}
       />
 
       {/* Regatta Multi-Tenant Lobby & Room Switcher Modal */}
@@ -3801,15 +3543,13 @@ export default function App() {
         onClose={() => setShowLobbyModal(false)}
         activeRoomCode={activeRoomCode}
         isOrganizer={isOrganizer}
-        viewMode={viewMode}
         onSetViewMode={setViewMode}
         connectedPeerCount={connectedPeerCount}
         currentUser={currentUser}
         onOpenAuth={(mode) => {
-          setAuthModalInitialMode(mode || 'login');
+          setAuthModalInitialMode(mode === 'register' ? 'register-participant' : 'login');
           setShowAuthModal(true);
         }}
-        onOpenDashboard={() => setShowDashboardModal(true)}
       />
 
       {/* User Authentication Modal (Sign In & Register) */}
@@ -3832,11 +3572,6 @@ export default function App() {
           setShowDashboardModal(false);
           setShowLobbyModal(true);
         }}
-        onOpenLobby={() => {
-          setShowDashboardModal(false);
-          setShowLobbyModal(true);
-        }}
-        onOpenSuperAdmin={() => setShowSuperAdminModal(true)}
       />
 
       {/* Super Admin Master Management Suite Modal */}
@@ -3929,7 +3664,6 @@ export default function App() {
           boats={boats}
           targetBoatId={targetCheckInBoatId}
           targetSailNumber={targetCheckInSail}
-          activeRoomCode={activeRoomCode}
           deviceGps={deviceGps}
           isAdmin={isUserAdminOrOfficer}
           onBindAndStartGps={handleSkipperCheckIn}

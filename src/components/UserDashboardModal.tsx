@@ -28,8 +28,6 @@ interface UserDashboardModalProps {
   onClose: () => void;
   user: UserAccount | null;
   onOpenCreateRoom: () => void;
-  onOpenLobby: () => void;
-  onOpenSuperAdmin?: () => void;
 }
 
 export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
@@ -37,8 +35,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   onClose,
   user,
   onOpenCreateRoom,
-  onOpenLobby,
-  onOpenSuperAdmin,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'my_rooms' | 'history' | 'profile' | 'admin_users'>('overview');
   const [myRooms, setMyRooms] = useState<RegattaRoomSummary[]>([]);

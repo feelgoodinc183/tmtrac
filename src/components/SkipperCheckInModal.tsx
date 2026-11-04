@@ -16,7 +16,6 @@ interface SkipperCheckInModalProps {
   boats: Boat[];
   targetBoatId?: string | null;
   targetSailNumber?: string | null;
-  activeRoomCode?: string;
   deviceGps: DeviceGpsState;
   isAdmin?: boolean;
   onBindAndStartGps?: (boatId: string, skipperName?: string) => void;
@@ -32,7 +31,6 @@ export const SkipperCheckInModal: React.FC<SkipperCheckInModalProps> = ({
   boats,
   targetBoatId,
   targetSailNumber,
-  activeRoomCode,
   deviceGps,
   isAdmin = false,
   onBindAndStartGps,

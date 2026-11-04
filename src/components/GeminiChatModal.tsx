@@ -1,19 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, RaceState, Boat } from '../types/regatta';
+import { ChatMessage } from '../types/regatta';
 import { X, Bot, Send, Sparkles, User, RefreshCw } from 'lucide-react';
 
 interface GeminiChatModalProps {
   messages: ChatMessage[];
-  raceState: RaceState;
-  boats: Boat[];
   onSendMessage: (text: string) => Promise<void>;
   onClose: () => void;
 }
 
 export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
   messages,
-  raceState,
-  boats,
   onSendMessage,
   onClose,
 }) => {

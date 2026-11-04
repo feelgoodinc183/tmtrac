@@ -23,10 +23,8 @@ interface MapLayersControlProps {
   zoomLevel: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onResetZoom: () => void;
   mapSize: MapViewSize;
   onChangeMapSize: (size: MapViewSize) => void;
-  directSunlightMode?: boolean;
 }
 
 export const MapLayersControl: React.FC<MapLayersControlProps> = ({
@@ -37,10 +35,8 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
   zoomLevel,
   onZoomIn,
   onZoomOut,
-  onResetZoom,
   mapSize,
   onChangeMapSize,
-  directSunlightMode = false,
 }) => {
   const [isBarExpanded, setIsBarExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);

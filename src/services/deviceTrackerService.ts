@@ -136,7 +136,6 @@ export type EditRejectedCallback = (rejection: { action: string; roomCode: strin
 class HybridDeviceTrackerService {
   private profile: DeviceTrackerProfile = getDefaultDeviceProfile();
   private gpsWatchId: number | null = null;
-  private isWatchingGps = false;
   private batteryLevel: number | null = 88;
 
   private currentGpsState: DeviceGpsState;
@@ -1210,7 +1209,6 @@ class HybridDeviceTrackerService {
 
       this.stopGpsTracking();
 
-      this.isWatchingGps = true;
       this.currentGpsState.active = true;
       this.currentGpsState.error = null;
       this.notifyGps();
@@ -1384,7 +1382,6 @@ class HybridDeviceTrackerService {
       clearInterval(this.broadcastIntervalTimer);
       this.broadcastIntervalTimer = null;
     }
-    this.isWatchingGps = false;
     this.currentGpsState.active = false;
     this.currentGpsState.lat = undefined;
     this.currentGpsState.lng = undefined;

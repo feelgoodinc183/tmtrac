@@ -11,7 +11,7 @@ import {
   ShieldAlert,
   Sun,
 } from 'lucide-react';
-import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount, PlanTier } from '../types/regatta';
+import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
 
 export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';
@@ -28,7 +28,6 @@ interface HeaderProps {
   onToggleDeviceGps: () => void;
   onOpenHybridTrackers?: () => void;
   hybridTrackerCount?: number;
-  boatCount?: number;
   connectedPeerCount?: number;
   viewMode: 'RC_CONSOLE' | 'SPECTATOR';
   setViewMode?: (mode: 'RC_CONSOLE' | 'SPECTATOR') => void;
@@ -56,13 +55,8 @@ interface HeaderProps {
   currentUser?: UserAccount | null;
   onOpenDashboard?: () => void;
   onOpenAuth?: (mode?: 'login' | 'register-participant' | 'register-org') => void;
-  onOpenCpanelDeploy?: () => void;
-  onOpenTenantDashboard?: () => void;
-  onOpenSubscriptionModal?: () => void;
   onOpenSuperAdmin?: () => void;
   onOpenLandingPage?: () => void;
-  tenantName?: string;
-  planTier?: PlanTier;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -70,7 +64,6 @@ export const Header: React.FC<HeaderProps> = ({
   directSunlightMode,
   onToggleSunlightMode,
   connectedPeerCount = 1,
-  boatCount = 0,
   viewMode,
   setViewMode,
   activeRoomCode = 'LOBBY',
@@ -84,23 +77,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onOpenDashboard,
   onOpenAuth,
-  onOpenCpanelDeploy,
-  onOpenTenantDashboard,
-  onOpenSubscriptionModal,
   onOpenSuperAdmin,
   onOpenLandingPage,
-  tenantName,
-  planTier = 'FREE',
 }) => {
-  const handleOpenHub = (hub: HubTab) => {
-    if (onOpenHub) {
-      onOpenHub(hub);
-    } else if (hub === 'RESULTS' && onOpenResults) {
-      onOpenResults();
-    } else if (onOpenTools) {
-      onOpenTools();
-    }
-  };
 
   return (
     <header

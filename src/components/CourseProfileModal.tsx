@@ -45,7 +45,6 @@ interface CourseProfileModalProps {
   currentWindSpeed?: number;
   activeProfileId?: string | null;
   onApplyCourse: (marks: CourseMark[], profileName: string, profileId?: string) => void;
-  directSunlightMode?: boolean;
 }
 
 export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
@@ -58,7 +57,6 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
   currentWindSpeed,
   activeProfileId,
   onApplyCourse,
-  directSunlightMode = false,
 }) => {
   const [profiles, setProfiles] = useState<CourseProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');

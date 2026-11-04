@@ -43,7 +43,6 @@ interface DeviceGpsTrackerModalProps {
   viewMode?: 'RC_CONSOLE' | 'SPECTATOR';
   onBindBoat?: (boatId: string) => void;
   onFollowTarget?: (id: string, name: string) => void;
-  onOpenNodeInspector?: (node: MeshtasticNode | null, boat: Boat | null) => void;
 }
 
 export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
@@ -57,7 +56,6 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
   viewMode = 'RC_CONSOLE',
   onBindBoat,
   onFollowTarget,
-  onOpenNodeInspector,
 }) => {
   const isSpectator = viewMode === 'SPECTATOR';
   const [activeTab, setActiveTab] = useState<'MY_GPS' | 'FLEET_LIST' | 'SETTINGS' | 'SIMULATOR'>('MY_GPS');

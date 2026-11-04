@@ -21,12 +21,8 @@ import {
 import {
   Boat,
   MeshtasticNode,
-  RaceClassDefinition,
   RaceState,
-  CourseMark,
   DeviceGpsState,
-  UserAccount,
-  CompletedRace,
 } from '../types/regatta';
 import { safeFixed } from '../utils/formatters';
 import { APP_VERSION } from '../appVersion';
@@ -43,7 +39,6 @@ export interface UnifiedHubModalProps {
   deviceGps: DeviceGpsState;
   onToggleDeviceGps: () => void;
   hybridTrackerCount: number;
-  onOpenSkipperCheckIn?: () => void;
   onOpenBoatQr?: () => void;
   onOpenNodeBinding?: () => void;
   onOpenHardwareScan?: () => void;
@@ -52,39 +47,17 @@ export interface UnifiedHubModalProps {
   onOpenHeadToHead?: () => void;
   // Race Props
   raceState: RaceState;
-  raceClasses: RaceClassDefinition[];
-  marks: CourseMark[];
   viewMode: 'RC_CONSOLE' | 'SPECTATOR';
-  onStartSequence?: (minutes?: number) => void;
-  onStopSequence?: () => void;
-  onPostpone?: () => void;
-  onGeneralRecall?: () => void;
-  onAbandon?: () => void;
-  onSelectClass?: (clsName: string) => void;
-  onOpenCourseProfiles?: () => void;
-  onOpenClassManager?: () => void;
   onOpenVhfJuryModal?: () => void;
   onOpenChat?: () => void;
   // Results Props
-  onOpenResults?: () => void;
-  showReplayBar?: boolean;
-  onToggleReplayBar?: () => void;
-  seriesRaces?: CompletedRace[];
   // System Props
   activeRoomCode: string;
   connectedPeerCount: number;
-  onOpenLobby?: () => void;
   onOpenSpectatorQr?: () => void;
   onOpenNmeaMalaysiaModal?: () => void;
   onOpenOfflineCache?: () => void;
   onOpenMqttInspector?: () => void;
-  directSunlightMode: boolean;
-  onToggleSunlightMode: () => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
-  currentUser?: UserAccount | null;
-  onOpenDashboard?: () => void;
-  onOpenAuth?: (mode?: 'login' | 'register') => void;
   onOpenAbout?: () => void;
   onOpenTenantDashboard?: () => void;
   tenantName?: string;
@@ -100,7 +73,6 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   deviceGps,
   onToggleDeviceGps,
   hybridTrackerCount,
-  onOpenSkipperCheckIn,
   onOpenBoatQr,
   onOpenNodeBinding,
   onOpenHardwareScan,
@@ -108,37 +80,15 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   onSelectBoat,
   onOpenHeadToHead,
   raceState,
-  raceClasses,
-  marks,
   viewMode,
-  onStartSequence,
-  onStopSequence,
-  onPostpone,
-  onGeneralRecall,
-  onAbandon,
-  onSelectClass,
-  onOpenCourseProfiles,
-  onOpenClassManager,
   onOpenVhfJuryModal,
   onOpenChat,
-  onOpenResults,
-  showReplayBar,
-  onToggleReplayBar,
-  seriesRaces = [],
   activeRoomCode,
   connectedPeerCount,
-  onOpenLobby,
   onOpenSpectatorQr,
   onOpenNmeaMalaysiaModal,
   onOpenOfflineCache,
   onOpenMqttInspector,
-  directSunlightMode,
-  onToggleSunlightMode,
-  isMuted,
-  onToggleMute,
-  currentUser,
-  onOpenDashboard,
-  onOpenAuth,
   onOpenAbout,
   onOpenTenantDashboard,
   tenantName,
@@ -468,7 +418,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                                 </div>
                               </td>
                               <td className="px-3 py-2.5 text-ink">
-                                {boat.raceClass || 'Class 1'}
+                                {boat.class}
                               </td>
                               <td className="px-3 py-2.5">
                                 <span className="font-bold text-accent">

@@ -42,7 +42,6 @@ interface NodeTelemetryModalProps {
   onClose: () => void;
   followedTargetId: string | null;
   onToggleFollow: (id: string, name: string) => void;
-  onPingNode?: (nodeId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
 }
 
@@ -55,7 +54,6 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   onClose,
   followedTargetId,
   onToggleFollow,
-  onPingNode,
   onDeleteNode,
 }) => {
   const [isCalibrating, setIsCalibrating] = useState(false);
@@ -78,7 +76,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageFeedback, setMessageFeedback] = useState<string | null>(null);
   const packetsEndRef = useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [autoScroll] = useState(true);
 
   const targetId = boat ? boat.id : (node ? node.id : '');
   const targetName = boat ? boat.name : (node ? node.longName : 'Node');

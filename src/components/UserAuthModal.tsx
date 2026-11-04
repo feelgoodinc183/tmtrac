@@ -35,9 +35,9 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
-  const [sailingClub, setSailingClub] = useState('');
+  const [sailingClub] = useState('');
   const [sailNumber, setSailNumber] = useState('');
-  const [handicapRating, setHandicapRating] = useState('IRC 1.000');
+  const [handicapRating] = useState('IRC 1.000');
   const [role, setRole] = useState<'RACE_OFFICER' | 'SKIPPER' | 'SPECTATOR'>('SKIPPER');
 
   // Organization registration fields

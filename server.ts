@@ -4,7 +4,6 @@ import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import Stripe from 'stripe';
 import { WebSocketServer, WebSocket } from 'ws';
 import {
   db,
@@ -39,9 +38,7 @@ import { createSession, endSession, endAllSessionsForUser, findActiveUserByToken
 import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
 
-const rawPort = process.env.PORT;
 const isDevMode = process.env.NODE_ENV !== 'production';
-const PORT: number | string = isDevMode ? 3000 : ((rawPort && !isNaN(Number(rawPort))) ? Number(rawPort) : (rawPort || 3000));
 
 // Initialize SQLite database and run migrations/seeds
 initDatabase();
@@ -253,7 +250,6 @@ export function resolveRoomRole(user: RoomRoleUser | null, room: ActiveRoomState
 
 function roomRoleUserFromRow(row: any): RoomRoleUser | null {
   if (!row) return null;
-  const email = (row.email || '').toLowerCase().trim();
   return {
     id: row.id,
     role: row.role,
@@ -434,13 +430,10 @@ async function startServer() {
 
     // Gate check via token in SQLite
     let authUser: any = null;
-    let authTenant: any = null;
     if (token) {
       const userRow = findActiveUserByToken(token);
       if (userRow) {
-        const tenantRow = userRow.tenant_id ? (db.prepare('SELECT * FROM tenants WHERE id = ?').get(userRow.tenant_id) as any) : null;
         authUser = userRow;
-        authTenant = { id: userRow.tenant_id, name: tenantRow?.name, planTier: tenantRow?.plan_tier };
       }
     }
 

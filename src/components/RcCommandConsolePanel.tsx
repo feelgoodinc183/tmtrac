@@ -57,7 +57,6 @@ interface RcCommandConsolePanelProps {
   onEndRace?: (forClass?: string) => void;
   onRestartRace?: (forClass?: string) => void;
   onGeneralRecall?: (forClass: string) => void;
-  directSunlightMode: boolean;
   raceClasses?: RaceClassDefinition[];
   onOpenClassManager?: () => void;
   onOpenResults?: () => void;
@@ -85,7 +84,6 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   onEndRace,
   onRestartRace,
   onGeneralRecall,
-  directSunlightMode,
   raceClasses = [],
   onOpenClassManager,
   onOpenResults,
@@ -115,8 +113,6 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   const [noticeContent, setNoticeContent] = useState('');
   const [noticeType, setNoticeType] = useState<'COURSE_CHANGE' | 'POSTPONEMENT' | 'SAFETY_WARNING' | 'GENERAL_ANNOUNCEMENT'>('COURSE_CHANGE');
 
-  // Mark editing
-  const [editingMarkId, setEditingMarkId] = useState<string | null>(null);
 
   // Active class state computation
   const activeClassState = raceState.classStates?.[raceState.activeClass] || {

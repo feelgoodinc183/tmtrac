@@ -17,13 +17,11 @@ import { APP_VERSION } from '../appVersion';
 interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  directSunlightMode?: boolean;
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({
   isOpen,
   onClose,
-  directSunlightMode = false,
 }) => {
   if (!isOpen) return null;
 

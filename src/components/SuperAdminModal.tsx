@@ -53,7 +53,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   onOpenCpanelDeploy,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'users' | 'clubs' | 'events' | 'database' | 'sockets' | 'audit'>('overview');
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   // Errors from the edit dialogs are shown inside the dialog: the panel banner sits behind its overlay.

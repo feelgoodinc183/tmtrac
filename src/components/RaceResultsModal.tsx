@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Boat, CourseMark, RaceClassDefinition, RaceState, CompletedRace, SeriesStanding, CompetitorImportRecord } from '../types/regatta';
+import { Boat, RaceClassDefinition, RaceState, CompletedRace, SeriesStanding, CompetitorImportRecord } from '../types/regatta';
 import {
   Trophy,
   Download,
@@ -42,7 +42,6 @@ interface RaceResultsModalProps {
   boats: Boat[];
   raceState: RaceState;
   raceClasses?: RaceClassDefinition[];
-  courseMarks?: CourseMark[];
   seriesRaces?: CompletedRace[];
   onUpdateBoatStatus?: (boatId: string, status: Boat['status']) => void;
   onSaveRaceToSeries?: (race: CompletedRace) => void;
@@ -61,7 +60,6 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
   boats,
   raceState,
   raceClasses = [],
-  courseMarks = [],
   seriesRaces = [],
   onUpdateBoatStatus,
   onSaveRaceToSeries,
@@ -104,7 +102,7 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
   const [rosterInputText, setRosterInputText] = useState('');
   const [parsedRosterRecords, setParsedRosterRecords] = useState<CompetitorImportRecord[]>([]);
   const [rosterParseError, setRosterParseError] = useState<string | null>(null);
-  const [isParsingRoster, setIsParsingRoster] = useState(false);
+  const [, setIsParsingRoster] = useState(false);
 
   // Filter races for the currently selected class
   const classSeriesRaces = React.useMemo(() => {
@@ -173,14 +171,6 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
     });
   };
 
-  // Expand all or collapse all mark splits
-  const toggleAllSplits = (allBoatsList: any[]) => {
-    if (expandedBoatSplits.size > 0) {
-      setExpandedBoatSplits(new Set());
-    } else {
-      setExpandedBoatSplits(new Set(allBoatsList.map((b) => b.id || b.boatId)));
-    }
-  };
 
   // Current race boats filtered by selected class
   const liveFilteredBoats = React.useMemo(() => {

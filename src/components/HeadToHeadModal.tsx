@@ -14,12 +14,6 @@ export const HeadToHeadModal: React.FC<HeadToHeadModalProps> = ({
   boat2,
   onClose,
 }) => {
-  const sog1 = boat1.sog ?? 0;
-  const sog2 = boat2.sog ?? 0;
-  const vmg1 = boat1.vmg ?? 0;
-  const vmg2 = boat2.vmg ?? 0;
-  const speedDiff = sog1 - sog2;
-  const vmgDiff = vmg1 - vmg2;
   const correctedTimeDiff = (boat1.correctedSeconds || 0) - (boat2.correctedSeconds || 0);
 
   // Approximate distance between boats

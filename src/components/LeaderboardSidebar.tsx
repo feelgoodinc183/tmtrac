@@ -43,15 +43,12 @@ interface LeaderboardSidebarProps {
   deviceGps?: DeviceGpsState;
   onToggleDeviceGps?: () => void;
   onDeleteNode?: (nodeId: string) => void;
-  onClearDemoNodes?: () => void;
   onOpenAddBoat?: () => void;
   onEditBoat?: (boat: Boat) => void;
   onDeleteBoat?: (boatId: string) => void;
   onClearDemoBoats?: () => void;
   onOpenBoatQr?: (boatId: string) => void;
-  onOpenSkipperCheckIn?: (boatId?: string) => void;
   raceClasses?: RaceClassDefinition[];
-  onOpenClassManager?: () => void;
   onOpenResults?: () => void;
   onEndRace?: (forClass?: string) => void;
   onCollapse?: () => void;
@@ -76,15 +73,12 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   deviceGps,
   onToggleDeviceGps,
   onDeleteNode,
-  onClearDemoNodes,
   onOpenAddBoat,
   onEditBoat,
   onDeleteBoat,
   onClearDemoBoats,
   onOpenBoatQr,
-  onOpenSkipperCheckIn,
   raceClasses = [],
-  onOpenClassManager,
   onOpenResults,
   onEndRace,
   onCollapse,
@@ -169,8 +163,8 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         return (b.speedKt ?? 0) - (a.speedKt ?? 0);
       }
       if (nodeSort === 'BOUND') {
-        const aBound = (a.boundBoatId || boats.some((b) => b.id === a.boundBoatId || b.nodeId === a.id)) ? 1 : 0;
-        const bBound = (b.boundBoatId || boats.some((b) => b.id === b.boundBoatId || b.nodeId === b.id)) ? 1 : 0;
+        const aBound = (a.boundBoatId || boats.some((boat) => boat.id === a.boundBoatId || boat.nodeId === a.id)) ? 1 : 0;
+        const bBound = (b.boundBoatId || boats.some((boat) => boat.id === b.boundBoatId || boat.nodeId === b.id)) ? 1 : 0;
         return bBound - aBound;
       }
       // 'RECENT' (default)
@@ -435,7 +429,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 </span>
               </div>
               <button
-                onClick={() => setActiveTab('NODES')}
+                onClick={() => setActiveTab('MESH_NODES')}
                 className="text-xs text-accent hover:underline font-bold"
               >
                 Inspect Telemetry →

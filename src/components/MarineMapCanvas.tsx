@@ -5,7 +5,6 @@ import {
   CourseMark,
   CourseEditMode,
   MeshtasticNode,
-  RaceState,
   MapBasemap,
   WeatherOverlays,
   MapViewSize,
@@ -16,7 +15,6 @@ import { MapLayersControl } from './MapLayersControl';
 import { MarkDetailModal } from './MarkDetailModal';
 import { calculateCourseLegs, getOrderedCourseSequence, calculateBearingDeg } from '../services/courseService';
 import {
-  Compass,
   Crosshair,
   Zap,
   Plus,
@@ -27,7 +25,6 @@ import {
   RotateCcw,
   Minimize2,
   Smartphone,
-  Sailboat,
   Route,
 } from 'lucide-react';
 
@@ -122,15 +119,9 @@ interface MarineMapCanvasProps {
   boats: Boat[];
   marks: CourseMark[];
   nodes: MeshtasticNode[];
-  raceState: RaceState;
   selectedBoatId: string | null;
   onSelectBoat: (boatId: string) => void;
-  onToggleTelemetryRate: () => void;
   onOpenHeadToHead: (boat1Id: string, boat2Id: string) => void;
-  onPlayStartSignal: () => void;
-  onToggleRaceTimer: () => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
   basemap: MapBasemap;
   onSelectBasemap: (basemap: MapBasemap) => void;
   overlays: WeatherOverlays;
@@ -143,22 +134,13 @@ interface MarineMapCanvasProps {
   onChangeMapSize: (size: MapViewSize) => void;
   directSunlightMode: boolean;
   followedTargetId: string | null;
-  onToggleFollow: (id: string, name: string) => void;
   onOpenNodeInspector: (node: MeshtasticNode | null, boat: Boat | null) => void;
   selectedLocation?: RegattaLocation;
   playbackTimeSec?: number;
   maxPlaybackDurationSec?: number;
   deviceGps?: DeviceGpsState;
-  onToggleDeviceGps?: () => void;
   showReplayBar?: boolean;
   onToggleReplayBar?: () => void;
-  showRcConsoleOverlay?: boolean;
-  onToggleRcConsoleOverlay?: () => void;
-  showLeaderboardOverlay?: boolean;
-  onToggleLeaderboardOverlay?: () => void;
-  showToolsDrawer?: boolean;
-  onOpenTools?: () => void;
-  isToolsOpen?: boolean;
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
 
@@ -180,15 +162,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   boats,
   marks,
   nodes,
-  raceState,
   selectedBoatId,
   onSelectBoat,
-  onToggleTelemetryRate,
   onOpenHeadToHead,
-  onPlayStartSignal,
-  onToggleRaceTimer,
-  isMuted,
-  onToggleMute,
   basemap,
   onSelectBasemap,
   overlays,
@@ -201,22 +177,13 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   onChangeMapSize,
   directSunlightMode,
   followedTargetId,
-  onToggleFollow,
   onOpenNodeInspector,
   selectedLocation,
   playbackTimeSec = 0,
   maxPlaybackDurationSec = 1800,
   deviceGps,
-  onToggleDeviceGps,
   showReplayBar = false,
   onToggleReplayBar,
-  showRcConsoleOverlay = false,
-  onToggleRcConsoleOverlay,
-  showLeaderboardOverlay = false,
-  onToggleLeaderboardOverlay,
-  showToolsDrawer = false,
-  onOpenTools,
-  isToolsOpen = false,
   onToggleSidebar,
   isSidebarOpen,
   onAddMark,
@@ -284,7 +251,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       resizeObserver = new ResizeObserver(() => {
         if (mapRef.current) {
           try {
-            mapRef.current.invalidateSize({ debounceMoveEvents: true });
+            mapRef.current.invalidateSize({ debounceMoveend: true });
           } catch {
             // ignore
           }
@@ -664,7 +631,6 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     validBoats.forEach((b) => {
       if (!isValidCoord(b.lat, b.lng)) return;
       const isSelected = b.id === selectedBoatId;
-      const isFollowed = b.id === followedTargetId;
 
       // Identify if this boat is bound to a physical LoRa Node or Phone/Tablet/Device GPS
       const boundNode = (nodes || []).find((n) => n.boundBoatId === b.id || (b.nodeId && n.id === b.nodeId));
@@ -955,14 +921,6 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     onZoomOut();
   };
 
-  const handleMapReset = () => {
-    if (selectedLocation && mapRef.current) {
-      if (isValidCoord(selectedLocation.centerLat, selectedLocation.centerLng)) {
-        mapRef.current.flyTo([selectedLocation.centerLat, selectedLocation.centerLng], 12);
-      }
-    }
-    onResetZoom();
-  };
 
   const handleFitAllFleet = () => {
     if (!mapRef.current) return;
@@ -1084,39 +1042,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         )}
 
         {/* Race Control Console Floating Map Trigger (Race Manager icon) */}
-        {viewMode !== 'SPECTATOR' && onToggleRcConsoleOverlay && (
-          <button
-            onClick={onToggleRcConsoleOverlay}
-            className={`min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center ${
-              showRcConsoleOverlay
-                ? 'bg-accent text-on-accent border border-accent'
-                : 'bg-surface/95 hover:bg-raised border border-line text-ink'
-            }`}
-            title={showRcConsoleOverlay ? 'Close Race Control' : 'Open Race Control (Race Committee Controls)'}
-          >
-            <Compass className="w-4 h-4" />
-          </button>
-        )}
 
         {/* Rank (Leaderboard & Fleet) Floating Map Trigger */}
-        {onToggleLeaderboardOverlay && (
-          <button
-            onClick={onToggleLeaderboardOverlay}
-            className={`min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center relative ${
-              showLeaderboardOverlay
-                ? 'bg-accent text-on-accent '
-                : 'bg-canvas/90 hover:bg-raised border border-accent/50 text-accent'
-            }`}
-            title={showLeaderboardOverlay ? 'Close Rank & Fleet' : 'Open Rank (Fleet Leaderboard)'}
-          >
-            <Sailboat className="w-4 h-4" />
-            {boats.length > 0 && (
-              <span className="absolute -top-1 -right-1 px-1 min-w-3.5 h-3.5 rounded-full bg-accent text-on-accent text-xs font-bold flex items-center justify-center">
-                {boats.length}
-              </span>
-            )}
-          </button>
-        )}
 
         {/* Course Designer Floating Map Trigger (Dotted Track Route icon) */}
         {viewMode !== 'SPECTATOR' && (
@@ -1200,10 +1127,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           zoomLevel={zoomLevel}
           onZoomIn={handleMapZoomIn}
           onZoomOut={handleMapZoomOut}
-          onResetZoom={handleMapReset}
           mapSize={mapSize}
           onChangeMapSize={onChangeMapSize}
-          directSunlightMode={directSunlightMode}
         />
       </div>
 

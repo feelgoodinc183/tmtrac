@@ -75,7 +75,6 @@ interface NmeaAndMalaysiaMeshModalProps {
   selectedLocation: RegattaLocation;
   onSelectLocation: (location: RegattaLocation) => void;
   nodes: MeshtasticNode[];
-  onAddScannedNode: (node: MeshtasticNode) => void;
   onClose: () => void;
 }
 
@@ -85,7 +84,6 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
   selectedLocation,
   onSelectLocation,
   nodes,
-  onAddScannedNode,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'MALAYSIA_LORA' | 'LORA_COMMAND_FLAGS' | 'ADAPTIVE_THROTTLE' | 'NMEA_INSTRUMENTS'>('MALAYSIA_LORA');
@@ -107,7 +105,6 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
       status: 'SENT',
     },
   ]);
-  const [simulatedMastAck, setSimulatedMastAck] = useState<boolean>(true);
 
   // ADAPTIVE THROTTLE CONFIGURATION STATE
   const [throttleConfig, setThrottleConfig] = useState<AdaptiveThrottleConfig>({
@@ -127,8 +124,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
   const [mqttPassword, setMqttPassword] = useState(initialConfig.mqttPassword || 'large4cats');
   const [mqttTopic, setMqttTopic] = useState(initialConfig.mqttTopic);
   const [frequencyBand, setFrequencyBand] = useState<'MY_919' | 'MY_433' | 'CUSTOM'>(initialConfig.frequencyBand);
-  const [channelPsk, setChannelPsk] = useState(initialConfig.channelPsk);
-  const [savedNotification, setSavedNotification] = useState(false);
+  const [channelPsk] = useState(initialConfig.channelPsk);
 
   // Helper to persist all mesh settings
   const persistMeshSettings = (overrides?: Partial<SavedMeshConfig>) => {
