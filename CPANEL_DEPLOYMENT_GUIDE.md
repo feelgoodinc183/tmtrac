@@ -172,6 +172,7 @@ The app folder is inside `public_html`, so LiteSpeed will serve any file in it u
 
 - `https://tmtrac.my/data/tmtrac_store.json` must return **403**
 - `https://tmtrac.my/dist/server.cjs` must return **403**
+- `https://tmtrac.my/server.cjs` and `https://tmtrac.my/server.cjs.map` must return **404** (the app itself refuses them, whatever the layout)
 - There must be **no** `.htaccess` inside `dist/` (it would cancel the root rules for that folder)
 - Delete uploaded zips and `stderr.log` copies you downloaded or moved
 

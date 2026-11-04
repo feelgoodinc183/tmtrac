@@ -3171,7 +3171,22 @@ async function startServer() {
     });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // dist/ also holds the server bundle, its source map and the deploy package.json: never serve them
+    app.use((req, res, next) => {
+      let p = req.path;
+      try {
+        p = decodeURIComponent(p);
+      } catch {
+        res.status(400).end();
+        return;
+      }
+      if (/(^|\/)(server\.cjs|production-package\.json)$/i.test(p) || /\.map$/i.test(p)) {
+        res.status(404).end();
+        return;
+      }
+      next();
+    });
+    app.use(express.static(distPath, { dotfiles: 'deny' }));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
