@@ -184,6 +184,7 @@ For stronger isolation, set `DATA_DIR` in **Setup Node.js App** to a folder outs
 
 The server connects to the Meshtastic MQTT broker for events that turn MQTT on (Hardware window → MQTT, or the Malaysia LoRa & MQTT window), decrypts packets with the event's channel keys and sends node updates to everyone viewing the event. Channel keys and broker passwords are stored in the event's row in SQLite and are never sent to browsers.
 
+- **First deploy with the bridge:** it needs the `protobufjs` package on the server. Upload the full `tmtrac-cpanel-deployment.zip` (it carries the updated `package.json`), click **Run NPM Install**, then **Restart**. Update-only zips are fine after that.
 - **Default broker:** `mqtts://mqtt.meshtastic.org:8883` (username `meshdev`). Override server-wide with the environment variables `MESHTASTIC_MQTT_URL`, `MESHTASTIC_MQTT_USERNAME` and `MESHTASTIC_MQTT_PASSWORD` in **Setup Node.js App**. An event can also use its own broker.
 - **Outbound ports:** the server must be able to open an outgoing connection to the broker (port 8883, or 1883 for `mqtt://`). Some shared hosts block these. If the MQTT status says it can't reach the broker, ask Exabytes to allow outgoing TCP 8883 to `mqtt.meshtastic.org`, or use a broker that offers MQTT over WebSockets on port 443 (`wss://…`).
 - **Idle shutdown:** Passenger may stop the app when nobody is using it. The bridge only runs while someone has an MQTT-enabled event open, and starts again when the next person opens it, so nothing needs to stay running.
