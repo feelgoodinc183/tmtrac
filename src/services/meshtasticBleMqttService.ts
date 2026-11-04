@@ -932,10 +932,10 @@ class MeshtasticBleMqttService {
       position: {
         lat,
         lng,
-        alt: updated.altitudeMeters || 10,
+        alt: updated.altitudeMeters,
         speedKt: updated.speedKt || 0,
         headingDeg: updated.headingDeg || 0,
-        sats: updated.satsInView || 8,
+        sats: updated.satsInView,
       },
     });
   }
@@ -950,8 +950,8 @@ class MeshtasticBleMqttService {
           const { latitude, longitude, speed, heading, altitude } = pos.coords;
           const spdKt = speed && speed > 0 ? +(speed * 1.94384).toFixed(1) : 0;
           const hdg = heading !== null && !isNaN(heading) ? Math.round(heading) : 0;
-          const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : 10;
-          this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt, 10);
+          const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : undefined;
+          this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt);
           resolve({ success: true, lat: latitude, lng: longitude, source: 'Device High-Accuracy GPS' });
         },
         (err) => {
@@ -1007,10 +1007,10 @@ class MeshtasticBleMqttService {
     const { latitude, longitude, speed: geoSpeed, heading: geoHeading, altitude, accuracy } = pos.coords;
     const spdKt = geoSpeed && geoSpeed > 0 ? +(geoSpeed * 1.94384).toFixed(1) : (this.tEchoNodeState?.speedKt || 0);
     const hdg = geoHeading !== null && !isNaN(geoHeading) ? Math.round(geoHeading) : (this.tEchoNodeState?.headingDeg || 0);
-    const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : 10;
+    const alt = altitude !== null && !isNaN(altitude) ? +altitude.toFixed(1) : undefined;
     const acc = accuracy ? Math.round(accuracy) : null;
 
-    this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt, 12);
+    this.syncWithDeviceGps(latitude, longitude, spdKt, hdg, alt);
 
     this.autoGpsState = {
       ...this.autoGpsState,
@@ -1120,8 +1120,8 @@ class MeshtasticBleMqttService {
       this.connectedNodeId = `!TECHO-${rawId}`;
 
       // Check for Battery Service
-      let batteryPct = 95;
-      let voltage = 4.15;
+      let batteryPct: number | undefined;
+      let voltage: number | undefined;
       try {
         const batService = await server.getPrimaryService('battery_service');
         const batChar = await batService.getCharacteristic('00002a19-0000-1000-8000-00805f9b34fb');
@@ -1137,7 +1137,7 @@ class MeshtasticBleMqttService {
       let realLng = initialLng;
       let realHeading = 0;
       let realSpeed = 0.0;
-      let realAlt = 10.0;
+      let realAlt: number | undefined;
 
       if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
         try {
@@ -1167,8 +1167,7 @@ class MeshtasticBleMqttService {
         }
       }
 
-      const defaultLat = realLat || 6.3080;
-      const defaultLng = realLng || 99.8200;
+      const hasPosition = typeof realLat === 'number' && typeof realLng === 'number' && (realLat !== 0 || realLng !== 0);
 
       this.tEchoNodeState = {
         id: this.connectedNodeId,
@@ -1177,16 +1176,12 @@ class MeshtasticBleMqttService {
         mac: `BLE:${rawId}`,
         battery: batteryPct,
         voltage: voltage,
-        satsInView: 8,
-        satsInFix: 6,
-        gpsFix: true,
+        gpsFix: hasPosition,
         altitudeMeters: realAlt,
         speedKt: realSpeed,
         headingDeg: realHeading,
-        lat: defaultLat,
-        lng: defaultLng,
-        snr: 8.5,
-        rssi: -62,
+        lat: hasPosition ? realLat : undefined,
+        lng: hasPosition ? realLng : undefined,
         hops: 0,
         boundBoatId: null,
         status: 'OPTIMAL',
@@ -1195,7 +1190,7 @@ class MeshtasticBleMqttService {
         lastPingTime: Date.now(),
         hardwareModel: 'LilyGO T-Echo (nRF52840 / SX1262)',
         firmwareVersion: 'v2.5.x',
-        trail: [{ lat: defaultLat, lng: defaultLng }],
+        trail: hasPosition ? [{ lat: realLat as number, lng: realLng as number }] : [],
       };
 
       this.emitNode(this.tEchoNodeState);
@@ -1599,19 +1594,19 @@ class MeshtasticBleMqttService {
       longName: partial.longName || existing?.longName || `LoRa Node ${hexSuffix}`,
       shortName: partial.shortName || existing?.shortName || hexSuffix,
       mac: partial.mac || existing?.mac || `BLE:${hexSuffix}`,
-      battery: partial.battery ?? existing?.battery ?? 95,
-      voltage: partial.voltage ?? existing?.voltage ?? 4.12,
-      satsInView: partial.satsInView ?? existing?.satsInView ?? 8,
-      satsInFix: partial.satsInFix ?? existing?.satsInFix ?? 6,
+      battery: partial.battery ?? existing?.battery,
+      voltage: partial.voltage ?? existing?.voltage,
+      satsInView: partial.satsInView ?? existing?.satsInView,
+      satsInFix: partial.satsInFix ?? existing?.satsInFix,
       gpsFix: (typeof updatedLat === 'number' && typeof updatedLng === 'number' && (updatedLat !== 0 || updatedLng !== 0)),
-      altitudeMeters: partial.altitudeMeters ?? existing?.altitudeMeters ?? 10.0,
+      altitudeMeters: partial.altitudeMeters ?? existing?.altitudeMeters,
       speedKt: partial.speedKt ?? existing?.speedKt ?? 0.0,
       headingDeg: partial.headingDeg ?? existing?.headingDeg ?? 0,
       lat: updatedLat,
       lng: updatedLng,
-      snr: partial.snr ?? existing?.snr ?? (isLocalBleDevice ? 9.2 : 7.8),
-      rssi: partial.rssi ?? existing?.rssi ?? (isLocalBleDevice ? -58 : -72),
-      hops: partial.hops ?? existing?.hops ?? (isLocalBleDevice ? 0 : 1),
+      snr: partial.snr ?? existing?.snr,
+      rssi: partial.rssi ?? existing?.rssi,
+      hops: partial.hops ?? existing?.hops ?? (isLocalBleDevice ? 0 : undefined),
       boundBoatId: partial.boundBoatId !== undefined && partial.boundBoatId !== null ? partial.boundBoatId : (this.nodeBindings.get(canonicalId) || existing?.boundBoatId || null),
       status: 'OPTIMAL',
       connectionType: isLocalBleDevice ? 'BLE' : (partial.connectionType || existing?.connectionType || 'LORA_MESH'),
@@ -1619,8 +1614,8 @@ class MeshtasticBleMqttService {
       lastPingTime: partial.lastPingTime ?? Date.now(),
       hardwareModel: partial.hardwareModel || existing?.hardwareModel || (isLocalBleDevice ? 'LilyGO T-Echo (nRF52840)' : 'LoRa Mesh Node'),
       firmwareVersion: 'v2.5.x',
-      channelUtil: partial.channelUtil ?? existing?.channelUtil ?? 1.2,
-      airUtilTx: partial.airUtilTx ?? existing?.airUtilTx ?? 0.4,
+      channelUtil: partial.channelUtil ?? existing?.channelUtil,
+      airUtilTx: partial.airUtilTx ?? existing?.airUtilTx,
       trail: updatedTrail,
 
       // Environmental & iBME280 Sensor Data
@@ -2149,14 +2144,13 @@ class MeshtasticBleMqttService {
             let lng = lngDeg + lngMin / 60;
             if (parts[5] === 'W') lng = -lng;
 
-            const sats = parseInt(parts[7], 10) || 8;
-            const alt = parseFloat(parts[9]) || 10;
+            const sats = parseInt(parts[7], 10);
+            const alt = parseFloat(parts[9]);
 
             this.tEchoNodeState.lat = lat;
             this.tEchoNodeState.lng = lng;
-            this.tEchoNodeState.satsInFix = sats;
-            this.tEchoNodeState.satsInView = Math.max(sats + 2, 8);
-            this.tEchoNodeState.altitudeMeters = alt;
+            if (!isNaN(sats)) this.tEchoNodeState.satsInFix = sats;
+            if (!isNaN(alt)) this.tEchoNodeState.altitudeMeters = alt;
             this.tEchoNodeState.gpsFix = true;
             this.tEchoNodeState.lastPingTime = Date.now();
             this.emitNode(this.tEchoNodeState);
@@ -2182,8 +2176,8 @@ class MeshtasticBleMqttService {
     lng: number,
     speedKt = 0,
     headingDeg = 0,
-    altitudeMeters = 10,
-    sats = 10
+    altitudeMeters?: number,
+    sats?: number
   ) {
     if (!this.tEchoNodeState) {
       this.tEchoNodeState = {
@@ -2191,9 +2185,6 @@ class MeshtasticBleMqttService {
         longName: this.connectedDeviceName || 'LilyGO T-Echo nRF52840',
         shortName: 'TECHO',
         mac: 'BLE:ECHO01',
-        battery: 95,
-        voltage: 4.12,
-        satsInView: sats + 2,
         satsInFix: sats,
         gpsFix: true,
         altitudeMeters,
@@ -2201,8 +2192,6 @@ class MeshtasticBleMqttService {
         headingDeg,
         lat,
         lng,
-        snr: 9.2,
-        rssi: -58,
         hops: 0,
         boundBoatId: null,
         status: 'OPTIMAL',
@@ -2218,8 +2207,8 @@ class MeshtasticBleMqttService {
       this.tEchoNodeState.lng = lng;
       this.tEchoNodeState.speedKt = speedKt;
       this.tEchoNodeState.headingDeg = headingDeg;
-      this.tEchoNodeState.altitudeMeters = altitudeMeters;
-      this.tEchoNodeState.satsInFix = sats;
+      if (altitudeMeters !== undefined) this.tEchoNodeState.altitudeMeters = altitudeMeters;
+      if (sats !== undefined) this.tEchoNodeState.satsInFix = sats;
       this.tEchoNodeState.gpsFix = true;
       this.tEchoNodeState.lastPingTime = Date.now();
       const oldTrail = this.tEchoNodeState.trail || [];
@@ -2232,59 +2221,25 @@ class MeshtasticBleMqttService {
     }
   }
 
-  // --- DISCOVERY OF OTHER LORA NODES VIA T-ECHO ---
-  public registerDiscoveredLoraNode(
-    id: string,
-    longName: string,
-    lat: number,
-    lng: number,
-    battery = 85,
-    snr = 6.2,
-    rssi = -76,
-    hops = 1
-  ): MeshtasticNode {
+  // --- LORA NODES ADDED BY ID ---
+  // Registers a node the user typed in. It has no position or readings until it sends a packet.
+  public registerDiscoveredLoraNode(id: string, longName: string): MeshtasticNode {
     const loraNode: MeshtasticNode = {
       id: id.startsWith('!') ? id : `!${id}`,
       longName: longName || `LoRa Node ${id}`,
       shortName: id.slice(-4).toUpperCase(),
-      mac: `24:6F:28:${id.slice(-4)}:10`,
-      battery: battery,
-      voltage: +(3.3 + (battery / 100) * 0.9).toFixed(2),
-      satsInView: 11,
-      satsInFix: 9,
-      gpsFix: true,
-      altitudeMeters: 10.0,
-      speedKt: +(4 + Math.random() * 5).toFixed(1),
-      headingDeg: Math.floor(Math.random() * 360),
-      lat: lat,
-      lng: lng,
-      snr: snr,
-      rssi: rssi,
-      hops: hops,
+      mac: '',
+      gpsFix: false,
       boundBoatId: null,
       status: 'OPTIMAL',
       connectionType: 'LORA_MESH',
       isBluetoothConnected: false,
       lastPingTime: Date.now(),
-      hardwareModel: 'LoRa Mesh Receiver (via T-Echo)',
-      firmwareVersion: 'v2.5.x',
-      channelUtil: 1.5,
-      airUtilTx: 0.5,
-      trail: [{ lat, lng }],
+      hardwareModel: 'LoRa Mesh Node',
+      trail: [],
     };
 
     this.emitNode(loraNode);
-    this.emitPacketLog({
-      id: 'pkt-' + Date.now(),
-      timestamp: new Date().toLocaleTimeString(),
-      fromNode: loraNode.id,
-      toNode: '^all',
-      portnum: 'POSITION_APP',
-      snr: snr,
-      rssi: rssi,
-      payload: `LoRa Mesh Position: Lat:${lat.toFixed(5)} Lng:${lng.toFixed(5)} SOG:${loraNode.speedKt}kt COG:${loraNode.headingDeg}°`,
-    });
-
     return loraNode;
   }
 
@@ -2462,9 +2417,9 @@ class MeshtasticBleMqttService {
         // ground_speed in Meshtastic spec is in m/s (1 knot = 0.514444 m/s)
         ground_speed: +(Math.round((node.speedKt || 0) * 0.514444)).toFixed(1),
         ground_track: Math.round(node.headingDeg || 0),
-        battery_level: Math.round(node.battery || 100),
-        voltage: +(node.voltage || 4.1).toFixed(2),
-        sats_in_view: node.satsInView || 8,
+        battery_level: node.battery !== undefined ? Math.round(node.battery) : undefined,
+        voltage: node.voltage !== undefined ? +node.voltage.toFixed(2) : undefined,
+        sats_in_view: node.satsInView,
         precision_bits: 32,
         time: Math.floor(Date.now() / 1000),
       },
@@ -2497,8 +2452,8 @@ class MeshtasticBleMqttService {
         fromNode: nodeId,
         toNode: json.to || '^all',
         portnum: json.type === 'position' ? 'POSITION_APP' : (json.type === 'telemetry' ? 'TELEMETRY_APP' : (json.type === 'nodeinfo' ? 'NODEINFO_APP' : 'TEXT_MESSAGE_APP')),
-        snr: json.snr ?? 8.0,
-        rssi: json.rssi ?? -65,
+        snr: json.snr,
+        rssi: json.rssi,
         payload: text.slice(0, 100),
       });
 
@@ -2517,19 +2472,19 @@ class MeshtasticBleMqttService {
             longName: json.sender || (existing ? existing.longName : `MQTT Node ${nodeId.slice(-4)}`),
             shortName: nodeId.slice(-4).toUpperCase(),
             mac: `MQTT:${nodeId.slice(-4)}`,
-            battery: p.battery_level ?? (existing?.battery || 85),
-            voltage: p.voltage ?? (existing?.voltage || 4.0),
-            satsInView: p.sats_in_view ?? 8,
-            satsInFix: 7,
+            battery: p.battery_level ?? existing?.battery,
+            voltage: p.voltage ?? existing?.voltage,
+            satsInView: p.sats_in_view ?? existing?.satsInView,
+            satsInFix: existing?.satsInFix,
             gpsFix: true,
-            altitudeMeters: p.altitude ?? 10,
+            altitudeMeters: p.altitude ?? existing?.altitudeMeters,
             speedKt: speed,
             headingDeg: heading,
             lat: lat,
             lng: lng,
-            snr: json.snr ?? 7.5,
-            rssi: json.rssi ?? -70,
-            hops: 1,
+            snr: json.snr ?? existing?.snr,
+            rssi: json.rssi ?? existing?.rssi,
+            hops: json.hops_away ?? existing?.hops,
             boundBoatId: existing?.boundBoatId || null,
             status: 'OPTIMAL',
             connectionType: 'MQTT',

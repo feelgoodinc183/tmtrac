@@ -12,7 +12,6 @@ import {
   Copy,
   Share2,
   Crosshair,
-  PlusCircle,
   Trash2,
   X,
   AlertTriangle,
@@ -57,8 +56,7 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
   onBindBoat,
   onFollowTarget,
 }) => {
-  const isSpectator = viewMode === 'SPECTATOR';
-  const [activeTab, setActiveTab] = useState<'MY_GPS' | 'FLEET_LIST' | 'SETTINGS' | 'SIMULATOR'>('MY_GPS');
+  const [activeTab, setActiveTab] = useState<'MY_GPS' | 'FLEET_LIST' | 'SETTINGS'>('MY_GPS');
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Form states for Device Profile
@@ -93,35 +91,6 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
-  };
-
-  // Add realistic simulated race participant tracker
-  const handleAddSimulation = (role: TrackerVesselRole) => {
-    const centerLat = deviceGps.lat || 6.308;
-    const centerLng = deviceGps.lng || 99.845;
-    const offsetLat = (Math.random() - 0.5) * 0.02;
-    const offsetLng = (Math.random() - 0.5) * 0.02;
-
-    const names: Record<TrackerVesselRole, { name: string; type: TrackerDeviceType; color: string }> = {
-      COMPETITOR: { name: `Racer ${Math.floor(Math.random() * 80 + 10)} (iPhone 15)`, type: 'PHONE', color: '#00D4FF' },
-      SAFETY_BOAT: { name: `Safety RIB ${Math.floor(Math.random() * 3 + 1)} (iPad Air)`, type: 'TABLET', color: '#FF9900' },
-      RACE_COMMITTEE: { name: `RC Signal Boat (MacBook Pro)`, type: 'PC', color: '#FF4D4D' },
-      SPECTATOR: { name: `Spectator ${Math.floor(Math.random() * 10 + 1)} (Android)`, type: 'PHONE', color: '#00FF9D' },
-      VIP_CHASE: { name: `VIP Chase Boat (iPad Mini)`, type: 'TABLET', color: '#C084FC' },
-      MEDIA: { name: `Media Drone / Camera (Tablet)`, type: 'TABLET', color: '#E879F9' },
-    };
-
-    const preset = names[role];
-    deviceTrackerService.addSimulatedMember({
-      name: preset.name,
-      type: preset.type,
-      role,
-      lat: centerLat + offsetLat,
-      lng: centerLng + offsetLng,
-      speedKt: parseFloat((Math.random() * 8 + 3).toFixed(1)),
-      headingDeg: Math.floor(Math.random() * 360),
-      color: preset.color,
-    });
   };
 
   // Icon helper
@@ -233,19 +202,6 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
             Tracker Setup & Role
           </button>
 
-          {!isSpectator && (
-            <button
-              onClick={() => setActiveTab('SIMULATOR')}
-              className={`py-3 px-4 text-xs font-bold    border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
-                activeTab === 'SIMULATOR'
-                  ? 'border-success-ink text-success-ink bg-success-ink/5'
-                  : 'border-transparent text-ink-muted hover:text-ink-muted'
-              }`}
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              Hybrid Simulator
-            </button>
-          )}
         </div>
 
         {/* MODAL BODY */}
@@ -469,12 +425,6 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                         Turn on GPS above or open this link on another device to see live fleet members tracking on the map.
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleAddSimulation('COMPETITOR')}
-                      className="px-3 py-1.5 bg-success-ink hover:brightness-110 text-canvas font-bold text-xs rounded-xl transition-all"
-                    >
-                      + Add Simulated Competitor Tracker
-                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -617,12 +567,6 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                         Turn on your device GPS above or open this link on your smartphone to see multiple devices tracking each other on the live marine map.
                       </p>
                     </div>
-                    <button
-                      onClick={() => setActiveTab('SIMULATOR')}
-                      className="px-4 py-2 bg-success-ink hover:brightness-110 text-canvas font-bold text-xs rounded-xl transition-all"
-                    >
-                      + Generate Simulated Fleet Trackers
-                    </button>
                   </div>
                 ) : (
                   fleetMembers.map((member) => {
@@ -801,64 +745,6 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                       Profile Updated Live
                     </span>
                   )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: SIMULATOR */}
-          {!isSpectator && activeTab === 'SIMULATOR' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-surface border border-line rounded-2xl space-y-3">
-                <div>
-                  <h3 className="text-sm font-bold text-ink">Inject Simulated Hybrid Devices</h3>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    Instantly simulate multiple phones, tablets, and safety vessels active in the regatta area.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <button
-                    onClick={() => handleAddSimulation('COMPETITOR')}
-                    className="p-3.5 bg-canvas hover:bg-surface border border-accent/30 rounded-xl text-left transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-accent" />
-                        Phone Competitor
-                      </span>
-                      <PlusCircle className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
-                    </div>
-                    <p className="text-xs text-ink-muted">iPhone 15 sailor GPS tracker</p>
-                  </button>
-
-                  <button
-                    onClick={() => handleAddSimulation('SAFETY_BOAT')}
-                    className="p-3.5 bg-canvas hover:bg-surface border border-warning-ink/30 rounded-xl text-left transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                        <Tablet className="w-4 h-4 text-warning-ink" />
-                        Safety RIB (iPad)
-                      </span>
-                      <PlusCircle className="w-4 h-4 text-warning-ink group-hover:scale-110 transition-transform" />
-                    </div>
-                    <p className="text-xs text-ink-muted">Patrol & Marshal rescue boat</p>
-                  </button>
-
-                  <button
-                    onClick={() => handleAddSimulation('RACE_COMMITTEE')}
-                    className="p-3.5 bg-canvas hover:bg-surface border border-danger-ink/30 rounded-xl text-left transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                        <Laptop className="w-4 h-4 text-danger-ink" />
-                        RC Signal (PC)
-                      </span>
-                      <PlusCircle className="w-4 h-4 text-danger-ink group-hover:scale-110 transition-transform" />
-                    </div>
-                    <p className="text-xs text-ink-muted">Race Committee station PC</p>
-                  </button>
                 </div>
               </div>
             </div>

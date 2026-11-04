@@ -35,9 +35,9 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
-  const [sailingClub] = useState('');
+  const [sailingClub, setSailingClub] = useState('');
   const [sailNumber, setSailNumber] = useState('');
-  const [handicapRating] = useState('IRC 1.000');
+  const [handicapRating, setHandicapRating] = useState('');
   const [role, setRole] = useState<'RACE_OFFICER' | 'SKIPPER' | 'SPECTATOR'>('SKIPPER');
 
   // Organization registration fields
@@ -350,6 +350,32 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                   placeholder="Minimum 6 characters"
                   className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="register-sailing-club" className="block text-xs text-ink mb-1">Sailing Club <span className="text-ink-muted">(optional)</span></label>
+                  <input
+                    id="register-sailing-club"
+                    type="text"
+                    value={sailingClub}
+                    onChange={(e) => setSailingClub(e.target.value)}
+                    placeholder="Royal Langkawi YC"
+                    autoComplete="organization"
+                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="register-handicap" className="block text-xs text-ink mb-1">Handicap Rating <span className="text-ink-muted">(optional)</span></label>
+                  <input
+                    id="register-handicap"
+                    type="text"
+                    value={handicapRating}
+                    onChange={(e) => setHandicapRating(e.target.value)}
+                    placeholder="IRC 1.000"
+                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

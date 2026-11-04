@@ -20,7 +20,6 @@ import {
   Save,
   Trash2,
   FolderPlus,
-  RefreshCw,
   Upload,
   FileSpreadsheet,
   FileCode,
@@ -49,7 +48,6 @@ interface RaceResultsModalProps {
   onResetForNextRace?: (nextRaceNumber: number) => void;
   onClearSeries?: () => void;
   onNewSeries?: (resetFleet: boolean) => void;
-  onRestoreSampleSeries?: () => void;
   onImportCompetitors?: (competitors: CompetitorImportRecord[]) => void;
   viewMode?: 'RC_CONSOLE' | 'SPECTATOR';
 }
@@ -67,7 +65,6 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
   onResetForNextRace,
   onClearSeries,
   onNewSeries,
-  onRestoreSampleSeries,
   onImportCompetitors,
   viewMode: appViewMode = 'RC_CONSOLE',
 }) => {
@@ -297,16 +294,6 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
     setActiveTab('SERIES');
     setShowSeriesManagerDialog(false);
     showToast('Started fresh regatta series. Historical races cleared.');
-  };
-
-  // Handle Restore Demo Series
-  const handleConfirmRestoreSampleSeries = () => {
-    if (onRestoreSampleSeries) {
-      onRestoreSampleSeries();
-      setActiveTab('SERIES');
-      setShowSeriesManagerDialog(false);
-      showToast('Restored 3-Race Demo Championship Series.');
-    }
   };
 
   // Helper to format RRS low point strings
@@ -1036,15 +1023,6 @@ Wave Runner,MAS 12,Ahmad Kamil,Class 3,0.940,Port Dickson Yacht Club`;
                         <span>Save Current Fleet as Race 1</span>
                       </button>
                     )}
-                    {onRestoreSampleSeries && (
-                      <button
-                        onClick={handleConfirmRestoreSampleSeries}
-                        className="px-3.5 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs border border-line transition-all flex items-center gap-1.5"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5 text-ink-muted" />
-                        <span>Load 3-Race Demo Series</span>
-                      </button>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -1758,20 +1736,6 @@ Wave Runner,MAS 12,Ahmad Kamil,Class 3,0.940,Port Dickson Yacht Club`;
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Section 3: Restore Demo Data */}
-            {onRestoreSampleSeries && (
-              <div className="pt-2 border-t border-line flex items-center justify-between">
-                <span className="text-xs text-ink-muted">Need demo/practice data?</span>
-                <button
-                  onClick={handleConfirmRestoreSampleSeries}
-                  className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-xs text-ink hover:text-ink transition-all flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-accent" />
-                  <span>Restore Sample 3-Race Series</span>
-                </button>
               </div>
             )}
 

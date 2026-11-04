@@ -13,8 +13,8 @@ export interface MqttPacket {
   fromNode: string;
   toNode: string;
   portnum: 'POSITION_APP' | 'TELEMETRY_APP' | 'TEXT_MESSAGE_APP' | 'ROUTING_APP' | 'NODEINFO_APP' | 'DEVICE_GPS';
-  snr: number;
-  rssi: number;
+  snr?: number;
+  rssi?: number;
   payload: string;
   source?: 'BLE_RADIO' | 'USB_SERIAL' | 'MQTT_BROKER' | 'PHONE_GPS' | 'DIAGNOSTIC_TEST';
 }
@@ -58,8 +58,8 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
         fromNode: pkt.fromNode || '!UNKNOWN',
         toNode: pkt.toNode || '^all',
         portnum: pkt.portnum || 'POSITION_APP',
-        snr: typeof pkt.snr === 'number' ? pkt.snr : 0,
-        rssi: typeof pkt.rssi === 'number' ? pkt.rssi : -75,
+        snr: typeof pkt.snr === 'number' ? pkt.snr : undefined,
+        rssi: typeof pkt.rssi === 'number' ? pkt.rssi : undefined,
         payload: typeof pkt.payload === 'string' ? pkt.payload : JSON.stringify(pkt.payload),
         source: pkt.source || (meshtasticService.isBleActive() ? 'BLE_RADIO' : meshtasticService.isUsbActive() ? 'USB_SERIAL' : 'MQTT_BROKER'),
       };
@@ -76,15 +76,13 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
         fromNode: gpsState.profile?.deviceId || '!PHONE-GPS',
         toNode: '^all',
         portnum: 'DEVICE_GPS',
-        snr: 12.0,
-        rssi: -45,
         payload: JSON.stringify({
           name: gpsState.profile?.deviceName || 'Phone GPS',
           lat: +(Number(gpsState.lat).toFixed(6)),
           lng: +(Number(gpsState.lng).toFixed(6)),
           sog: +(Number(gpsState.speedKt || 0).toFixed(1)),
           cog: +(Number(gpsState.headingDeg || 0).toFixed(0)),
-          acc: +(Number(gpsState.accuracy || 5).toFixed(1)),
+          acc: typeof gpsState.accuracy === 'number' ? +gpsState.accuracy.toFixed(1) : undefined,
           role: gpsState.profile?.role || 'COMPETITOR',
         }),
         source: 'PHONE_GPS',
@@ -296,8 +294,8 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
                   <div className="flex gap-2">
                     <span className="text-ink">FROM: <strong className="text-success-ink">{pkt.fromNode}</strong></span>
                     <span>TO: {pkt.toNode}</span>
-                    <span className={pkt.snr > 0 ? 'text-success-ink' : 'text-danger-ink'}>
-                      SNR: {pkt.snr}dB ({pkt.rssi}dBm)
+                    <span className={pkt.snr === undefined ? 'text-ink-muted' : pkt.snr > 0 ? 'text-success-ink' : 'text-danger-ink'}>
+                      SNR: {pkt.snr ?? '—'} dB ({pkt.rssi ?? '—'} dBm)
                     </span>
                   </div>
                 </div>

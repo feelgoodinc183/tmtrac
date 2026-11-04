@@ -129,7 +129,7 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
       lng: hasValidNodePos ? activeNode!.lng! : undefined,
       sog: hasValidNodePos && typeof activeNode?.speedKt === 'number' ? activeNode.speedKt : 0,
       cog: hasValidNodePos && typeof activeNode?.headingDeg === 'number' ? activeNode.headingDeg : 320,
-      vmg: (hasValidNodePos && typeof activeNode?.speedKt === 'number' ? activeNode.speedKt : 7.5) * 0.9,
+      vmg: (hasValidNodePos && typeof activeNode?.speedKt === 'number' ? activeNode.speedKt : 0) * 0.9,
       dtw: 2.0,
       heading: hasValidNodePos && typeof activeNode?.headingDeg === 'number' ? activeNode.headingDeg : 320,
       color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
@@ -188,7 +188,7 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
                   const bound = boats.find((b) => b.id === node.boundBoatId);
                   return (
                     <option key={node.id} value={node.id}>
-                      {node.id} - {node.longName} ({node.connectionType || 'LORA'}) • Bat: {node.battery}% {bound ? `[Bound: ${bound.name}]` : '[Unassigned]'}
+                      {node.id} - {node.longName} ({node.connectionType || 'LORA'}) • Bat: {node.battery !== undefined ? `${node.battery}%` : '—'} {bound ? `[Bound: ${bound.name}]` : '[Unassigned]'}
                     </option>
                   );
                 })}
@@ -217,7 +217,7 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-success-ink font-bold block">{activeNode.battery}%</span>
+                  <span className="text-success-ink font-bold block">{activeNode.battery !== undefined ? `${activeNode.battery}%` : '—'}</span>
                   <span className="text-ink-muted">Heard: {formatLastHeard(activeNode.lastPingTime)}</span>
                 </div>
               </div>

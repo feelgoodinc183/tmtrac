@@ -35,7 +35,6 @@ interface BluetoothUsbScanModalProps {
   onUpdateHardwareConn: (conn: Partial<HardwareConnection>) => void;
   onAddScannedNode: (node: MeshtasticNode) => void;
   onDeleteNode?: (nodeId: string) => void;
-  onClearDemoNodes?: () => void;
   onClose: () => void;
 }
 
@@ -46,7 +45,6 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   onUpdateHardwareConn,
   onAddScannedNode,
   onDeleteNode,
-  onClearDemoNodes,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'BLUETOOTH' | 'USB' | 'MQTT'>('BLUETOOTH');
@@ -141,7 +139,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
 
     try {
       if (!('serial' in navigator)) {
-        throw new Error('Web Serial API is not supported in this browser. Click "Simulate USB Plug-in" to test serial data stream.');
+        throw new Error('Web Serial API is not supported in this browser. Use Chrome or Edge on a computer, or connect over Bluetooth or MQTT.');
       }
 
       const port = await (navigator as any).serial.requestPort();
@@ -233,9 +231,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
     if (!discoveredLoraNodeId) return;
     const loraNode = meshtasticService.registerDiscoveredLoraNode(
       discoveredLoraNodeId,
-      discoveredLoraNodeName || `LoRa Node ${discoveredLoraNodeId}`,
-      6.3080 + (Math.random() - 0.5) * 0.01,
-      99.8200 + (Math.random() - 0.5) * 0.01
+      discoveredLoraNodeName || `LoRa Node ${discoveredLoraNodeId}`
     );
     onAddScannedNode(loraNode);
     setDiscoveredLoraNodeId('');
@@ -409,27 +405,16 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                   <label className="text-xs text-ink-muted block">
                     Connected & Detected Nodes ({deduplicateNodes(nodes).length})
                   </label>
-                  {onClearDemoNodes && deduplicateNodes(nodes).some((n) => !n.isDeviceGps && n.connectionType !== 'PHONE' && n.connectionType !== 'TABLET' && (n.id.startsWith('node-') || n.id.startsWith('!TECHO-') || n.id.startsWith('mock-'))) && (
-                    <button
-                      onClick={onClearDemoNodes}
-                      className="text-xs font-bold text-danger-ink hover:text-danger-ink bg-danger/10 hover:bg-danger/25 border border-danger-ink/30 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all"
-                      title="Clear all demo/simulated nodes"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Clear Demo Nodes</span>
-                    </button>
-                  )}
                 </div>
 
                 {deduplicateNodes(nodes).length === 0 ? (
                   <div className="p-4 bg-canvas border border-dashed border-line rounded-xl text-center text-xs text-ink-muted">
-                    No nodes connected yet. Click "Connect LoRa Device (Web BLE)" or "Simulate" above.
+                    No nodes connected yet. Click "Connect LoRa Device (Web BLE)" above.
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {deduplicateNodes(nodes).map((node) => {
                       const isBle = node.isBluetoothConnected || node.connectionType === 'BLE';
-                      const isDemo = !node.isDeviceGps && !node.isBluetoothConnected && node.connectionType !== 'BLE' && node.connectionType !== 'PHONE' && node.connectionType !== 'TABLET' && (node.id.startsWith('node-') || node.id.startsWith('mock-'));
                       const hasBme280 = node.sensorModel?.includes('BME280') || node.barometricPressure !== undefined || node.temperature !== undefined || node.humidity !== undefined;
 
                       return (
@@ -448,11 +433,6 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                                   <span className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                                     {node.id}
                                   </span>
-                                  {isDemo && (
-                                    <span className="text-xs text-ink bg-raised/20 border border-line/40 px-1.5 py-0.2 rounded font-bold">
-                                      DEMO
-                                    </span>
-                                  )}
                                   {isBle && (
                                     <span className="text-xs text-success-ink bg-success-ink/20 border border-success-ink/40 px-1.5 py-0.2 rounded font-bold">
                                       BLE LORA DEVICE
@@ -460,8 +440,8 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                                   )}
                                 </div>
                                 <p className="text-xs text-ink-muted">
-                                  Battery: <strong className="text-ink">{node.battery}% ({node.voltage}V)</strong> • Sats:{' '}
-                                  <strong className="text-success-ink">{node.satsInView}</strong> • RSSI: {node.rssi} dBm
+                                  Battery: <strong className="text-ink">{node.battery !== undefined ? `${node.battery}%` : '—'}{node.voltage !== undefined ? ` (${node.voltage}V)` : ''}</strong> • Sats:{' '}
+                                  <strong className="text-success-ink">{node.satsInView ?? '—'}</strong> • RSSI: {node.rssi ?? '—'} dBm
                                 </p>
                                 {node.lat && node.lng ? (
                                   <p className="text-xs text-ink">

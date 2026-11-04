@@ -154,20 +154,20 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
 
   if (!isOpen || (!node && !boat)) return null;
 
-  // Telemetry attributes resolution (Strict real values, no dummy fallbacks)
+  // Telemetry: only what the tracker reported; missing readings show as a dash
   const batteryPct = node?.battery;
   const voltage = node?.voltage;
-  const satsInView = node?.satsInView ?? 0;
-  const satsInFix = node?.satsInFix ?? 0;
+  const satsInView = node?.satsInView;
+  const satsInFix = node?.satsInFix;
   const speed = boat ? (boat.sog ?? 0) : (node?.speedKt ?? 0);
   const heading = boat ? (boat.cog ?? 0) : (node?.headingDeg ?? 0);
   const lat = boat ? (boat.lat ?? 0) : (node?.lat ?? 0);
   const lng = boat ? (boat.lng ?? 0) : (node?.lng ?? 0);
-  const snr = node?.snr ?? 0;
-  const rssi = node?.rssi ?? 0;
-  const hops = node?.hops ?? 0;
+  const snr = node?.snr;
+  const rssi = node?.rssi;
+  const hops = node?.hops;
   const hardware = node?.hardwareModel || 'Meshtastic Hardware Node';
-  const firmware = node?.firmwareVersion || 'v2.5.x';
+  const firmware = node?.firmwareVersion || '—';
   const connType = node?.connectionType || (node?.isBluetoothConnected ? 'BLE' : 'LORA_MESH');
 
   // BME280 / Environmental Metrics
@@ -482,7 +482,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">GPS Fix & Accuracy: </span>
                 <strong className={node?.gpsFix ? 'text-success-ink' : 'text-warning-ink'}>
-                  {node?.gpsFix ? `3D Lock (${satsInFix || 8} Sats${autoGps.accuracyMeters ? ` • ±${autoGps.accuracyMeters}m` : ''})` : 'Indoor / Acquiring'}
+                  {node?.gpsFix ? `3D Lock (${satsInFix ?? '—'} Sats${autoGps.accuracyMeters ? ` • ±${autoGps.accuracyMeters}m` : ''})` : 'Indoor / Acquiring'}
                 </strong>
               </div>
             </div>
@@ -593,7 +593,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 )}
               </div>
               <span className="text-xs text-ink-muted mt-1">
-                {satsInFix} / {satsInView} Sats • Alt: {node?.altitudeMeters !== undefined ? `${node.altitudeMeters}m` : '--'}
+                {satsInFix ?? '—'} / {satsInView ?? '—'} Sats • Alt: {node?.altitudeMeters !== undefined ? `${node.altitudeMeters}m` : '--'}
               </span>
             </div>
 
@@ -604,10 +604,10 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 <Signal className="w-4 h-4 text-ink-muted" />
               </div>
               <div className="mt-2 text-xl font-bold text-ink">
-                {rssi} <span className="text-xs text-ink-muted">dBm</span>
+                {rssi ?? '—'} <span className="text-xs text-ink-muted">dBm</span>
               </div>
               <span className="text-xs text-ink-muted mt-1">
-                SNR: {snr > 0 ? `+${snr}` : snr} dB • Hops: {hops}
+                SNR: {snr === undefined ? '—' : snr > 0 ? `+${snr}` : snr} dB • Hops: {hops ?? '—'}
               </span>
             </div>
           </div>
@@ -767,11 +767,11 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Channel Utilization:</span>
-                  <span className="text-accent">{node?.channelUtil ?? 1.8}%</span>
+                  <span className="text-accent">{node?.channelUtil !== undefined ? `${node.channelUtil}%` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Airtime Tx Load:</span>
-                  <span className="text-accent">{node?.airUtilTx ?? 0.4}%</span>
+                  <span className="text-accent">{node?.airUtilTx !== undefined ? `${node.airUtilTx}%` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-muted">Last Heard:</span>

@@ -34,8 +34,6 @@ interface HeaderProps {
   activeRoomCode?: string;
   onOpenLobby?: () => void;
   onOpenPinUnlock?: () => void;
-  onOpenChat?: () => void;
-  onOpenImageAnalysis?: () => void;
   onOpenNodeBinding?: () => void;
   onOpenMqttInspector?: () => void;
   onOpenOfflineCache?: () => void;

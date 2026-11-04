@@ -828,7 +828,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
           </div>
           <div style="background: rgba(6,11,22,0.92); border: 1px solid ${color}; padding: 2px 6px; border-radius: 5px; color: white; font-size: 12px; font-family: monospace; white-space: nowrap; margin-top: 2px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.8);">
             <span style="color: ${color}; font-weight: bold; margin-right: 3px;">[${badgeLabel}]</span>
-            <span>${node.shortName || node.longName.slice(0, 10)} (${typeof node.speedKt === 'number' ? node.speedKt.toFixed(1) + 'kt' : (node.battery || 85) + '%'})</span>
+            <span>${node.shortName || node.longName.slice(0, 10)} (${typeof node.speedKt === 'number' ? node.speedKt.toFixed(1) + 'kt' : node.battery !== undefined ? node.battery + '%' : '—'})</span>
           </div>
         </div>
       `;

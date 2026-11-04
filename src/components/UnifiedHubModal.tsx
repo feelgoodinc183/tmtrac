@@ -512,7 +512,8 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                   </button>
                 </div>
 
-                {/* 4. AI Race Tactician */}
+                {/* 4. AI Race Tactician (only when the feature is switched on) */}
+                {onOpenChat && (
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <span className="text-xs text-accent font-bold">
@@ -534,6 +535,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     <span>Open AI Tactician</span>
                   </button>
                 </div>
+                )}
               </div>
             </div>
           )}
@@ -627,15 +629,15 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                   </button>
                 </div>
 
-                {/* 3. Malaysia LoRa & NMEA */}
+                {/* 3. Malaysia LoRa & MQTT */}
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <span className="text-xs text-success-ink font-bold">
                       Marine Telemetry
                     </span>
-                    <h3 className="text-sm font-bold text-ink mt-1">Malaysia LoRa & NMEA</h3>
+                    <h3 className="text-sm font-bold text-ink mt-1">Malaysia LoRa & MQTT</h3>
                     <p className="text-xs text-ink-muted mt-0.5 leading-snug">
-                      433/919 MHz presets, NMEA 0183/2000 gateway & MQTT
+                      433/919 MHz presets and the public MQTT stream
                     </p>
                   </div>
                   <button
@@ -646,7 +648,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Globe className="w-3.5 h-3.5 text-success-ink" />
-                    <span>NMEA & Mesh Setup</span>
+                    <span>LoRa & MQTT Setup</span>
                   </button>
                 </div>
 

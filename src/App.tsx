@@ -41,7 +41,7 @@ import { UnifiedHubModal, HubTab } from './components/UnifiedHubModal';
 import { NodeBindingModal } from './components/NodeBindingModal';
 import { HeadToHeadModal } from './components/HeadToHeadModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
-import { GeminiImageModal } from './components/GeminiImageModal';
+import { FEATURES } from './config/features';
 import { MqttPacketInspectorModal } from './components/MqttPacketInspectorModal';
 import { OfflineCacheModal } from './components/OfflineCacheModal';
 import { SpectatorQrModal } from './components/SpectatorQrModal';
@@ -864,7 +864,6 @@ export default function App() {
   const [showHeadToHead, setShowHeadToHead] = useState(false);
   const [headToHeadPair, setHeadToHeadPair] = useState<[string, string] | null>(null);
   const [showGeminiChat, setShowGeminiChat] = useState(false);
-  const [showGeminiImage, setShowGeminiImage] = useState(false);
   const [showMqttInspector, setShowMqttInspector] = useState(false);
   const [showOfflineCache, setShowOfflineCache] = useState(false);
   const [showSpectatorQr, setShowSpectatorQr] = useState(false);
@@ -1011,16 +1010,6 @@ export default function App() {
     }
   };
 
-  const handleRestoreSampleSeries = () => {
-    setSeriesRaces(INITIAL_SERIES_RACES);
-    try {
-      localStorage.setItem(`regatta_race_series_${activeRoomCode}`, JSON.stringify(INITIAL_SERIES_RACES));
-      localStorage.setItem('regatta_race_series', JSON.stringify(INITIAL_SERIES_RACES));
-    } catch (e) {
-      console.warn('Failed to restore sample series:', e);
-    }
-    deviceTrackerService.broadcastSeriesRaces(INITIAL_SERIES_RACES);
-  };
 
   const handleResetForNextRace = (_nextRaceNumber: number) => {
     setBoats((prevBoats) =>
@@ -2102,11 +2091,6 @@ export default function App() {
     setChatMessages((prev) => [...prev, userMsg]);
   };
 
-  // Not connected to an AI service yet: say so instead of showing an empty result
-  const handleAnalyzeImage = async (_imageBase64: string, _prompt: string, _model: string): Promise<string> => {
-    throw new Error('Image analysis is not connected yet.');
-  };
-
   const resolveTrackerPosition = (nodeId?: string | null) => {
     if (!nodeId) return null;
     // 1. Check local device GPS & tracker service
@@ -2373,7 +2357,7 @@ export default function App() {
       const newBoat: Boat = {
         id: newId,
         name: boatData.name || 'NEW RACER',
-        sailNumber: boatData.sailNumber || 'MAS 99',
+        sailNumber: boatData.sailNumber || '',
         class: boatData.class || (raceClasses[0]?.name ?? 'Class 1'),
         handicapSystem: boatData.handicapSystem || 'IRC',
         handicapRating: boatData.handicapRating || 1.0,
@@ -2425,29 +2409,6 @@ export default function App() {
     }
   };
 
-  const handleClearDemoBoats = () => {
-    setBoats((prev) => {
-      // Remove demo boats: boat-1, boat-2, boat-3, boat-4, boat-5, boat-6
-      const updated = prev.filter(
-        (b) =>
-          b.id !== 'boat-1' &&
-          b.id !== 'boat-2' &&
-          b.id !== 'boat-3' &&
-          b.id !== 'boat-4' &&
-          b.id !== 'boat-5' &&
-          b.id !== 'boat-6'
-      );
-      deviceTrackerService.broadcastBoats(updated);
-      return updated;
-    });
-    setNodes((prevNodes) =>
-      prevNodes.map((n) =>
-        n.boundBoatId && ['boat-1', 'boat-2', 'boat-3', 'boat-4', 'boat-5', 'boat-6'].includes(n.boundBoatId)
-          ? { ...n, boundBoatId: undefined }
-          : n
-      )
-    );
-  };
 
   const handleCreateNewBoat = (boatData: Partial<Boat>) => {
     handleSaveBoat(boatData, false);
@@ -2644,37 +2605,6 @@ export default function App() {
     }
   };
 
-  const handleClearDemoNodes = () => {
-    setNodes((prev) =>
-      prev.filter((n) => {
-        // Keep real connected phones, tablets, web GPS devices, or connected BLE/USB hardware
-        if (
-          n.isDeviceGps ||
-          n.connectionType === 'PHONE' ||
-          n.connectionType === 'TABLET' ||
-          n.connectionType === 'DEVICE_GPS'
-        ) {
-          return true;
-        }
-        if (n.isBluetoothConnected || n.connectionType === 'USB') {
-          return true;
-        }
-        // Filter out dummy/demo nodes (node-rc-01, node-safety-01, !TECHO- simulated nodes, mock nodes)
-        if (n.id.startsWith('node-') || n.id.startsWith('!TECHO-') || n.id.startsWith('mock-')) {
-          return false;
-        }
-        return false;
-      })
-    );
-    setBoats((prev) =>
-      prev.map((b) =>
-        b.nodeId &&
-        (b.nodeId.startsWith('node-') || b.nodeId.startsWith('!TECHO-') || b.nodeId.startsWith('mock-'))
-          ? { ...b, nodeId: null }
-          : b
-      )
-    );
-  };
 
   const boat1Obj = boats.find((b) => b.id === headToHeadPair?.[0]);
   const boat2Obj = boats.find((b) => b.id === headToHeadPair?.[1]);
@@ -2837,8 +2767,6 @@ export default function App() {
           setShowAuthModal(true);
         }}
         onOpenPinUnlock={() => setShowPinUnlockModal(true)}
-        onOpenChat={() => setShowGeminiChat(true)}
-        onOpenImageAnalysis={() => setShowGeminiImage(true)}
         onOpenNodeBinding={() => handleOpenNodeBindingWithSelection()}
         onOpenMqttInspector={() => setShowMqttInspector(true)}
         onOpenOfflineCache={() => setShowOfflineCache(true)}
@@ -2923,7 +2851,6 @@ export default function App() {
                   onOpenAddBoat={handleOpenAddBoat}
                   onEditBoat={handleEditBoat}
                   onDeleteBoat={handleDeleteBoat}
-                  onClearDemoBoats={handleClearDemoBoats}
                   raceClasses={raceClasses}
                   onOpenResults={() => setShowResultsModal(true)}
                   onOpenBoatQr={handleOpenBoatQr}
@@ -3074,7 +3001,6 @@ export default function App() {
                   onOpenAddBoat={handleOpenAddBoat}
                   onEditBoat={handleEditBoat}
                   onDeleteBoat={handleDeleteBoat}
-                  onClearDemoBoats={handleClearDemoBoats}
                   raceClasses={raceClasses}
                   onOpenResults={() => setShowResultsModal(true)}
                   onOpenBoatQr={handleOpenBoatQr}
@@ -3187,7 +3113,7 @@ export default function App() {
                               {member.deviceName}
                             </h5>
                             <p className="text-xs text-ink-muted">
-                              Role: {member.role} • Battery: {member.battery ?? 85}%
+                              Role: {member.role} • Battery: {member.battery !== undefined ? `${member.battery}%` : '—'}
                             </p>
                           </div>
                         </div>
@@ -3309,7 +3235,7 @@ export default function App() {
         raceState={raceState}
         viewMode={viewMode}
         onOpenVhfJuryModal={() => setShowVhfJuryModal(true)}
-        onOpenChat={() => setShowGeminiChat(true)}
+        onOpenChat={FEATURES.aiTactician ? () => setShowGeminiChat(true) : undefined}
         activeRoomCode={activeRoomCode}
         connectedPeerCount={connectedPeerCount}
         onOpenSpectatorQr={() => setShowSpectatorQr(true)}
@@ -3332,7 +3258,6 @@ export default function App() {
           }
           onAddScannedNode={handleAddScannedNode}
           onDeleteNode={handleDeleteNode}
-          onClearDemoNodes={handleClearDemoNodes}
           onClose={() => setShowHardwareScan(false)}
         />
       )}
@@ -3352,7 +3277,7 @@ export default function App() {
         />
       )}
 
-      {/* NMEA Instruments & Malaysia Public Mesh Modal */}
+      {/* Malaysia public LoRa / MQTT window */}
       {showNmeaMalaysiaModal && (
         <NmeaAndMalaysiaMeshModal
           hardwareConn={hardwareConn}
@@ -3395,18 +3320,11 @@ export default function App() {
         />
       )}
 
-      {showGeminiChat && (
+      {FEATURES.aiTactician && showGeminiChat && (
         <GeminiChatModal
           messages={chatMessages}
           onSendMessage={handleSendChatMessage}
           onClose={() => setShowGeminiChat(false)}
-        />
-      )}
-
-      {showGeminiImage && (
-        <GeminiImageModal
-          onAnalyzeImage={handleAnalyzeImage}
-          onClose={() => setShowGeminiImage(false)}
         />
       )}
 
@@ -3510,7 +3428,6 @@ export default function App() {
         onResetForNextRace={handleResetForNextRace}
         onClearSeries={handleClearSeries}
         onNewSeries={handleNewSeries}
-        onRestoreSampleSeries={handleRestoreSampleSeries}
         onImportCompetitors={handleImportCompetitors}
         viewMode={viewMode}
       />

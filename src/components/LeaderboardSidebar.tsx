@@ -46,7 +46,6 @@ interface LeaderboardSidebarProps {
   onOpenAddBoat?: () => void;
   onEditBoat?: (boat: Boat) => void;
   onDeleteBoat?: (boatId: string) => void;
-  onClearDemoBoats?: () => void;
   onOpenBoatQr?: (boatId: string) => void;
   raceClasses?: RaceClassDefinition[];
   onOpenResults?: () => void;
@@ -76,7 +75,6 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   onOpenAddBoat,
   onEditBoat,
   onDeleteBoat,
-  onClearDemoBoats,
   onOpenBoatQr,
   raceClasses = [],
   onOpenResults,
@@ -394,17 +392,6 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   </button>
                 )}
 
-                {viewMode !== 'SPECTATOR' && onClearDemoBoats && boats.some((b) => b.id.startsWith('boat-1') || b.id.startsWith('boat-2') || b.id.startsWith('boat-3')) && (
-                  <button
-                    onClick={onClearDemoBoats}
-                    className="text-xs font-bold text-danger-ink hover:text-danger-ink bg-danger/10 hover:bg-danger/25 border border-danger-ink/30 px-1.5 py-0.5 rounded-lg flex items-center gap-1 transition-all"
-                    title="Remove sample demo boats to start with a clean regatta fleet"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Clear Demo</span>
-                  </button>
-                )}
-
                 {viewMode !== 'SPECTATOR' && onOpenAddBoat && (
                   <button
                     onClick={onOpenAddBoat}
@@ -615,7 +602,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                         Battery {boundNode ? `${boundNode.battery ?? '—'}%${boundNode.voltage ? ` (${boundNode.voltage}V)` : ''}` : '—'}
                       </span>
                       <span className="text-accent font-bold flex items-center gap-0.5" title="GPS Satellites in View / Fix">
-                        {boundNode ? (boundNode.gpsFix ? `${boundNode.satsInView ?? 0} satellites` : 'No GPS fix') : 'No tracker'}
+                        {boundNode ? (boundNode.gpsFix ? (boundNode.satsInView !== undefined ? `${boundNode.satsInView} satellites` : 'GPS fix') : 'No GPS fix') : 'No tracker'}
                       </span>
                     </div>
                     <span className="text-ink-muted">
