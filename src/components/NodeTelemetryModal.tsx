@@ -140,9 +140,7 @@ export const NodeTelemetryModal: React.FC<NodeTelemetryModalProps> = ({
       if (res.success) {
         setMessageFeedback({
           ok: true,
-          text: res.via === 'MQTT'
-            ? `Published to the MQTT broker: "${outboundMessage.trim()}"`
-            : `Handed to the tracker to send over LoRa: "${outboundMessage.trim()}"`,
+          text: `Handed to the tracker to send over LoRa: "${outboundMessage.trim()}"`,
         });
         setOutboundMessage('');
       } else {

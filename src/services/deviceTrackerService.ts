@@ -676,6 +676,8 @@ class HybridDeviceTrackerService {
               case 'SESSION_INIT_STATE': {
                 if (payload) {
                   if (typeof payload.serverTime === 'number') recordServerTimestamp(payload.serverTime);
+                  // The server's MQTT bridge status for this room, so a reload shows reality
+                  if (payload.mqttStatus) meshtasticService.handleServerMqttStatus(payload.mqttStatus);
                   if (payload.connectedClients) {
                     this.notifyPeerCount(payload.connectedClients);
                   }
@@ -795,9 +797,16 @@ class HybridDeviceTrackerService {
                 break;
               }
 
-              case 'SERVER_MQTT_STATUS': {
+              case 'MQTT_STATUS': {
                 if (payload) {
                   meshtasticService.handleServerMqttStatus(payload);
+                }
+                break;
+              }
+
+              case 'MQTT_NODE_UPDATE': {
+                if (payload) {
+                  meshtasticService.handleServerMqttNode(payload);
                 }
                 break;
               }

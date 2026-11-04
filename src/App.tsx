@@ -623,11 +623,6 @@ export default function App() {
       });
     });
 
-    // Check initial server MQTT bridge status
-    meshtasticService.checkServerMqttStatus().then((connected) => {
-      setRaceState((prev) => ({ ...prev, mqttConnected: connected }));
-    });
-
     return () => {
       unsubRoom();
       unsubGps();

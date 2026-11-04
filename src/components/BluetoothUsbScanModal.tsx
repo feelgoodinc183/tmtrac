@@ -6,7 +6,6 @@ import {
   Usb,
   Radio,
   RefreshCw,
-  CheckCircle2,
   AlertTriangle,
   Plug,
   Wifi,
@@ -22,14 +21,11 @@ import { Button } from './ui/Button';
 import { formatBattery, formatLastHeard, safeFixed } from '../utils/formatters';
 import {
   meshtasticService,
-  MqttConfig,
-  loadSavedMqttConfig,
-  saveMqttConfig,
-  normalizeMqttWsUrl,
   deduplicateNodes,
   BleStatus,
 } from '../services/meshtasticBleMqttService';
 import { ConfirmDialog } from './ConfirmDialog';
+import { MqttSettingsPanel } from './MqttSettingsPanel';
 
 interface BluetoothUsbScanModalProps {
   nodes: MeshtasticNode[];
@@ -75,42 +71,9 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
     };
   }, []);
 
-  // MQTT state
-  const [mqttConfig, setMqttConfig] = useState<MqttConfig>(() => loadSavedMqttConfig());
-  const [isConnectingMqtt, setIsConnectingMqtt] = useState(false);
-  const [mqttConnected, setMqttConnected] = useState<boolean>(() => meshtasticService.isConnectedToMqtt() || loadSavedMqttConfig().enabled);
-  const [mqttError, setMqttError] = useState<string | null>(null);
-
-  // Synchronize live MQTT stream status across modal open/close cycles
-  useEffect(() => {
-    const isConn = meshtasticService.isConnectedToMqtt() || loadSavedMqttConfig().enabled;
-    setMqttConnected(isConn);
-
-    // Verify with server MQTT bridge status
-    meshtasticService.checkServerMqttStatus().then((serverActive) => {
-      setMqttConnected(serverActive || meshtasticService.isConnectedToMqtt());
-    });
-
-    // Listen for live MQTT connection state updates
-    const unsub = meshtasticService.onMqttStatusChange((status) => {
-      setMqttConnected(status.connected);
-      if (status.error) {
-        setMqttError(status.error);
-      }
-    });
-
-    return () => {
-      unsub();
-    };
-  }, []);
-
-  const updateAndSaveMqttConfig = (updates: Partial<MqttConfig>) => {
-    setMqttConfig((prev) => {
-      const next = { ...prev, ...updates };
-      saveMqttConfig(next);
-      return next;
-    });
-  };
+  // MQTT status (the server's bridge) for the tab indicator
+  const [mqttConnected, setMqttConnected] = useState<boolean>(() => meshtasticService.isConnectedToMqtt());
+  useEffect(() => meshtasticService.onMqttStatusChange((st) => setMqttConnected(st.connected)), []);
 
   // Manual Node Discovery / Add helper
   const [discoveredLoraNodeId, setDiscoveredLoraNodeId] = useState('');
@@ -131,40 +94,6 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
       setBleError(err?.message || 'Bluetooth connection failed unexpectedly');
     } finally {
       setIsScanningBle(false);
-    }
-  };
-
-  // Handle MQTT Connection Toggle
-  const handleConnectMqtt = async () => {
-    setIsConnectingMqtt(true);
-    setMqttError(null);
-
-    const willConnect = !mqttConnected;
-    try {
-      const normalizedBroker = normalizeMqttWsUrl(mqttConfig.brokerUrl);
-      const targetConfig: MqttConfig = {
-        ...mqttConfig,
-        brokerUrl: normalizedBroker,
-        enabled: willConnect,
-      };
-      updateAndSaveMqttConfig({ brokerUrl: normalizedBroker, enabled: willConnect });
-
-      const res = await meshtasticService.connectMqtt(targetConfig);
-
-      if (res.success) {
-        setMqttConnected(willConnect);
-        if (willConnect) {
-          onUpdateHardwareConn({ activePort: 'MQTT' });
-        }
-      } else {
-        setMqttError(res.error || 'Failed to connect to MQTT broker');
-        setMqttConnected(false);
-      }
-    } catch (err: any) {
-      setMqttError(err.message || 'MQTT Connection Error');
-      setMqttConnected(false);
-    } finally {
-      setIsConnectingMqtt(false);
     }
   };
 
@@ -495,205 +424,10 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
             </div>
           )}
 
-          {/* MQTT LIVE STREAM TAB */}
+          {/* MQTT TAB */}
           {activeTab === 'MQTT' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-canvas border border-line space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Wifi className="w-5 h-5 text-ink-muted" />
-                    <div>
-                      <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
-                        Official Meshtastic MQTT Broker Stream
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
-                          Root: msh
-                        </span>
-                      </h4>
-                      <p className="text-xs text-ink-muted">
-                        Subscribing to official Meshtastic MQTT mesh feed
-                      </p>
-                    </div>
-                  </div>
-                  {mqttConnected ? (
-                    <span className="text-xs bg-success-ink/10 text-success-ink px-2.5 py-1 rounded-full border border-success-ink/30 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      STREAMING LIVE
-                    </span>
-                  ) : (
-                    <span className="text-xs text-ink-muted">DISCONNECTED</span>
-                  )}
-                </div>
-
-                {/* Broker Preset Pills */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-ink-muted block font-semibold">
-                      Broker Server Presets
-                    </label>
-                    <span className="text-xs text-accent">Auto Server Bridge & WSS</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { name: 'Official Meshtastic (Server Bridge)', url: 'mqtt.meshtastic.org', user: 'meshdev', pass: 'large4cats' },
-                      { name: 'HiveMQ Public (WSS)', url: 'wss://broker.hivemq.com:8884/mqtt', user: '', pass: '' },
-                      { name: 'EMQX Public (WSS)', url: 'wss://broker.emqx.io:8084/mqtt', user: '', pass: '' },
-                    ].map((b) => (
-                      <button
-                        key={b.url}
-                        type="button"
-                        onClick={() =>
-                          updateAndSaveMqttConfig({
-                            brokerUrl: b.url,
-                            username: b.user,
-                            password: b.pass,
-                          })
-                        }
-                        className={`text-xs  px-2 py-1 rounded-md border transition-all ${
-                          mqttConfig.brokerUrl === b.url || (b.url === 'mqtt.meshtastic.org' && mqttConfig.brokerUrl.includes('mqtt.meshtastic.org'))
-                            ? 'bg-ink/20 text-ink border-line font-bold'
-                            : 'bg-surface text-ink-muted border-line hover:border-line'
-                        }`}
-                      >
-                        {b.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2.5 text-xs">
-                  <div>
-                    <label className="text-xs text-ink-muted block mb-1">
-                      Broker Host / WebSocket URL <span className="text-accent">(Default: mqtt.meshtastic.org)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={mqttConfig.brokerUrl}
-                      onChange={(e) => updateAndSaveMqttConfig({ brokerUrl: e.target.value })}
-                      placeholder="mqtt.meshtastic.org"
-                      className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
-                    />
-                    {mqttConfig.brokerUrl.includes('mqtt.meshtastic.org') && (
-                      <p className="text-xs text-success-ink mt-1 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-success-ink" />
-                        Connecting via backend container TCP bridge (Port 1883) to prevent browser WSS timeout.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Root Topic and Topic Presets */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-ink-muted block">
-                      Subscription Topic / Root Channel <span className="text-accent">(Root: msh)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={mqttConfig.topic}
-                      onChange={(e) => updateAndSaveMqttConfig({ topic: e.target.value })}
-                      placeholder="msh/2/json/#"
-                      className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
-                    />
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {[
-                        { label: 'msh/2/json/# (Official JSON)', topic: 'msh/2/json/#' },
-                        { label: 'msh/2/c/LongFast/# (LongFast)', topic: 'msh/2/c/LongFast/#' },
-                        { label: 'msh/# (All Mesh)', topic: 'msh/#' },
-                        { label: 'msh/MY_919/2/json/# (MY)', topic: 'msh/MY_919/2/json/#' },
-                        { label: 'msh/US/2/json/# (US)', topic: 'msh/US/2/json/#' },
-                        { label: 'msh/EU_868/2/json/# (EU)', topic: 'msh/EU_868/2/json/#' },
-                      ].map((t) => (
-                        <button
-                          key={t.topic}
-                          type="button"
-                          onClick={() => updateAndSaveMqttConfig({ topic: t.topic })}
-                          className={`text-xs  px-2 py-0.5 rounded border transition-all ${
-                            mqttConfig.topic === t.topic
-                              ? 'bg-accent/20 text-accent border-accent font-bold'
-                              : 'bg-surface text-ink-muted border-line hover:text-ink'
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Auth Credentials */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <label className="text-xs text-ink-muted block mb-1">
-                        Username <span className="text-ink-muted">(Official: meshdev)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={mqttConfig.username || ''}
-                        onChange={(e) => updateAndSaveMqttConfig({ username: e.target.value })}
-                        placeholder="meshdev"
-                        className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-ink-muted block mb-1">
-                        Password <span className="text-ink-muted">(Official: large4cats)</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={mqttConfig.password || ''}
-                        onChange={(e) => updateAndSaveMqttConfig({ password: e.target.value })}
-                        placeholder="large4cats"
-                        className="w-full bg-surface border border-line rounded-lg p-2 text-ink text-xs focus:border-line outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="streamOutbound"
-                        checked={mqttConfig.streamOutbound}
-                        onChange={(e) => {
-                          updateAndSaveMqttConfig({ streamOutbound: e.target.checked });
-                          meshtasticService.setStreamOutbound(e.target.checked);
-                        }}
-                        className="accent-line"
-                      />
-                      <label htmlFor="streamOutbound" className="text-xs text-ink select-none">
-                        Share tracker positions to this broker
-                      </label>
-                    </div>
-                    {mqttConfig.streamOutbound && (
-                      <p className="text-xs text-warning-ink flex items-center gap-1" role="alert">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        Positions become public: anyone subscribed to this broker can see where your trackers are.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleConnectMqtt}
-                disabled={isConnectingMqtt}
-                className={`w-full py-3 px-4 font-bold text-xs rounded-xl transition-all  flex items-center justify-center gap-2 ${
-                  mqttConnected
-                    ? 'bg-danger text-on-danger hover:brightness-110'
-                    : 'bg-ink text-canvas hover:bg-ink '
-                }`}
-              >
-                <Wifi className="w-4 h-4" />
-                {isConnectingMqtt
-                  ? 'Connecting Broker...'
-                  : mqttConnected
-                  ? 'Disconnect MQTT Stream'
-                  : 'Start MQTT Live Telemetry Stream'}
-              </button>
-
-              {mqttError && (
-                <div className="p-3 bg-danger/10 border border-danger-ink/30 rounded-xl text-xs text-danger-ink flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{mqttError}</span>
-                </div>
-              )}
+              <MqttSettingsPanel />
 
               {/* Add Detected LoRa Mesh Node manually or automatically */}
               <div className="p-3 bg-canvas border border-line rounded-xl space-y-2">
@@ -729,16 +463,9 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3.5 bg-canvas/90 border-t border-line flex items-center justify-between shrink-0 flex-wrap gap-2">
-          <span className="text-xs text-success-ink flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Config Saved
-          </span>
+        <div className="px-5 py-3.5 bg-canvas/90 border-t border-line flex items-center justify-end shrink-0 flex-wrap gap-2">
           <button
-            onClick={() => {
-              saveMqttConfig({ ...mqttConfig, enabled: mqttConnected });
-              onClose();
-            }}
+            onClick={onClose}
             className="px-5 py-2 rounded-xl bg-accent text-on-accent font-bold text-xs hover:brightness-110 transition-all"
           >
             Done

@@ -37,6 +37,14 @@ import {
 import { createSession, endSession, endAllSessionsForUser, findActiveUserByToken } from './src/server/sessions';
 import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
+import mqtt from 'mqtt';
+import {
+  DEFAULT_ROOM_MQTT_CONFIG,
+  MeshtasticMqttBridge,
+  RoomMqttConfig,
+  mergeRoomMqttConfig,
+  toPublicConfig,
+} from './src/server/mqttBridge';
 
 const isDevMode = process.env.NODE_ENV !== 'production';
 
@@ -85,7 +93,21 @@ export interface ActiveRoomState {
   trackers: Map<string, any>;
   vhfBulletins: any[];
   seriesRaces: any[];
+  /** Meshtastic MQTT bridge settings, with secrets. Server-side only. */
+  mqttConfig: RoomMqttConfig;
 }
+
+function parseRoomMqttConfig(raw: string | null | undefined): RoomMqttConfig {
+  if (!raw) return { ...DEFAULT_ROOM_MQTT_CONFIG };
+  try {
+    return { ...DEFAULT_ROOM_MQTT_CONFIG, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_ROOM_MQTT_CONFIG };
+  }
+}
+
+// Called when a room is loaded so the MQTT bridge knows its settings (set once the bridge exists)
+let onRoomLoaded: (room: ActiveRoomState) => void = () => {};
 
 const activeRooms = new Map<string, ActiveRoomState>();
 
@@ -144,8 +166,10 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
       trackers: new Map(),
       vhfBulletins,
       seriesRaces,
+      mqttConfig: parseRoomMqttConfig(row.mqtt_config_json),
     };
     activeRooms.set(code, room);
+    onRoomLoaded(room);
     return room;
   }
 
@@ -175,9 +199,19 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
     trackers: new Map(),
     vhfBulletins: [],
     seriesRaces: [],
+    mqttConfig: { ...DEFAULT_ROOM_MQTT_CONFIG },
   };
   activeRooms.set(code, room);
+  onRoomLoaded(room);
   return room;
+}
+
+function persistRoomMqttConfig(room: ActiveRoomState) {
+  try {
+    db.prepare('UPDATE events SET mqtt_config_json = ? WHERE code = ?').run(JSON.stringify(room.mqttConfig), room.code);
+  } catch (e) {
+    console.warn(`Failed to persist MQTT settings for room ${room.code}:`, e);
+  }
 }
 
 /**
@@ -418,6 +452,28 @@ async function startServer() {
     });
   }
 
+  // --- Meshtastic MQTT bridge ---
+  // Runs a room's MQTT subscriptions only while the room has MQTT on and someone has it open.
+  const mqttBridge = new MeshtasticMqttBridge({
+    connect: (url, opts) => mqtt.connect(url, opts) as any,
+    onNodeUpdate: (roomCode, update) => broadcastAllInRoom(roomCode, 'MQTT_NODE_UPDATE', update),
+    onStatus: (roomCode, status) => broadcastAllInRoom(roomCode, 'MQTT_STATUS', status),
+  });
+  onRoomLoaded = (room) => mqttBridge.setRoomConfig(room.code, room.mqttConfig);
+  for (const room of activeRooms.values()) onRoomLoaded(room);
+
+  function openClientCount(roomCode: string): number {
+    let count = 0;
+    wss.clients.forEach((c) => {
+      if ((c as any).roomCode === roomCode && c.readyState === WebSocket.OPEN) count++;
+    });
+    return count;
+  }
+
+  function refreshRoomActivity(roomCode: string) {
+    mqttBridge.setRoomActive(roomCode, openClientCount(roomCode) > 0);
+  }
+
   // Register Stripe Payment & Subscription Routes
   registerStripeRoutes(app, { broadcastGlobal });
 
@@ -479,11 +535,13 @@ async function startServer() {
       trackers: trackerList,
       vhfBulletins: room.vhfBulletins,
       seriesRaces: room.seriesRaces || [],
+      mqttStatus: mqttBridge.getStatus(room.code),
       serverTime: Date.now(),
     };
 
     ws.send(JSON.stringify({ type: 'SESSION_INIT_STATE', payload: initState }));
     broadcastAllInRoom(room.code, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(room.code) });
+    refreshRoomActivity(room.code);
 
     ws.on('message', (raw) => {
       try {
@@ -537,12 +595,15 @@ async function startServer() {
                 trackers: Array.from(newRoom.trackers.values()),
                 vhfBulletins: newRoom.vhfBulletins,
                 seriesRaces: newRoom.seriesRaces || [],
+                mqttStatus: mqttBridge.getStatus(newRoom.code),
                 serverTime: Date.now(),
               };
               ws.send(JSON.stringify({ type: 'SESSION_INIT_STATE', payload: newInitState }));
+              refreshRoomActivity(newCode);
 
               if (oldCode && oldCode !== newCode) {
                 broadcastAllInRoom(oldCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(oldCode) });
+                refreshRoomActivity(oldCode);
               }
               broadcastAllInRoom(newCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(newCode) });
             }
@@ -848,6 +909,7 @@ async function startServer() {
         }
       }
       broadcastAllInRoom(roomCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(roomCode) });
+      refreshRoomActivity(roomCode);
     });
 
     ws.on('error', (err) => {
@@ -2159,6 +2221,41 @@ async function startServer() {
     } else {
       res.status(400).json({ error: 'Invalid race state payload' });
     }
+  });
+
+  // Meshtastic MQTT settings for a room. Everyone in the room can see the status and which
+  // channels are bridged; only editors see/change broker and channel settings. Passwords and
+  // channel keys are write-only.
+  app.get('/api/session/mqtt', (req, res) => {
+    const room = resolveRoom(req);
+    const canEdit = canEditRoom(requestRoomRole(req, room));
+    const pub = toPublicConfig(room.mqttConfig);
+    res.json({
+      roomCode: room.code,
+      canEdit,
+      config: canEdit ? pub : { enabled: pub.enabled, rootTopic: pub.rootTopic, channels: pub.channels.map((c) => ({ name: c.name, keyKind: c.keyKind })) },
+      status: mqttBridge.getStatus(room.code),
+    });
+  });
+
+  app.put('/api/session/mqtt', (req, res) => {
+    const room = resolveRoom(req);
+    if (!canEditRoom(requestRoomRole(req, room))) {
+      return res.status(403).json({ error: 'Only the race office can change MQTT settings for this event.' });
+    }
+    let next: RoomMqttConfig;
+    try {
+      next = mergeRoomMqttConfig(room.mqttConfig, req.body?.config ?? req.body, {
+        allowPrivateBrokers: process.env.MQTT_ALLOW_PRIVATE_BROKERS === '1',
+      });
+    } catch (err: any) {
+      return res.status(400).json({ error: err?.message || 'Invalid MQTT settings' });
+    }
+    room.mqttConfig = next;
+    persistRoomMqttConfig(room);
+    mqttBridge.setRoomConfig(room.code, next);
+    refreshRoomActivity(room.code);
+    res.json({ roomCode: room.code, canEdit: true, config: toPublicConfig(next), status: mqttBridge.getStatus(room.code) });
   });
 
   app.post('/api/session/series', (req, res) => {

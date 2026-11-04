@@ -104,8 +104,10 @@ export interface MeshPacketMsg {
   to?: number;
   channel?: number;
   decoded?: DataMsg;
-  /** True when the payload arrived encrypted (we can't read it) */
+  /** True when the payload arrived encrypted (we can't read it without the channel key) */
   encrypted?: boolean;
+  /** The encrypted payload bytes, when `encrypted` */
+  encryptedPayload?: Uint8Array;
   id?: number;
   rxTime?: number;
   rxSnr?: number;
@@ -266,7 +268,7 @@ export function decodeMeshPacket(b: Uint8Array): MeshPacketMsg {
     15: ['hopStart', 'uint32'],
   });
   const { encryptedBytes, ...rest } = m;
-  return encryptedBytes && encryptedBytes.length > 0 ? { ...rest, encrypted: true } : rest;
+  return encryptedBytes && encryptedBytes.length > 0 ? { ...rest, encrypted: true, encryptedPayload: encryptedBytes } : rest;
 }
 
 export const decodeNodeInfo = (b: Uint8Array) => decodeWith<NodeInfoMsg>(b, {
@@ -289,6 +291,19 @@ export const decodeMyNodeInfo = (b: Uint8Array) => decodeWith<MyNodeInfoMsg>(b, 
 export const decodeDeviceMetadata = (b: Uint8Array) => decodeWith<DeviceMetadataMsg>(b, {
   1: ['firmwareVersion', 'string'],
   9: ['hwModel', 'enum'],
+});
+
+/** MQTT ServiceEnvelope: what gateways publish on msh/<region>/2/e/<channel>/<gateway> */
+export interface ServiceEnvelopeMsg {
+  packet?: MeshPacketMsg;
+  channelId?: string;
+  gatewayId?: string;
+}
+
+export const decodeServiceEnvelope = (b: Uint8Array) => decodeWith<ServiceEnvelopeMsg>(b, {
+  1: ['packet', decodeMeshPacket],
+  2: ['channelId', 'string'],
+  3: ['gatewayId', 'string'],
 });
 
 export const decodeFromRadio = (b: Uint8Array) => decodeWith<FromRadioMsg>(b, {
@@ -358,6 +373,17 @@ export function newPacketId(): number {
 // Unit helpers
 
 export const KMH_TO_KT = 0.539957;
+
+/**
+ * Worst-case distance in metres between a reported position and the real one, from
+ * Position.precision_bits (32 or missing = exact). The firmware keeps the top N bits of each
+ * coordinate and reports the centre of the remaining square.
+ */
+export function positionErrorMeters(precisionBits: number | undefined): number | undefined {
+  if (precisionBits === undefined || precisionBits === 0 || precisionBits >= 32) return undefined;
+  const stepDeg = Math.pow(2, 32 - precisionBits) * 1e-7;
+  return Math.round((stepDeg / 2) * 111_320);
+}
 
 export function positionLatLng(p: PositionMsg): { lat: number; lng: number } | null {
   if (p.latitudeI === undefined || p.longitudeI === undefined) return null;

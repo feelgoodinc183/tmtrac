@@ -1,4 +1,3 @@
-import mqtt, { MqttClient } from 'mqtt';
 import { MeshtasticNode, BackfillPoint } from '../types/regatta';
 import { canonicalNodeId, nodeNumFromId } from '../utils/nodeId';
 import { nodeStatusFromLastPing, formatBattery } from '../utils/formatters';
@@ -6,7 +5,6 @@ import {
   BROADCAST_NUM,
   DeviceMetadataMsg,
   FromRadioMsg,
-  KMH_TO_KT,
   MeshPacketMsg,
   NodeInfoMsg,
   PortNum,
@@ -18,6 +16,7 @@ import {
   encodeWantConfig,
   hardwareModelName,
   newPacketId,
+  positionErrorMeters,
   positionLatLng,
   positionSpeedKt,
   positionTrackDeg,
@@ -91,30 +90,6 @@ const PORT_LABELS: Record<number, MeshtasticPacketLog['portnum']> = {
   [PortNum.TELEMETRY_APP]: 'TELEMETRY_APP',
 };
 
-
-export interface MqttConfig {
-  brokerUrl: string; // Official Meshtastic WebSocket: wss://mqtt.meshtastic.org/mqtt
-  topic: string; // Official root topic format: msh/2/json/# or msh/2/c/LongFast/#
-  username?: string; // Default: meshdev
-  password?: string; // Default: large4cats
-  enabled: boolean;
-  streamOutbound: boolean;
-}
-
-export const DEFAULT_MQTT_CONFIG: MqttConfig = {
-  brokerUrl: 'wss://mqtt.meshtastic.org/mqtt',
-  topic: 'msh/2/json/#',
-  username: 'meshdev',
-  password: 'large4cats',
-  enabled: false,
-  // Off by default: when on, every tracker position is published to the broker, which for the
-  // public Meshtastic broker means anyone can see it.
-  streamOutbound: false,
-};
-
-export const STORAGE_KEY_MQTT_CONFIG = 'tmtrac_mqtt_config_v2';
-// Set once the one-time reset of "share positions to the broker" has run on this browser
-const STORAGE_KEY_OUTBOUND_RESET = 'tmtrac_mqtt_outbound_off_v1';
 
 // 240-Hour NodeDB Display Filter Cutoff (10 Days = 240 * 3600 * 1000 ms)
 export const NODE_DB_MAX_AGE_HOURS = 240;
@@ -192,96 +167,44 @@ export function deduplicateNodes(nodes: MeshtasticNode[]): MeshtasticNode[] {
   return Array.from(map.values());
 }
 
-/**
- * Normalizes user-input broker URLs to valid browser WebSocket URLs (wss:// or ws://)
- * Fixes "Missing protocol" error when users enter domains like "mqtt.meshtastic.org"
- */
-export function normalizeMqttWsUrl(rawUrl: string): string {
-  let url = (rawUrl || '').trim().replace(/['"]/g, '');
-  if (!url) {
-    return 'wss://mqtt.meshtastic.org/mqtt';
-  }
-
-  // Convert raw TCP or SSL protocols to WebSockets
-  if (url.startsWith('mqtt://') || url.startsWith('tcp://')) {
-    url = url.replace(/^(mqtt|tcp):\/\//i, 'ws://');
-  } else if (url.startsWith('mqtts://') || url.startsWith('ssl://') || url.startsWith('tls://')) {
-    url = url.replace(/^(mqtts|ssl|tls):\/\//i, 'wss://');
-  }
-
-  // If no scheme was provided at all (e.g. "mqtt.meshtastic.org" or "broker.hivemq.com:8884")
-  if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
-    url = `wss://${url}`;
-  }
-
-  // Special handling for official Meshtastic broker
-  if (url.includes('mqtt.meshtastic.org')) {
-    // Strip standard TCP ports (1883/8883) because browsers require WebSocket on port 443
-    url = url.replace(':1883', '').replace(':8883', '');
-    // Ensure /mqtt path is appended for web clients
-    if (!url.includes('/mqtt') && (url.endsWith('mqtt.meshtastic.org') || url.endsWith('mqtt.meshtastic.org/'))) {
-      url = url.replace(/\/$/, '') + '/mqtt';
-    }
-  }
-
-  // Special handling for HiveMQ public broker
-  if (url.includes('broker.hivemq.com')) {
-    if (!url.includes(':8884')) {
-      url = 'wss://broker.hivemq.com:8884/mqtt';
-    } else if (!url.includes('/mqtt')) {
-      url = `${url.replace(/\/$/, '')}/mqtt`;
-    }
-  }
-
-  // Special handling for EMQX public broker
-  if (url.includes('broker.emqx.io')) {
-    if (!url.includes(':8084')) {
-      url = 'wss://broker.emqx.io:8084/mqtt';
-    } else if (!url.includes('/mqtt')) {
-      url = `${url.replace(/\/$/, '')}/mqtt`;
-    }
-  }
-
-  return url;
+/** Status of the server's MQTT bridge for this room (see src/server/mqttBridge.ts) */
+export interface MqttBridgeStatus {
+  state: 'off' | 'waiting' | 'connecting' | 'connected' | 'error';
+  /** state === 'connected' */
+  connected: boolean;
+  brokerUrl?: string;
+  error?: string;
+  lastPacketAt?: number;
+  nodesHeard: number;
+  topics: string[];
 }
 
-export function loadSavedMqttConfig(): MqttConfig {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_MQTT_CONFIG);
-    // Configs saved before broker sharing defaulted to off had it on; turn it off once.
-    const needsOutboundReset = localStorage.getItem(STORAGE_KEY_OUTBOUND_RESET) !== '1';
-    if (needsOutboundReset) {
-      localStorage.setItem(STORAGE_KEY_OUTBOUND_RESET, '1');
-    }
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (needsOutboundReset && parsed.streamOutbound) {
-        parsed.streamOutbound = false;
-        localStorage.setItem(STORAGE_KEY_MQTT_CONFIG, JSON.stringify(parsed));
-      }
-      const brokerUrl = parsed.brokerUrl ? normalizeMqttWsUrl(parsed.brokerUrl) : DEFAULT_MQTT_CONFIG.brokerUrl;
-      return { ...DEFAULT_MQTT_CONFIG, ...parsed, brokerUrl, streamOutbound: parsed.streamOutbound === true };
-    }
-  } catch (e) {
-    console.warn('Failed to load saved MQTT config:', e);
-  }
-  return { ...DEFAULT_MQTT_CONFIG };
-}
-
-export function saveMqttConfig(config: Partial<MqttConfig>): MqttConfig {
-  try {
-    const current = loadSavedMqttConfig();
-    const updated = {
-      ...current,
-      ...config,
-      brokerUrl: config.brokerUrl ? normalizeMqttWsUrl(config.brokerUrl) : current.brokerUrl,
-    };
-    localStorage.setItem(STORAGE_KEY_MQTT_CONFIG, JSON.stringify(updated));
-    return updated;
-  } catch (e) {
-    console.warn('Failed to save MQTT config:', e);
-    return { ...DEFAULT_MQTT_CONFIG, ...config };
-  }
+/** A node update decoded by the server's MQTT bridge */
+export interface MqttNodeUpdate {
+  id: string;
+  longName?: string;
+  shortName?: string;
+  hardwareModel?: string;
+  lat?: number;
+  lng?: number;
+  positionErrorMeters?: number;
+  altitudeMeters?: number;
+  speedKt?: number;
+  headingDeg?: number;
+  satsInView?: number;
+  battery?: number;
+  voltage?: number;
+  channelUtil?: number;
+  airUtilTx?: number;
+  temperature?: number;
+  relativeHumidity?: number;
+  barometricPressure?: number;
+  hops?: number;
+  textMessage?: string;
+  channel: string;
+  gatewayId?: string;
+  packetId?: number;
+  lastPingTime: number;
 }
 
 type NodeUpdateCallback = (node: MeshtasticNode) => void;
@@ -308,9 +231,8 @@ export class MeshtasticBleMqttService {
   private bleStatusCallbacks: Array<(status: BleStatus) => void> = [];
 
 
-  private mqttClient: MqttClient | null = null;
-  private isMqttConnected = false;
-  private mqttStatusCallbacks: Array<(status: { connected: boolean; brokerUrl?: string; error?: string }) => void> = [];
+  private mqttStatus: MqttBridgeStatus = { state: 'off', connected: false, nodesHeard: 0, topics: [] };
+  private mqttStatusCallbacks: Array<(status: MqttBridgeStatus) => void> = [];
   private nodeCallbacks: NodeUpdateCallback[] = [];
   private packetCallbacks: PacketCallback[] = [];
 
@@ -332,8 +254,6 @@ export class MeshtasticBleMqttService {
   // Historical Telemetry Point Buffers for LoRa Store-and-Forward Replay
   private nodePositionBuffers: Map<string, BackfillPoint[]> = new Map();
 
-  // Store active MQTT Config
-  private mqttConfig: MqttConfig = { ...DEFAULT_MQTT_CONFIG };
 
   public getNodeHistory(nodeId: string): BackfillPoint[] {
     return this.nodePositionBuffers.get(canonicalNodeId(nodeId)) || [];
@@ -361,26 +281,87 @@ export class MeshtasticBleMqttService {
     return this.nodeBindings.get(canonicalNodeId(nodeId)) || null;
   }
 
-  /** Turn sharing of tracker positions to the MQTT broker on or off for this session */
-  public setStreamOutbound(enabled: boolean) {
-    this.mqttConfig = { ...this.mqttConfig, streamOutbound: enabled };
-  }
 
-  public onMqttStatusChange(cb: (status: { connected: boolean; brokerUrl?: string; error?: string }) => void) {
+  // --- MQTT (via the server bridge) ---
+
+  public onMqttStatusChange(cb: (status: MqttBridgeStatus) => void) {
     this.mqttStatusCallbacks.push(cb);
-    cb({ connected: this.isConnectedToMqtt(), brokerUrl: this.mqttConfig.brokerUrl });
+    cb({ ...this.mqttStatus });
     return () => {
       this.mqttStatusCallbacks = this.mqttStatusCallbacks.filter((c) => c !== cb);
     };
   }
 
-  public emitMqttStatus(status: { connected: boolean; brokerUrl?: string; error?: string }) {
-    this.isMqttConnected = status.connected;
-    this.mqttStatusCallbacks.forEach((cb) => cb(status));
+  public getMqttStatus(): MqttBridgeStatus {
+    return { ...this.mqttStatus };
   }
 
   public isConnectedToMqtt(): boolean {
-    return this.isMqttConnected || Boolean(this.mqttClient && this.mqttClient.connected);
+    return this.mqttStatus.connected;
+  }
+
+  /** Status pushed by the server (MQTT_STATUS, or mqttStatus in SESSION_INIT_STATE) */
+  public handleServerMqttStatus(raw: any) {
+    if (!raw || typeof raw.state !== 'string') return;
+    this.mqttStatus = {
+      state: raw.state,
+      connected: raw.state === 'connected',
+      brokerUrl: raw.brokerUrl,
+      error: raw.error,
+      lastPacketAt: raw.lastPacketAt,
+      nodesHeard: typeof raw.nodesHeard === 'number' ? raw.nodesHeard : 0,
+      topics: Array.isArray(raw.topics) ? raw.topics : [],
+    };
+    this.mqttStatusCallbacks.forEach((cb) => cb({ ...this.mqttStatus }));
+  }
+
+  /** A node update decoded by the server's MQTT bridge (MQTT_NODE_UPDATE) */
+  public handleServerMqttNode(u: MqttNodeUpdate) {
+    if (!u || typeof u.id !== 'string') return;
+    const id = canonicalNodeId(u.id);
+    if (!id) return;
+    const node = this.upsertDiscoveredNode(id, {
+      longName: u.longName,
+      shortName: u.shortName,
+      hardwareModel: u.hardwareModel,
+      lat: u.lat,
+      lng: u.lng,
+      positionErrorMeters: u.lat !== undefined ? u.positionErrorMeters ?? null : undefined,
+      altitudeMeters: u.altitudeMeters,
+      speedKt: u.speedKt,
+      headingDeg: u.headingDeg,
+      satsInView: u.satsInView,
+      battery: u.battery,
+      voltage: u.voltage,
+      channelUtil: u.channelUtil,
+      airUtilTx: u.airUtilTx,
+      temperature: u.temperature,
+      relativeHumidity: u.relativeHumidity,
+      humidity: u.relativeHumidity,
+      barometricPressure: u.barometricPressure,
+      hops: u.hops,
+      connectionType: 'MQTT',
+      lastPingTime: u.lastPingTime || Date.now(),
+    }, false, 'MQTT');
+
+    const what = u.lat !== undefined
+      ? `Position ${u.lat.toFixed(5)}, ${u.lng?.toFixed(5)}${u.positionErrorMeters ? ` (±${u.positionErrorMeters >= 1000 ? `${(u.positionErrorMeters / 1000).toFixed(1)} km` : `${u.positionErrorMeters} m`})` : ''}`
+      : u.textMessage !== undefined ? `Text: "${u.textMessage}"`
+      : u.battery !== undefined || u.temperature !== undefined ? 'Telemetry'
+      : u.longName ? `Node info: ${u.longName}`
+      : 'Packet';
+    this.emitPacketLog({
+      id: `pkt-mqtt-${u.packetId ?? Date.now()}-${id}`,
+      timestamp: new Date().toLocaleTimeString(),
+      rawTimestamp: Date.now(),
+      fromNode: node.id,
+      fromNodeName: node.longName,
+      toNode: '^all',
+      portnum: u.lat !== undefined ? 'POSITION_APP' : u.textMessage !== undefined ? 'TEXT_MESSAGE_APP' : u.longName ? 'NODEINFO_APP' : 'TELEMETRY_APP',
+      hops: u.hops,
+      payload: `MQTT ${u.channel}${u.gatewayId ? ` via ${u.gatewayId}` : ''}: ${what}`,
+      textMessage: u.textMessage,
+    });
   }
 
   public isBleActive(): boolean {
@@ -389,36 +370,6 @@ export class MeshtasticBleMqttService {
 
   public isUsbActive(): boolean {
     return false;
-  }
-
-  public async checkServerMqttStatus(): Promise<boolean> {
-    try {
-      const res = await fetch('/api/mqtt/status');
-      const data = await res.json();
-      if (data && typeof data.connected === 'boolean') {
-        this.isMqttConnected = data.connected;
-        this.emitMqttStatus({
-          connected: data.connected,
-          brokerUrl: data.brokerUrl,
-          error: data.error,
-        });
-        return data.connected;
-      }
-    } catch (e) {
-      // Offline / fetch failed
-    }
-    return this.isConnectedToMqtt();
-  }
-
-  public handleServerMqttStatus(status: any) {
-    if (status && typeof status.connected === 'boolean') {
-      this.isMqttConnected = status.connected;
-      this.emitMqttStatus({
-        connected: status.connected,
-        brokerUrl: status.brokerUrl,
-        error: status.error,
-      });
-    }
   }
 
   public onNodeUpdate(cb: NodeUpdateCallback) {
@@ -519,16 +470,16 @@ export class MeshtasticBleMqttService {
   public async sendLoraTextMessage(
     text: string,
     destinationNodeId: string = '^all'
-  ): Promise<{ success: boolean; packetId?: number; via?: 'BLE' | 'MQTT'; error?: string }> {
+  ): Promise<{ success: boolean; packetId?: number; via?: 'BLE'; error?: string }> {
     const cleanText = (text || '').trim();
     if (!cleanText) return { success: false, error: 'Message cannot be empty' };
 
+    // Messages go out through a tracker connected over Bluetooth. The MQTT bridge only listens.
     const hasBle = Boolean(this.toRadioChar && this.bleStatus.state === 'connected');
-    const hasMqtt = Boolean(this.mqttClient && this.mqttClient.connected);
-    if (!hasBle && !hasMqtt) {
+    if (!hasBle) {
       return {
         success: false,
-        error: 'No tracker is connected. Connect one over Bluetooth (or connect to an MQTT broker) to send messages.',
+        error: 'No tracker is connected over Bluetooth. Connect one to send messages.',
       };
     }
 
@@ -540,7 +491,7 @@ export class MeshtasticBleMqttService {
     const targetDisplay = isBroadcast ? 'Broadcast (^all)' : `Direct (${canonicalNodeId(destinationNodeId)})`;
     const packetId = newPacketId();
 
-    let via: 'BLE' | 'MQTT' | undefined;
+    let via: 'BLE' | undefined;
     const errors: string[] = [];
 
     // 1. Hand the packet to the tracker over Bluetooth
@@ -561,34 +512,6 @@ export class MeshtasticBleMqttService {
       }
     }
 
-    // 2. Otherwise publish to the MQTT broker
-    if (!via && hasMqtt) {
-      try {
-        const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
-        const hasChannel = cleanBase.split('/').length >= 4;
-        const dest = isBroadcast ? '^all' : canonicalNodeId(destinationNodeId);
-        const topic = hasChannel ? `${cleanBase}/${dest}` : `${cleanBase}/LongFast/${dest}`;
-
-        const mqttPayload = JSON.stringify({
-          channel: 0,
-          from: nodeNumFromId(this.connectedNodeId) ?? undefined,
-          to: toNodeNum,
-          type: 'sendtext',
-          sender: myName,
-          payload: { text: cleanText },
-          id: packetId,
-          timestamp: Math.floor(Date.now() / 1000),
-        });
-
-        await new Promise<void>((resolve, reject) => {
-          this.mqttClient!.publish(topic, mqttPayload, { qos: 0 }, (err) => (err ? reject(err) : resolve()));
-        });
-        via = 'MQTT';
-      } catch (mqttErr: any) {
-        errors.push(`MQTT publish failed: ${mqttErr?.message || 'unknown error'}`);
-      }
-    }
-
     if (!via) {
       return { success: false, error: errors.join(' ') || 'Message could not be sent.' };
     }
@@ -602,7 +525,7 @@ export class MeshtasticBleMqttService {
       toNode: isBroadcast ? '^all' : canonicalNodeId(destinationNodeId),
       portnum: 'TEXT_MESSAGE_APP',
       hops: 0,
-      payload: `TX via ${via === 'BLE' ? 'tracker (Bluetooth)' : 'MQTT broker'} [${targetDisplay}]: "${cleanText}"`,
+      payload: `TX via tracker (Bluetooth) [${targetDisplay}]: "${cleanText}"`,
       textMessage: cleanText,
     });
     return { success: true, packetId, via };
@@ -993,6 +916,8 @@ export class MeshtasticBleMqttService {
       headingDeg: partial.headingDeg ?? existing?.headingDeg,
       lat,
       lng,
+      // A new position brings its own precision (exact unless the packet said otherwise)
+      positionErrorMeters: hasNewPosition ? (partial.positionErrorMeters ?? null) : existing?.positionErrorMeters,
       snr: partial.snr ?? existing?.snr,
       rssi: partial.rssi ?? existing?.rssi,
       hops: partial.hops ?? existing?.hops,
@@ -1026,16 +951,6 @@ export class MeshtasticBleMqttService {
     const holdUntilConfigured = isLocal && source === 'BLE' && !this.configComplete;
     if (!holdUntilConfigured) {
       this.emitNode(node);
-    }
-
-    // Only share a fresh position from this node, and never echo MQTT traffic back to the broker
-    if (
-      source !== 'MQTT' &&
-      hasNewPosition &&
-      this.mqttConfig.enabled &&
-      this.mqttConfig.streamOutbound
-    ) {
-      this.publishNodeToMqtt(node);
     }
 
     return node;
@@ -1125,6 +1040,7 @@ export class MeshtasticBleMqttService {
       hardwareModel: hardwareModelName(ni.user?.hwModel),
       lat: latLng?.lat,
       lng: latLng?.lng,
+      positionErrorMeters: latLng ? positionErrorMeters(pos?.precisionBits) ?? null : undefined,
       altitudeMeters: pos?.altitude,
       speedKt: pos ? positionSpeedKt(pos) : undefined,
       headingDeg: pos ? positionTrackDeg(pos) : undefined,
@@ -1190,6 +1106,7 @@ export class MeshtasticBleMqttService {
           Object.assign(updates, {
             lat: latLng.lat,
             lng: latLng.lng,
+            positionErrorMeters: positionErrorMeters(pos.precisionBits) ?? null,
             altitudeMeters: pos.altitude,
             speedKt,
             headingDeg,
@@ -1302,255 +1219,8 @@ export class MeshtasticBleMqttService {
     return loraNode;
   }
 
-  // --- MQTT INBOUND & OUTBOUND ---
-  public async connectMqtt(config: MqttConfig): Promise<{ success: boolean; error?: string }> {
-    const rawUrl = (config.brokerUrl || '').trim();
-    const isOfficialMeshtastic = rawUrl.includes('mqtt.meshtastic.org');
-
-    if (this.mqttClient) {
-      try {
-        this.mqttClient.end(true);
-      } catch (e) {}
-      this.mqttClient = null;
-    }
-
-    if (!config.enabled) {
-      this.isMqttConnected = false;
-      saveMqttConfig({ ...config, enabled: false });
-      this.emitMqttStatus({ connected: false, brokerUrl: config.brokerUrl });
-
-      if (isOfficialMeshtastic) {
-        try {
-          await fetch('/api/mqtt/disconnect', { method: 'POST' });
-        } catch (e) {}
-      }
-      return { success: true };
-    }
-
-    // Official Meshtastic broker (mqtt.meshtastic.org) runs on TCP / TLS ports without direct browser WSS.
-    // Use our built-in backend bridge to connect seamlessly via TLS/TCP to mqtt.meshtastic.org.
-    if (isOfficialMeshtastic) {
-      try {
-        const res = await fetch('/api/mqtt/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            brokerUrl: config.brokerUrl || 'mqtt.meshtastic.org',
-            topic: config.topic || 'msh/2/json/#',
-            username: config.username || 'meshdev',
-            password: config.password || 'large4cats',
-          }),
-        });
-        const data = await res.json();
-        if (data && data.success) {
-          this.isMqttConnected = true;
-          this.mqttConfig = { ...config, enabled: true };
-          saveMqttConfig({ ...config, enabled: true });
-          this.emitMqttStatus({ connected: true, brokerUrl: config.brokerUrl });
-          return { success: true };
-        } else {
-          this.isMqttConnected = false;
-          saveMqttConfig({ ...config, enabled: false });
-          this.emitMqttStatus({ connected: false, error: data?.error });
-          return {
-            success: false,
-            error: data?.error || 'Failed to start Meshtastic server MQTT bridge.',
-          };
-        }
-      } catch (err: any) {
-        this.isMqttConnected = false;
-        saveMqttConfig({ ...config, enabled: false });
-        this.emitMqttStatus({ connected: false, error: err?.message });
-        return {
-          success: false,
-          error: `Server Bridge Error: ${err?.message || 'Unable to connect to Meshtastic broker'}`,
-        };
-      }
-    }
-
-    // Direct Browser WebSocket connection for brokers with WSS support (HiveMQ, EMQX, etc.)
-    const wsUrl = normalizeMqttWsUrl(config.brokerUrl);
-    this.mqttConfig = { ...config, brokerUrl: wsUrl, enabled: true };
-
-    try {
-      const client = mqtt.connect(wsUrl, {
-        username: config.username || undefined,
-        password: config.password || undefined,
-        clientId: `tmtrac_${Math.random().toString(16).substring(2, 8)}`,
-        clean: true,
-        connectTimeout: 8000,
-        reconnectPeriod: 5000,
-      });
-
-      return new Promise((resolve) => {
-        let settled = false;
-
-        const timeoutId = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            this.isMqttConnected = false;
-            this.emitMqttStatus({ connected: false, error: `Connection timed out connecting to ${wsUrl}` });
-            try {
-              client.end(true);
-            } catch (e) {}
-            resolve({
-              success: false,
-              error: `Connection timed out connecting to ${wsUrl}. Verify broker is online or use HiveMQ/EMQX WSS presets.`,
-            });
-          }
-        }, 8500);
-
-        client.on('connect', () => {
-          if (!settled) {
-            settled = true;
-            clearTimeout(timeoutId);
-            this.mqttClient = client;
-            this.isMqttConnected = true;
-            saveMqttConfig({ ...config, brokerUrl: wsUrl, enabled: true });
-            this.emitMqttStatus({ connected: true, brokerUrl: wsUrl });
-
-            client.subscribe(config.topic, { qos: 0 }, (err) => {
-              if (err) {
-                resolve({ success: false, error: err.message });
-              } else {
-                resolve({ success: true });
-              }
-            });
-          }
-        });
-
-        client.on('message', (topic, payload) => {
-          this.handleMqttMessage(topic, payload);
-        });
-
-        client.on('close', () => {
-          this.isMqttConnected = false;
-          this.emitMqttStatus({ connected: false, brokerUrl: wsUrl });
-        });
-
-        client.on('error', (err: any) => {
-          if (!settled) {
-            settled = true;
-            clearTimeout(timeoutId);
-            this.isMqttConnected = false;
-            this.emitMqttStatus({ connected: false, error: err?.message });
-            try {
-              client.end(true);
-            } catch (e) {}
-            resolve({ success: false, error: err?.message || 'MQTT Connection Error' });
-          }
-        });
-      });
-    } catch (err: any) {
-      this.isMqttConnected = false;
-      this.emitMqttStatus({ connected: false, error: err?.message });
-      return { success: false, error: err?.message || 'MQTT Connection Error' };
-    }
-  }
-
-  public publishNodeToMqtt(node: MeshtasticNode) {
-    if (!this.mqttClient || !this.mqttClient.connected) return;
-
-    // Standard Meshtastic MQTT JSON topic: <root_topic>/2/json/<channel>/<node_id>
-    const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
-    // If base topic doesn't end in channel name (e.g. LongFast), add LongFast/!id
-    const hasChannel = cleanBase.split('/').length >= 4;
-    const topic = hasChannel
-      ? `${cleanBase}/${node.id.startsWith('!') ? node.id : `!${node.id}`}`
-      : `${cleanBase}/LongFast/${node.id.startsWith('!') ? node.id : `!${node.id}`}`;
-
-    if (typeof node.lat !== 'number' || typeof node.lng !== 'number') return;
-    const fromUint32 = nodeNumFromId(node.id);
-    const reportedAtSec = Math.floor((node.lastPingTime || Date.now()) / 1000);
-
-    // Meshtastic JSON position; only fields the tracker actually reported are included
-    const payload = JSON.stringify({
-      channel: 0,
-      from: fromUint32 ?? node.id,
-      type: 'position',
-      sender: node.longName || node.id,
-      payload: {
-        latitude_i: Math.round(node.lat * 1e7),
-        longitude_i: Math.round(node.lng * 1e7),
-        altitude: node.altitudeMeters !== undefined ? Math.round(node.altitudeMeters) : undefined,
-        // Same units as the firmware: ground_speed in whole km/h, ground_track in degrees × 1e5
-        ground_speed: node.speedKt !== undefined ? Math.round(node.speedKt / KMH_TO_KT) : undefined,
-        ground_track: node.headingDeg !== undefined ? Math.round(node.headingDeg * 1e5) : undefined,
-        battery_level: node.battery !== undefined ? Math.round(node.battery) : undefined,
-        voltage: node.voltage !== undefined ? +node.voltage.toFixed(2) : undefined,
-        sats_in_view: node.satsInView,
-        time: reportedAtSec,
-      },
-      timestamp: reportedAtSec,
-    });
-
-    this.mqttClient.publish(topic, payload, { qos: 0 });
-  }
-
-  private handleMqttMessage(topic: string, payload: Buffer) {
-    try {
-      const text = payload.toString('utf-8');
-      const json = JSON.parse(text);
-
-      let nodeId = '';
-      if (typeof json.from === 'number' || (typeof json.from === 'string' && json.from.trim())) {
-        nodeId = canonicalNodeId(json.from);
-      } else {
-        nodeId = canonicalNodeId(topic.split('/').pop() || '');
-      }
-      if (!nodeId) return;
-
-      this.emitPacketLog({
-        id: 'pkt-' + Date.now(),
-        timestamp: new Date().toLocaleTimeString(),
-        fromNode: nodeId,
-        toNode: typeof json.to === 'number' && json.to !== 0xFFFFFFFF ? canonicalNodeId(json.to) : '^all',
-        portnum: json.type === 'position' ? 'POSITION_APP' : (json.type === 'telemetry' ? 'TELEMETRY_APP' : (json.type === 'nodeinfo' ? 'NODEINFO_APP' : 'TEXT_MESSAGE_APP')),
-        snr: typeof json.snr === 'number' ? json.snr : undefined,
-        rssi: typeof json.rssi === 'number' ? json.rssi : undefined,
-        payload: text.slice(0, 100),
-      });
-
-      if (json.type === 'position' && json.payload) {
-        const p = json.payload;
-        const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
-        const lat = num(p.latitude_i) !== undefined ? p.latitude_i / 1e7 : (num(p.lat) ?? num(p.latitude));
-        const lng = num(p.longitude_i) !== undefined ? p.longitude_i / 1e7 : (num(p.lng) ?? num(p.longitude));
-        // Firmware JSON carries the raw position fields: ground_speed in whole km/h, ground_track
-        // in degrees × 1e5. It leaves them out when they are 0 or the device doesn't send them.
-        const speedKt = num(p.ground_speed) !== undefined ? +(p.ground_speed * KMH_TO_KT).toFixed(1) : undefined;
-        const headingDeg = num(p.ground_track) !== undefined ? Math.round(p.ground_track / 1e5) % 360 : undefined;
-
-        if (lat === undefined || lng === undefined || (lat === 0 && lng === 0)) return;
-
-        this.upsertDiscoveredNode(nodeId, {
-          longName: typeof json.sender === 'string' && json.sender ? json.sender : undefined,
-          battery: num(p.battery_level),
-          voltage: num(p.voltage),
-          satsInView: num(p.sats_in_view),
-          altitudeMeters: num(p.altitude),
-          speedKt,
-          headingDeg,
-          lat,
-          lng,
-          snr: num(json.snr),
-          rssi: num(json.rssi),
-          hops: num(json.hops_away),
-          connectionType: 'MQTT',
-          lastPingTime: Date.now(),
-        }, false, 'MQTT');
-      }
-    } catch (e) {
-      console.warn('MQTT payload parse error:', e);
-    }
-  }
-
   public disconnectAll() {
     this.disconnectBle();
-    if (this.mqttClient) {
-      this.mqttClient.end();
-      this.mqttClient = null;
-    }
   }
 
 }
