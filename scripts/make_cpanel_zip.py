@@ -30,6 +30,8 @@ prod_package_json = {
         "dotenv": "^17.2.3",
         "express": "^4.21.2",
         "mqtt": "^5.15.2",
+        # The server decodes Meshtastic MQTT packets (src/server/meshtasticMqtt.ts)
+        "protobufjs": "^7.2.5",
         "stripe": "^17.7.0",
         "ws": "^8.21.3"
     },
