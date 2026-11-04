@@ -1529,7 +1529,7 @@ class MeshtasticBleMqttService {
           if (uTag.fieldNum === 1 && uTag.wireType === 2) user.id = uReader.readString();
           else if (uTag.fieldNum === 2 && uTag.wireType === 2) user.longName = uReader.readString();
           else if (uTag.fieldNum === 3 && uTag.wireType === 2) user.shortName = uReader.readString();
-          else if (uTag.fieldNum === 5 && uTag.wireType === 0) user.hwModel = `HW_${uReader.readVarint()}`;
+          else if (uTag.fieldNum === 5 && uTag.wireType === 0) uReader.readVarint(); // hw_model: named in L2's decoder; not shown as a raw number
           else uReader.skip(uTag.wireType);
         }
       } else if (tag.fieldNum === 3 && tag.wireType === 2) { // position
