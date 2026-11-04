@@ -5,8 +5,6 @@ import {
   RegattaLocation,
 } from '../types/regatta';
 import { REGATTA_LOCATIONS } from '../services/initialData';
-import { MqttSettingsPanel } from './MqttSettingsPanel';
-import { formatLastHeard } from '../utils/formatters';
 import {
   X,
   Globe,
@@ -37,8 +35,6 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
 }) => {
 
 
-
-  const mqttNodes = nodes.filter((n) => n.connectionType === 'MQTT');
 
   // DYNAMIC REGATTAS STATE (Loaded from defaults + localStorage)
   const [regattaList, setRegattaList] = useState<RegattaLocation[]>(() => {
@@ -126,13 +122,10 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-ink flex items-center gap-2">
-                Malaysia LoRa &amp; MQTT
-                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full border border-accent/30">
-                  MY_919 / MY_433
-                </span>
+                Regatta locations
               </h2>
               <p className="text-xs text-ink-muted">
-                Public Malaysian Meshtastic stream over MQTT
+                Where the map centres for this event. Trackers are added with Connect device.
               </p>
             </div>
           </div>
@@ -147,11 +140,6 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
         {/* Modal Body */}
         <div className="p-5 flex-1 overflow-y-auto space-y-5 custom-scrollbar">
             <div className="space-y-4">
-              {/* Internet (MQTT) settings: the same panel as in the hardware window */}
-              <div className="p-4 bg-raised rounded-2xl border border-line">
-                <MqttSettingsPanel />
-              </div>
-
               {/* Dynamic Regatta & Maritime Event Manager */}
               <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
                 <div className="flex items-center justify-between">
@@ -329,37 +317,6 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
                 </div>
               </div>
 
-              {/* Nodes heard over MQTT */}
-              <div>
-                <label className="text-xs text-ink-muted block mb-2">
-                  Nodes heard over the internet ({mqttNodes.length})
-                </label>
-                {mqttNodes.length === 0 ? (
-                  <p className="text-xs text-ink-muted">None yet.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {mqttNodes.map((node) => (
-                      <div key={node.id} className="p-3 bg-raised rounded-xl border border-line flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Globe className="w-4 h-4 text-ink-muted shrink-0" />
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-ink">{node.longName}</span>
-                            <span className="ml-2 text-xs text-ink-muted">{node.id}</span>
-                            <p className="text-xs text-ink-muted">
-                              {node.lat !== undefined
-                                ? node.positionErrorMeters
-                                  ? `Approximate position (±${node.positionErrorMeters >= 1000 ? `${(node.positionErrorMeters / 1000).toFixed(1)} km` : `${node.positionErrorMeters} m`})`
-                                  : 'Exact position'
-                                : 'No position yet'}
-                              {' · '}Heard {formatLastHeard(node.lastPingTime).toLowerCase()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
         </div>
 

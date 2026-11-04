@@ -37,7 +37,8 @@ interface LeaderboardSidebarProps {
   selectedBoatId: string | null;
   onSelectBoat: (boatId: string) => void;
   onOpenNodeBinding?: (nodeId?: string, boatId?: string) => void;
-  onOpenHardwareScan?: () => void;
+  /** Opens the Connect device flow */
+  onOpenConnectDevice?: () => void;
   onOpenHybridTrackers?: () => void;
   followedTargetId: string | null;
   onToggleFollow: (id: string, name: string) => void;
@@ -66,7 +67,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   selectedBoatId,
   onSelectBoat,
   onOpenNodeBinding,
-  onOpenHardwareScan,
+  onOpenConnectDevice,
   onOpenHybridTrackers,
   followedTargetId,
   onToggleFollow,
@@ -100,7 +101,17 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   );
 
   // Deduplicate and filter nodes (removing local mobile device when its tracking is off)
-  const uniqueNodes = useMemo(() => {
+  // This event's trackers by default: phones and other fleet devices, the tracker connected to
+  // this device, and LoRa nodes bound to a boat here. Other LoRa/MQTT nodes the radio or the
+  // public stream happens to hear are "nearby public nodes", shown only on request.
+  const [showNearbyNodes, setShowNearbyNodes] = useState(false);
+  const isNearbyPublicNode = (n: MeshtasticNode) => {
+    const isFleetDevice = n.isDeviceGps || n.connectionType === 'PHONE' || n.connectionType === 'TABLET' || n.connectionType === 'DEVICE_GPS' || n.connectionType === 'PC';
+    if (isFleetDevice || n.isBluetoothConnected) return false;
+    return !boats.some((b) => (n.boundBoatId && b.id === n.boundBoatId) || sameNodeId(b.nodeId, n.id));
+  };
+
+  const allNodes = useMemo(() => {
     let list = deduplicateNodes(nodes);
     if (deviceGps && !deviceGps.active) {
       const localShort = (deviceGps.profile?.deviceId || '').slice(-4).toUpperCase();
@@ -113,6 +124,12 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
     }
     return list;
   }, [nodes, deviceGps?.active, deviceGps?.profile?.deviceId]);
+
+  const nearbyNodeCount = useMemo(() => allNodes.filter(isNearbyPublicNode).length, [allNodes, boats]);
+  const uniqueNodes = useMemo(
+    () => (showNearbyNodes ? allNodes : allNodes.filter((n) => !isNearbyPublicNode(n))),
+    [allNodes, boats, showNearbyNodes]
+  );
 
   // Compute node counts per category
   const nodeCounts = useMemo(() => {
@@ -238,7 +255,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
           }`}
         >
           <Cpu className="w-3.5 h-3.5" />
-          Mesh Nodes ({nodes.length})
+          Mesh Nodes ({uniqueNodes.length})
         </button>
 
         {!isOverlay && onCollapse && (
@@ -428,14 +445,6 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     className="w-full py-2 bg-accent hover:brightness-110 text-on-accent font-bold text-xs rounded-lg transition-all shadow-md"
                   >
                     Add boat
-                  </button>
-                )}
-                {viewMode !== 'SPECTATOR' && onOpenHardwareScan && (
-                  <button
-                    onClick={onOpenHardwareScan}
-                    className="w-full py-2 bg-raised hover:bg-raised text-accent font-bold text-xs rounded-lg transition-all border border-accent/30"
-                  >
-                    Connect T-Echo (BLE / MQTT)
                   </button>
                 )}
               </div>
@@ -714,35 +723,20 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
-                  <button
-                    onClick={() => onOpenNodeBinding()}
-                    className="px-2 py-1 rounded bg-warning-ink/20 hover:bg-warning-ink/30 active:bg-warning-ink/40 border border-warning-ink/50 text-warning-ink text-xs font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
-                    title="Open Meshtastic Node to Boat Binding Manager"
-                  >
-                    <Link2 className="w-3 h-3 text-warning-ink" />
-                    <span>Bind Boat</span>
-                  </button>
-                )}
-
-                {viewMode !== 'SPECTATOR' && (onOpenHardwareScan || onOpenHybridTrackers) && (
-                  <button
-                    onClick={() => {
-                      if (onOpenHardwareScan) {
-                        onOpenHardwareScan();
-                      } else if (onOpenHybridTrackers) {
-                        onOpenHybridTrackers();
-                      }
-                    }}
-                    className="px-2 py-1 rounded bg-success-ink/20 hover:bg-success-ink/30 active:bg-success-ink/40 border border-success-ink/50 text-success-ink text-xs font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
-                    title="Open Bluetooth BLE & Hardware Scanner Menu"
-                  >
-                    <Bluetooth className="w-3 h-3 text-success-ink" />
-                    <span>Bind Tracker</span>
-                  </button>
+                {viewMode !== 'SPECTATOR' && onOpenConnectDevice && (
+                  <Button variant="primary" icon={<Plus />} onClick={onOpenConnectDevice}>
+                    Connect device
+                  </Button>
                 )}
               </div>
             </div>
+
+            {nearbyNodeCount > 0 && (
+              <label className="flex items-center gap-2 px-2 text-xs text-ink-muted">
+                <input type="checkbox" checked={showNearbyNodes} onChange={(e) => setShowNearbyNodes(e.target.checked)} />
+                Show nearby public nodes ({nearbyNodeCount})
+              </label>
+            )}
 
             {/* MESH NODES FILTER & SORT CONTROLS */}
             {uniqueNodes.length > 0 && (
@@ -841,20 +835,17 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   <Radio className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-ink">No Nodes in Topology</h4>
+                  <h4 className="text-xs font-bold text-ink">No trackers for this event yet</h4>
                   <p className="text-xs text-ink-muted mt-1">
                     {viewMode === 'SPECTATOR'
-                      ? 'Waiting for manager or fleet to connect tracking hardware/mobile GPS.'
-                      : 'Connect mobile phones or turn on your T-Echo / Heltec node to start tracking live telemetry.'}
+                      ? 'Trackers appear here once the race office connects them.'
+                      : 'Connect a LoRa tracker, or have skippers share their phone position with Track in the header.'}
                   </p>
                 </div>
-                {viewMode !== 'SPECTATOR' && onOpenHardwareScan && (
-                  <button
-                    onClick={onOpenHardwareScan}
-                    className="w-full py-2 bg-success-ink hover:brightness-110 text-canvas font-bold text-xs rounded-lg transition-all"
-                  >
-                    Scan / Add Hardware Node
-                  </button>
+                {viewMode !== 'SPECTATOR' && onOpenConnectDevice && (
+                  <Button variant="primary" className="w-full" icon={<Plus />} onClick={onOpenConnectDevice}>
+                    Connect device
+                  </Button>
                 )}
               </div>
             ) : filteredAndSortedNodes.length === 0 ? (

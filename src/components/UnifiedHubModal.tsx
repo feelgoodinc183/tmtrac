@@ -9,8 +9,7 @@ import {
   Bot,
   Database,
   QrCode,
-  Link2,
-  Bluetooth,
+  Plus,
   Globe,
   Info,
   Clock,
@@ -26,6 +25,7 @@ import {
 } from '../types/regatta';
 import { safeFixed } from '../utils/formatters';
 import { APP_VERSION } from '../appVersion';
+import { Button } from './ui/Button';
 
 export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';
 
@@ -41,7 +41,8 @@ export interface UnifiedHubModalProps {
   hybridTrackerCount: number;
   onOpenBoatQr?: () => void;
   onOpenNodeBinding?: () => void;
-  onOpenHardwareScan?: () => void;
+  /** Opens the Connect device flow */
+  onOpenConnectDevice?: () => void;
   onOpenBoatEditor?: (boat?: Boat) => void;
   onSelectBoat?: (id: string) => void;
   onOpenHeadToHead?: () => void;
@@ -75,7 +76,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   hybridTrackerCount,
   onOpenBoatQr,
   onOpenNodeBinding,
-  onOpenHardwareScan,
+  onOpenConnectDevice,
   onOpenBoatEditor,
   onSelectBoat,
   onOpenHeadToHead,
@@ -292,46 +293,32 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                   </button>
                 </div>
 
-                {/* 4. LoRa & BLE Hardware */}
+                {/* 4. Trackers: the one place to connect a tracker */}
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-ink-muted font-bold">
-                        Hardware Mesh
+                        Trackers
                       </span>
                       <span className="text-xs text-accent font-bold">
-                        {nodes.length} Nodes
+                        {nodes.length} {nodes.length === 1 ? 'node' : 'nodes'}
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-ink mt-1">LoRa / BLE Mesh</h3>
+                    <h3 className="text-sm font-bold text-ink mt-1">LoRa trackers</h3>
                     <p className="text-xs text-ink-muted mt-0.5 leading-snug">
-                      Meshtastic radio binding & Bluetooth scanner
+                      Connect a Meshtastic tracker over Bluetooth or the internet, then pick its boat
                     </p>
                   </div>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onOpenNodeBinding?.();
-                      }}
-                      className="flex-1 py-2 px-2 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
-                      title="Bind Meshtastic nodes to boats"
-                    >
-                      <Link2 className="w-3 h-3 text-accent" />
-                      <span>Bind</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onOpenHardwareScan?.();
-                      }}
-                      className="flex-1 py-2 px-2 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
-                      title="Scan Bluetooth / USB ports"
-                    >
-                      <Bluetooth className="w-3 h-3 text-accent" />
-                      <span>BLE</span>
-                    </button>
-                  </div>
+                  <Button
+                    variant="primary"
+                    icon={<Plus />}
+                    onClick={() => {
+                      onClose();
+                      onOpenConnectDevice?.();
+                    }}
+                  >
+                    Connect device
+                  </Button>
                 </div>
               </div>
 
@@ -633,11 +620,11 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                 <div className="p-3 sm:p-4 rounded-xl bg-surface border border-line flex flex-col justify-between gap-3">
                   <div>
                     <span className="text-xs text-success-ink font-bold">
-                      Marine Telemetry
+                      Map area
                     </span>
-                    <h3 className="text-sm font-bold text-ink mt-1">Malaysia LoRa & MQTT</h3>
+                    <h3 className="text-sm font-bold text-ink mt-1">Regatta locations</h3>
                     <p className="text-xs text-ink-muted mt-0.5 leading-snug">
-                      433/919 MHz presets and the public MQTT stream
+                      Choose or add the sailing area the map centres on
                     </p>
                   </div>
                   <button
@@ -648,7 +635,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                     className="w-full py-2 px-3 rounded-lg bg-raised hover:bg-raised text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Globe className="w-3.5 h-3.5 text-success-ink" />
-                    <span>LoRa & MQTT Setup</span>
+                    <span>Regatta locations</span>
                   </button>
                 </div>
 

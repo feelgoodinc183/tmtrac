@@ -38,7 +38,6 @@ interface HeaderProps {
   onOpenMqttInspector?: () => void;
   onOpenOfflineCache?: () => void;
   onOpenQrModal?: () => void;
-  onOpenHardwareScan?: () => void;
   onOpenVhfJuryModal?: () => void;
   onOpenNmeaMalaysiaModal?: () => void;
   onOpenResults?: () => void;

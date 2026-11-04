@@ -44,7 +44,7 @@ import { FEATURES } from './config/features';
 import { MqttPacketInspectorModal } from './components/MqttPacketInspectorModal';
 import { OfflineCacheModal } from './components/OfflineCacheModal';
 import { SpectatorQrModal } from './components/SpectatorQrModal';
-import { BluetoothUsbScanModal } from './components/BluetoothUsbScanModal';
+import { ConnectDeviceDialog } from './components/ConnectDeviceDialog';
 import { VhfAndJuryProtestModal } from './components/VhfAndJuryProtestModal';
 import { NmeaAndMalaysiaMeshModal } from './components/NmeaAndMalaysiaMeshModal';
 import { RacePlaybackScrubber } from './components/RacePlaybackScrubber';
@@ -766,7 +766,7 @@ export default function App() {
     }
     return null;
   });
-  const [showHardwareScan, setShowHardwareScan] = useState(false);
+  const [showConnectDevice, setShowConnectDevice] = useState(false);
   const [showVhfJuryModal, setShowVhfJuryModal] = useState(false);
   const [showNmeaMalaysiaModal, setShowNmeaMalaysiaModal] = useState(false);
   const [showBoatEditorModal, setShowBoatEditorModal] = useState(false);
@@ -2114,7 +2114,7 @@ export default function App() {
     setShowBoatEditorModal(true);
   };
 
-  const handleSaveBoat = (boatData: Partial<Boat>, isEdit: boolean, originalId?: string) => {
+  const handleSaveBoat = (boatData: Partial<Boat>, isEdit: boolean, originalId?: string): string | undefined => {
     if (isEdit && originalId) {
       const resolved = resolveTrackerPosition(boatData.nodeId);
       const localNode = deviceTrackerService.getLocalNode();
@@ -2246,7 +2246,9 @@ export default function App() {
           )
         );
       }
+      return newId;
     }
+    return originalId;
   };
 
   const handleDeleteBoat = (boatId: string) => {
@@ -2379,25 +2381,20 @@ export default function App() {
     }
   };
 
-  // Adding or connecting a tracker only lists it. It is never turned into a boat automatically:
-  // the user binds it to an existing boat, or creates one, in the binding window.
-  const handleAddScannedNode = (newNode: MeshtasticNode) => {
-    setNodes((prev) => {
-      const idx = prev.findIndex((n) => sameNodeId(n.id, newNode.id));
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = { ...prev[idx], ...newNode, boundBoatId: newNode.boundBoatId ?? prev[idx].boundBoatId };
-        return deduplicateNodes(updated);
-      }
-      return deduplicateNodes([newNode, ...prev]);
-    });
-  };
-
-  const handleRequestBindNode = (nodeId: string) => {
-    setShowHardwareScan(false);
-    setBindingTargetNodeId(nodeId);
-    setBindingTargetBoatId(undefined);
-    setShowNodeBinding(true);
+  // Creates a boat from the Connect device flow and binds the tracker to it
+  const handleCreateBoatForTracker = (nodeId: string, name: string, sailNumber: string) => {
+    // Created with the tracker so it starts at the tracker's position (no jump from the map centre)
+    const boatId = handleSaveBoat(
+      {
+        name,
+        sailNumber,
+        nodeId,
+        class: raceState.activeClass && raceState.activeClass !== 'ALL' ? raceState.activeClass : undefined,
+        status: 'PRE_START',
+      },
+      false
+    );
+    if (boatId) handleBindNodeToBoat(nodeId, boatId);
   };
 
   const handleDeleteNode = (nodeId: string) => {
@@ -2576,7 +2573,6 @@ export default function App() {
         onOpenMqttInspector={() => setShowMqttInspector(true)}
         onOpenOfflineCache={() => setShowOfflineCache(true)}
         onOpenQrModal={() => setShowSpectatorQr(true)}
-        onOpenHardwareScan={() => setShowHardwareScan(true)}
         onOpenVhfJuryModal={() => setShowVhfJuryModal(true)}
         onOpenNmeaMalaysiaModal={() => setShowNmeaMalaysiaModal(true)}
         onOpenResults={() => setShowResultsModal(true)}
@@ -2645,7 +2641,7 @@ export default function App() {
                   selectedBoatId={selectedBoatId}
                   onSelectBoat={(id) => setSelectedBoatId(id)}
                   onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-                  onOpenHardwareScan={() => setShowHardwareScan(true)}
+                  onOpenConnectDevice={() => setShowConnectDevice(true)}
                   onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
                   followedTargetId={followedTargetId}
                   onToggleFollow={handleToggleFollow}
@@ -2793,7 +2789,7 @@ export default function App() {
                     setMobileTab('MAP');
                   }}
                   onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-                  onOpenHardwareScan={() => setShowHardwareScan(true)}
+                  onOpenConnectDevice={() => setShowConnectDevice(true)}
                   onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
                   followedTargetId={followedTargetId}
                   onToggleFollow={handleToggleFollow}
@@ -3023,7 +3019,7 @@ export default function App() {
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
         onOpenBoatQr={() => handleOpenBoatQr()}
         onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-        onOpenHardwareScan={() => setShowHardwareScan(true)}
+        onOpenConnectDevice={() => setShowConnectDevice(true)}
         onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
         onSelectBoat={(id) => {
           setSelectedBoatId(id);
@@ -3050,19 +3046,14 @@ export default function App() {
         planTier={currentTenant?.planTier || currentUser?.planTier || 'CLUB'}
       />
 
-      {/* Hardware Node BLE & USB Serial Scanner Modal */}
-      {showHardwareScan && (
-        <BluetoothUsbScanModal
+      {/* The one way to connect a tracker: method → connect → which boat */}
+      {showConnectDevice && (
+        <ConnectDeviceDialog
           nodes={nodes}
           boats={boats}
-          hardwareConn={hardwareConn}
-          onUpdateHardwareConn={(partial) =>
-            setHardwareConn((prev) => ({ ...prev, ...partial }))
-          }
-          onAddScannedNode={handleAddScannedNode}
-          onRequestBindNode={handleRequestBindNode}
-          onDeleteNode={handleDeleteNode}
-          onClose={() => setShowHardwareScan(false)}
+          onBindNodeToBoat={handleBindNodeToBoat}
+          onCreateBoatForTracker={handleCreateBoatForTracker}
+          onClose={() => setShowConnectDevice(false)}
         />
       )}
 
