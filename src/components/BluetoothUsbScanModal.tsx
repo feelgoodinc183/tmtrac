@@ -27,7 +27,9 @@ import {
   saveMqttConfig,
   normalizeMqttWsUrl,
   deduplicateNodes,
+  BleStatus,
 } from '../services/meshtasticBleMqttService';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface BluetoothUsbScanModalProps {
   nodes: MeshtasticNode[];
@@ -55,7 +57,23 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   const [isScanningBle, setIsScanningBle] = useState(false);
   const [bleError, setBleError] = useState<string | null>(null);
 
-  const [bleNotice, setBleNotice] = useState<string | null>(null);
+  const [bleStatus, setBleStatus] = useState<BleStatus>(() => meshtasticService.getBleStatus());
+  const [lastDeviceName] = useState<string | null>(() => meshtasticService.getLastBleDeviceName());
+  const [canReconnectWithoutPicker, setCanReconnectWithoutPicker] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+
+  useEffect(() => meshtasticService.onBleStatusChange(setBleStatus), []);
+
+  // After a reload, offer to reconnect to the last tracker (without the picker where the browser allows)
+  useEffect(() => {
+    let cancelled = false;
+    meshtasticService.findRememberedBleDevice().then((d) => {
+      if (!cancelled) setCanReconnectWithoutPicker(Boolean(d));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // MQTT state
   const [mqttConfig, setMqttConfig] = useState<MqttConfig>(() => loadSavedMqttConfig());
@@ -98,25 +116,16 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
   const [discoveredLoraNodeId, setDiscoveredLoraNodeId] = useState('');
   const [discoveredLoraNodeName, setDiscoveredLoraNodeName] = useState('');
 
-  // Connect a Meshtastic tracker over Web Bluetooth
-  const handleWebBluetoothScan = async () => {
+  // Connect a Meshtastic tracker over Web Bluetooth (picker), or reconnect to the last one
+  const runBleConnect = async (reconnect: boolean) => {
     setIsScanningBle(true);
     setBleError(null);
-    setBleNotice(null);
-
     try {
-      const res = await meshtasticService.connectTEchoBle();
+      const res = reconnect ? await meshtasticService.reconnectBle() : await meshtasticService.connectTEchoBle();
       if (res.success) {
         if (res.node) onAddScannedNode(res.node);
-        onUpdateHardwareConn({
-          bluetoothConnected: true,
-          bluetoothDeviceName: res.deviceName,
-          activePort: 'BLE',
-        });
-        // Connected, but still waiting for the tracker to identify itself
-        if (res.error) setBleNotice(res.error);
       } else {
-        setBleError(res.error || 'Failed to connect to LoRa Device via Bluetooth');
+        setBleError(res.error || 'Could not connect to the tracker over Bluetooth.');
       }
     } catch (err: any) {
       setBleError(err?.message || 'Bluetooth connection failed unexpectedly');
@@ -253,52 +262,90 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
               <div className="p-3 bg-accent/10 border border-accent/30 rounded-xl text-xs text-accent flex items-start gap-2.5">
                 <Radio className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="block text-ink">LoRa Device Bluetooth Connection</strong>
-                  1. Turn on your LoRa Device (nRF52840 / SX1262) and ensure Bluetooth is enabled.
+                  <strong className="block text-ink">Connecting a Meshtastic tracker</strong>
+                  1. Turn the tracker on and make sure it isn't connected to the Meshtastic app or another phone.
                   <br />
-                  2. Click <strong>Connect LoRa Device (Web BLE)</strong> and pair with <code>LoRa Device</code> or <code>Meshtastic_xxxx</code>.
+                  2. Click <strong>Connect tracker over Bluetooth</strong> and pick it from the list (e.g. <code>Meshtastic_xxxx</code>). Enter its PIN if asked.
                   <br />
-                  3. If running inside an iframe, click <strong>"Open in new tab"</strong> at top right to grant Web Bluetooth permission.
+                  3. For speed and heading, turn on the <strong>Speed</strong> and <strong>Heading</strong> position flags in the tracker's Position settings (Meshtastic app). Without them, the tracker sends only its position.
                 </div>
               </div>
 
-              {/* Status Banner */}
-              <div className="p-4 rounded-xl bg-canvas border border-line flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-lg bg-accent/10 text-accent border border-accent/20">
-                    <Bluetooth className="w-5 h-5" />
+              {/* Connection status */}
+              {(() => {
+                const st = bleStatus.state;
+                const name = bleStatus.deviceName || hardwareConn.bluetoothDeviceName || 'tracker';
+                const title =
+                  st === 'connected' ? `Connected to ${name}`
+                  : st === 'connecting' ? `Connecting to ${name}…`
+                  : st === 'configuring' ? `Reading ${name}'s configuration and node list…`
+                  : st === 'reconnecting' ? `Connection to ${name} lost. Reconnecting (attempt ${bleStatus.attempt} of ${bleStatus.maxAttempts})…`
+                  : st === 'lost' ? `Lost connection to ${name}`
+                  : 'No tracker connected over Bluetooth';
+                const tone =
+                  st === 'connected' ? 'text-success-ink border-success-ink/30 bg-success-ink/10'
+                  : st === 'reconnecting' || st === 'lost' ? 'text-warning-ink border-warning-ink/40 bg-warning-ink/10'
+                  : 'text-ink border-line bg-canvas';
+                return (
+                  <div className={`p-4 rounded-xl border flex items-center justify-between gap-3 flex-wrap ${tone}`} role="status" aria-live="polite">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Bluetooth className="w-5 h-5 shrink-0" />
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold">{title}</h4>
+                        {st === 'lost' && bleStatus.error && <p className="text-xs">{bleStatus.error}</p>}
+                        {st === 'disconnected' && lastDeviceName && (
+                          <p className="text-xs text-ink-muted">Last used: {lastDeviceName}</p>
+                        )}
+                      </div>
+                    </div>
+                    {st === 'connected' && (
+                      <Button onClick={() => setConfirmDisconnect(true)}>Disconnect</Button>
+                    )}
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-ink">
-                      {hardwareConn.bluetoothConnected
-                        ? `Paired LoRa Device: ${hardwareConn.bluetoothDeviceName}`
-                        : 'No Bluetooth LoRa Device Connected'}
-                    </h4>
-                    <p className="text-xs text-ink-muted">
-                      GATT Service: cb0b0001-035f-45f4-822e-b648e23003b3
-                    </p>
-                  </div>
-                </div>
-
-                {hardwareConn.bluetoothConnected && (
-                  <span className="text-xs bg-success-ink/10 text-success-ink px-2.5 py-1 rounded-full border border-success-ink/30 flex items-center gap-1 font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    LIVE TELEMETRY
-                  </span>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleWebBluetoothScan}
-                  disabled={isScanningBle}
-                  className="w-full py-3 px-4 bg-accent hover:brightness-110 disabled:opacity-50 text-on-accent font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isScanningBle ? 'animate-spin' : ''}`} />
-                  {isScanningBle ? 'Connecting BLE...' : 'Connect LoRa Device (Web BLE)'}
-                </button>
-              </div>
+              {bleStatus.state !== 'connected' && (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {(bleStatus.state === 'lost' || (bleStatus.state === 'disconnected' && lastDeviceName)) && (
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      icon={<RefreshCw />}
+                      loading={isScanningBle}
+                      loadingLabel="Connecting…"
+                      onClick={() => runBleConnect(bleStatus.state === 'lost' || canReconnectWithoutPicker)}
+                    >
+                      {`Reconnect ${bleStatus.deviceName || lastDeviceName || 'tracker'}`}
+                    </Button>
+                  )}
+                  <Button
+                    variant={bleStatus.state === 'lost' || (bleStatus.state === 'disconnected' && lastDeviceName) ? 'secondary' : 'primary'}
+                    className="w-full"
+                    icon={<Bluetooth />}
+                    loading={isScanningBle}
+                    loadingLabel="Connecting…"
+                    disabled={bleStatus.state === 'connecting' || bleStatus.state === 'configuring' || bleStatus.state === 'reconnecting'}
+                    onClick={() => runBleConnect(false)}
+                  >
+                    {lastDeviceName ? 'Connect a tracker…' : 'Connect tracker over Bluetooth'}
+                  </Button>
+                </div>
+              )}
+
+              {confirmDisconnect && (
+                <ConfirmDialog
+                  title="Disconnect the tracker?"
+                  body="The boat bound to it stops getting position updates from this device until you reconnect."
+                  confirmLabel="Disconnect"
+                  onCancel={() => setConfirmDisconnect(false)}
+                  onConfirm={() => {
+                    setConfirmDisconnect(false);
+                    meshtasticService.disconnectBle();
+                  }}
+                />
+              )}
 
               {bleError && (
                 <div className="p-3.5 bg-danger/10 border border-danger-ink/40 rounded-xl text-xs text-danger-ink space-y-2 animate-fadeIn">
@@ -322,13 +369,6 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
                 </div>
               )}
 
-              {bleNotice && (
-                <div className="p-3 bg-warning-ink/10 border border-warning-ink/40 rounded-xl text-xs text-warning-ink flex items-start gap-2" role="status">
-                  <Clock className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{bleNotice}</span>
-                </div>
-              )}
-
               {/* Connected Active Nodes List */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -339,7 +379,7 @@ export const BluetoothUsbScanModal: React.FC<BluetoothUsbScanModalProps> = ({
 
                 {deduplicateNodes(nodes).length === 0 ? (
                   <div className="p-4 bg-canvas border border-dashed border-line rounded-xl text-center text-xs text-ink-muted">
-                    No nodes connected yet. Click "Connect LoRa Device (Web BLE)" above.
+                    No trackers yet. Connect one over Bluetooth above.
                   </div>
                 ) : (
                   <div className="space-y-2">

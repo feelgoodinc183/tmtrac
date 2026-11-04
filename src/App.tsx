@@ -569,6 +569,17 @@ export default function App() {
       // Packet stream active
     });
 
+    // Bluetooth tracker connection state drives the hardware status shown everywhere
+    const unsubBleStatus = meshtasticService.onBleStatusChange((status) => {
+      const connected = status.state === 'connected';
+      setHardwareConn((prev) => ({
+        ...prev,
+        bluetoothConnected: connected,
+        bluetoothDeviceName: status.deviceName ?? prev.bluetoothDeviceName,
+        activePort: connected ? 'BLE' : prev.activePort === 'BLE' ? 'OFFLINE' : prev.activePort,
+      }));
+    });
+
     const unsubMqttStatus = meshtasticService.onMqttStatusChange((status) => {
       setRaceState((prev) => ({ ...prev, mqttConnected: status.connected }));
       if (status.connected) {
@@ -632,6 +643,7 @@ export default function App() {
       unsubMeshtasticNode();
       unsubMeshtasticPacket();
       unsubMqttStatus();
+      unsubBleStatus();
       unsubBatchBackfill();
     };
   }, []);

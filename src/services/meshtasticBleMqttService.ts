@@ -1,115 +1,27 @@
 import mqtt, { MqttClient } from 'mqtt';
 import { MeshtasticNode, BackfillPoint } from '../types/regatta';
 import { canonicalNodeId, nodeNumFromId } from '../utils/nodeId';
-import { nodeStatusFromLastPing } from '../utils/formatters';
-
-// Core Meshtastic BLE Service & Characteristic UUIDs
-export const MESHTASTIC_SERVICE_UUID = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-export const FROM_RADIO_UUID        = '2c55e69e-4993-11ed-b878-0242ac120002'; // Read LoRa packets from node
-export const TO_RADIO_UUID          = 'f75c76d2-129e-4dad-a1dd-7866124401e7'; // Write commands / TX packets
-export const FROM_NUM_UUID          = 'ed9da18c-a800-4f66-a670-aa7547e34453'; // Notify on new packet queue
-
-// Standard Bluetooth SIG Services for direct hardware state
-export const BATTERY_SERVICE_UUID   = '0000180f-0000-1000-8000-00805f9b34fb';
-export const BATTERY_LEVEL_UUID     = '00002a19-0000-1000-8000-00805f9b34fb';
-
-// Legacy & Alternative Meshtastic and Serial GATT Service UUIDs
-export const MESHTASTIC_BLE_SERVICE_UUID = MESHTASTIC_SERVICE_UUID;
-export const MESHTASTIC_BLE_SERVICE_UUID_ALT = '6ba1b088-ab49-438c-a079-038223b22c6f'; // Legacy Meshtastic
-export const MESHTASTIC_BLE_SERVICE_UUID_ALT2 = 'cb0b0001-035f-45f4-822e-b648e23003b3';
-export const NORDIC_UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Serial
-export const LOCATION_NAV_SERVICE_UUID = '00001819-0000-1000-8000-00805f9b34fb'; // Standard Location & Navigation
-
-export const MESHTASTIC_CHAR_FROMRADIO = FROM_RADIO_UUID;
-export const MESHTASTIC_CHAR_TORADIO = TO_RADIO_UUID;
-export const MESHTASTIC_CHAR_FROMNUM = FROM_NUM_UUID;
-
-export const MESHTASTIC_CHAR_FROMRADIO_ALT = '2c55e69e-4993-11ea-b77f-2e728ce88125';
-export const MESHTASTIC_CHAR_TORADIO_ALT = 'f75c76d2-129e-11ea-8793-2e728ce88125';
-export const MESHTASTIC_CHAR_FROMRADIO_ALT2 = 'cb0b0004-035f-45f4-822e-b648e23003b3';
-export const MESHTASTIC_CHAR_TORADIO_ALT2 = 'cb0b0003-035f-45f4-822e-b648e23003b3';
-export const MESHTASTIC_CHAR_FROMNUM_ALT2 = 'cb0b0002-035f-45f4-822e-b648e23003b3';
-
-export const NORDIC_UART_CHAR_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-export const NORDIC_UART_CHAR_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-
-/**
- * Lightweight Zero-Dependency Binary Protobuf Stream Parser for Meshtastic BLE/Serial Payloads
- */
-export class ProtoReader {
-  private buffer: Uint8Array;
-  private offset = 0;
-
-  constructor(buffer: Uint8Array) {
-    this.buffer = buffer;
-  }
-
-  public hasMore(): boolean {
-    return this.offset < this.buffer.length;
-  }
-
-  public readTag(): { fieldNum: number; wireType: number } | null {
-    if (!this.hasMore()) return null;
-    const tag = this.readVarint();
-    return { fieldNum: tag >>> 3, wireType: tag & 0x07 };
-  }
-
-  public readVarint(): number {
-    let result = 0;
-    let shift = 0;
-    while (this.offset < this.buffer.length) {
-      const b = this.buffer[this.offset++];
-      result |= (b & 0x7f) << shift;
-      if ((b & 0x80) === 0) break;
-      shift += 7;
-      if (shift >= 35) {
-        // Handle 64-bit sign-extended varints safely
-        while (this.offset < this.buffer.length && (this.buffer[this.offset++] & 0x80) !== 0) {}
-        break;
-      }
-    }
-    return result >>> 0;
-  }
-
-  public readInt32(): number {
-    return this.readVarint() | 0; // Properly handles negative signed integers (e.g. RSSI, Noise)
-  }
-
-  public readFloat(): number {
-    if (this.offset + 4 > this.buffer.length) return 0;
-    const view = new DataView(this.buffer.buffer, this.buffer.byteOffset + this.offset, 4);
-    this.offset += 4;
-    return view.getFloat32(0, true);
-  }
-
-  public readFixed32(): number {
-    if (this.offset + 4 > this.buffer.length) return 0;
-    const view = new DataView(this.buffer.buffer, this.buffer.byteOffset + this.offset, 4);
-    this.offset += 4;
-    return view.getInt32(0, true);
-  }
-
-  public readBytes(): Uint8Array {
-    const len = this.readVarint();
-    const slice = this.buffer.subarray(this.offset, Math.min(this.buffer.length, this.offset + len));
-    this.offset += len;
-    return slice;
-  }
-
-  public readString(): string {
-    const bytes = this.readBytes();
-    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-  }
-
-  public skip(wireType: number): void {
-    if (wireType === 0) this.readVarint();
-    else if (wireType === 1) this.offset += 8;
-    else if (wireType === 2) {
-      const len = this.readVarint();
-      this.offset += len;
-    } else if (wireType === 5) this.offset += 4;
-  }
-}
+import { nodeStatusFromLastPing, formatBattery } from '../utils/formatters';
+import {
+  BROADCAST_NUM,
+  DeviceMetadataMsg,
+  FromRadioMsg,
+  KMH_TO_KT,
+  MeshPacketMsg,
+  NodeInfoMsg,
+  PortNum,
+  decodeFromRadio,
+  decodePosition,
+  decodeTelemetry,
+  decodeUser,
+  encodeToRadioPacket,
+  encodeWantConfig,
+  hardwareModelName,
+  newPacketId,
+  positionLatLng,
+  positionSpeedKt,
+  positionTrackDeg,
+} from './meshtastic/protocol';
 
 export interface MeshtasticPacketLog {
   id: string;
@@ -144,6 +56,41 @@ export interface MeshtasticPacketLog {
     sats?: number;
   };
 }
+
+// Meshtastic Bluetooth service and characteristics (see meshtastic.org "Client API")
+export const MESHTASTIC_SERVICE_UUID = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+export const FROM_RADIO_UUID = '2c55e69e-4993-11ed-b878-0242ac120002'; // read: one FromRadio per read, empty when drained
+export const TO_RADIO_UUID = 'f75c76d2-129e-4dad-a1dd-7866124401e7'; // write: one ToRadio per write
+export const FROM_NUM_UUID = 'ed9da18c-a800-4f66-a670-aa7547e34453'; // notify: new FromRadio data is waiting
+
+// Standard BLE battery service
+export const BATTERY_SERVICE_UUID = '0000180f-0000-1000-8000-00805f9b34fb';
+export const BATTERY_LEVEL_UUID = '00002a19-0000-1000-8000-00805f9b34fb';
+
+export type BleConnectionState = 'disconnected' | 'connecting' | 'configuring' | 'connected' | 'reconnecting' | 'lost';
+
+export interface BleStatus {
+  state: BleConnectionState;
+  deviceName?: string;
+  /** Reconnect attempt number while state is 'reconnecting' */
+  attempt?: number;
+  maxAttempts?: number;
+  error?: string;
+}
+
+const STORAGE_KEY_LAST_BLE_DEVICE = 'tmtrac_last_ble_device_v1';
+// Waits between automatic reconnect attempts; after the last one the user is asked
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15000];
+const CONFIG_TIMEOUT_MS = 20_000;
+
+const PORT_LABELS: Record<number, MeshtasticPacketLog['portnum']> = {
+  [PortNum.TEXT_MESSAGE_APP]: 'TEXT_MESSAGE_APP',
+  [PortNum.POSITION_APP]: 'POSITION_APP',
+  [PortNum.NODEINFO_APP]: 'NODEINFO_APP',
+  [PortNum.ROUTING_APP]: 'ROUTING_APP',
+  [PortNum.TELEMETRY_APP]: 'TELEMETRY_APP',
+};
+
 
 export interface MqttConfig {
   brokerUrl: string; // Official Meshtastic WebSocket: wss://mqtt.meshtastic.org/mqtt
@@ -340,14 +287,25 @@ export function saveMqttConfig(config: Partial<MqttConfig>): MqttConfig {
 type NodeUpdateCallback = (node: MeshtasticNode) => void;
 type PacketCallback = (pktLog: any) => void;
 
-class MeshtasticBleMqttService {
+export class MeshtasticBleMqttService {
   private gattDevice: any = null;
-  private gattServer: any = null;
   private fromRadioChar: any = null;
   private toRadioChar: any = null;
   private fromNumChar: any = null;
-  private nusTxChar: any = null;
+  // Fallback polling, only used when FromNum notifications can't be enabled
   private pollIntervalTimer: any = null;
+  private gattChain: Promise<unknown> = Promise.resolve();
+  private draining = false;
+  private drainAgain = false;
+  private configId = 0;
+  private configComplete = false;
+  private configWaiter: ((ok: boolean) => void) | null = null;
+  private pendingMetadata: DeviceMetadataMsg | null = null;
+  private userDisconnected = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempt = 0;
+  private bleStatus: BleStatus = { state: 'disconnected' };
+  private bleStatusCallbacks: Array<(status: BleStatus) => void> = [];
 
 
   private mqttClient: MqttClient | null = null;
@@ -426,7 +384,7 @@ class MeshtasticBleMqttService {
   }
 
   public isBleActive(): boolean {
-    return this.isBleConnected;
+    return this.bleStatus.state === 'connected';
   }
 
   public isUsbActive(): boolean {
@@ -554,145 +512,6 @@ class MeshtasticBleMqttService {
   }
 
   /**
-   * Encodes a variable-length integer (varint) according to Protobuf specification
-   */
-  private encodeVarintBytes(value: number): number[] {
-    const bytes: number[] = [];
-    let v = value >>> 0;
-    while (v >= 0x80) {
-      bytes.push((v & 0x7F) | 0x80);
-      v >>>= 7;
-    }
-    bytes.push(v & 0x7F);
-    return bytes;
-  }
-
-  /**
-   * Encodes a 32-bit fixed integer (little-endian)
-   */
-  private encodeFixed32Bytes(value: number): number[] {
-    const v = value >>> 0;
-    return [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
-  }
-
-  /**
-   * Constructs a 100% Meshtastic Protocol-compliant ToRadio Protobuf packet for text messages
-   */
-  public buildMeshtasticTextToRadioPacket(
-    text: string,
-    destinationNodeId: string = '^all'
-  ): { packetV1: Uint8Array; packetV2: Uint8Array; packetId: number; toNodeNum: number; fromNodeNum: number } {
-    const encoder = new TextEncoder();
-    const textBytes = Array.from(encoder.encode(text));
-
-    // Parse destination to uint32 node number
-    let toNodeNum = 0xFFFFFFFF; // Default broadcast: 4294967295 (^all / !FFFFFFFF)
-    const isBroadcast =
-      !destinationNodeId ||
-      destinationNodeId === '^all' ||
-      destinationNodeId === '*' ||
-      destinationNodeId.toLowerCase() === 'broadcast' ||
-      destinationNodeId.toUpperCase() === '!FFFFFFFF';
-
-    if (!isBroadcast) {
-      const cleanHex = destinationNodeId.replace(/^(node-|!|0x)/i, '').replace(/[^0-9a-fA-F]/g, '');
-      if (cleanHex.length > 0) {
-        const parsed = parseInt(cleanHex, 16);
-        if (!isNaN(parsed) && parsed > 0) {
-          toNodeNum = parsed >>> 0;
-        }
-      } else {
-        const parsedInt = parseInt(destinationNodeId, 10);
-        if (!isNaN(parsedInt) && parsedInt > 0) {
-          toNodeNum = parsedInt >>> 0;
-        }
-      }
-    }
-
-    // Parse source node number
-    let fromNodeNum = 0x00000000;
-    if (this.connectedNodeId) {
-      const cleanFromHex = this.connectedNodeId.replace(/^(node-|!|0x)/i, '').replace(/[^0-9a-fA-F]/g, '');
-      if (cleanFromHex.length > 0) {
-        const parsedFrom = parseInt(cleanFromHex, 16);
-        if (!isNaN(parsedFrom) && parsedFrom > 0) {
-          fromNodeNum = parsedFrom >>> 0;
-        }
-      }
-    }
-
-    const randomPktId = Math.floor(Math.random() * 0xFFFFFFFF) >>> 0;
-    const isDirectUnicast = !isBroadcast;
-    const nowSec = Math.floor(Date.now() / 1000) >>> 0;
-
-    // 1. Construct Data sub-message (Port 1 = TEXT_MESSAGE_APP)
-    // Field 1: portnum (varint)        -> (1 << 3) | 0 = 0x08, value = 1 (TEXT_MESSAGE_APP)
-    // Field 2: payload (bytes)         -> (2 << 3) | 2 = 0x12, len, ...textBytes
-    // Field 3: want_response (varint)  -> (3 << 3) | 0 = 0x18, value = 1 (if direct unicast)
-    // Field 4: dest (fixed32)          -> (4 << 3) | 5 = 0x25, toNodeNum
-    // Field 5: source (fixed32)        -> (5 << 3) | 5 = 0x2D, fromNodeNum
-    const dataFields: number[] = [
-      0x08, 0x01, // portnum: TEXT_MESSAGE_APP (1)
-      0x12, ...this.encodeVarintBytes(textBytes.length), ...textBytes, // payload string bytes
-    ];
-    if (isDirectUnicast) {
-      dataFields.push(0x18, 0x01); // want_response: true
-      dataFields.push(0x25, ...this.encodeFixed32Bytes(toNodeNum)); // dest
-      if (fromNodeNum > 0) {
-        dataFields.push(0x2D, ...this.encodeFixed32Bytes(fromNodeNum)); // source
-      }
-    }
-
-    // 2. Construct MeshPacket message
-    // Field 1: from (fixed32)          -> (1 << 3) | 5 = 0x0D, fromNodeNum
-    // Field 2: to (fixed32)            -> (2 << 3) | 5 = 0x15, toNodeNum
-    // Field 3: channel (varint)        -> (3 << 3) | 0 = 0x18, 0 (Primary)
-    // Field 4: decoded (Data message)  -> (4 << 3) | 2 = 0x22, len, ...dataFields
-    // Field 5: want_ack (varint)       -> (5 << 3) | 0 = 0x28, 1 (if direct)
-    // Field 6: id (fixed32)            -> (6 << 3) | 5 = 0x35, fixed32 randomPktId
-    // Field 7: rx_time (fixed32)       -> (7 << 3) | 5 = 0x3D, nowSec
-    // Field 10: hop_limit (varint)     -> (10 << 3) | 0 = 0x50, 3 hops
-    // Field 8: hop_limit (legacy varint) -> (8 << 3) | 0 = 0x40, 3 hops
-    const meshPacketFields: number[] = [];
-    if (fromNodeNum > 0) {
-      meshPacketFields.push(0x0D, ...this.encodeFixed32Bytes(fromNodeNum));
-    }
-    meshPacketFields.push(
-      0x15, ...this.encodeFixed32Bytes(toNodeNum), // to = uint32 fixed32
-      0x18, 0x00, // channel = 0
-      0x22, ...this.encodeVarintBytes(dataFields.length), ...dataFields, // decoded Data payload
-    );
-
-    if (isDirectUnicast) {
-      meshPacketFields.push(0x28, 0x01); // want_ack = true
-    }
-
-    meshPacketFields.push(
-      0x35, ...this.encodeFixed32Bytes(randomPktId), // id = random uint32
-      0x3D, ...this.encodeFixed32Bytes(nowSec), // rx_time
-      0x50, 0x03, // hop_limit = 3 hops (Meshtastic v2.x field 10)
-      0x40, 0x03  // hop_limit = 3 hops (legacy field 8)
-    );
-
-    // 3. Wrap into ToRadio message envelopes (Field 1 = 0x0A standard, Field 2 = 0x12 legacy fallback)
-    const toRadioV1 = new Uint8Array([
-      0x0A, ...this.encodeVarintBytes(meshPacketFields.length), ...meshPacketFields,
-    ]);
-
-    const toRadioV2 = new Uint8Array([
-      0x12, ...this.encodeVarintBytes(meshPacketFields.length), ...meshPacketFields,
-    ]);
-
-    return {
-      packetV1: toRadioV1,
-      packetV2: toRadioV2,
-      packetId: randomPktId,
-      toNodeNum,
-      fromNodeNum,
-    };
-  }
-
-  /**
    * Sends a text message to the mesh through the connected tracker (Bluetooth ToRadio), or
    * publishes it to the connected MQTT broker. Reports failure, with a reason, when there is no
    * way to send it or every write failed.
@@ -704,7 +523,7 @@ class MeshtasticBleMqttService {
     const cleanText = (text || '').trim();
     if (!cleanText) return { success: false, error: 'Message cannot be empty' };
 
-    const hasBle = Boolean(this.toRadioChar && this.isBleConnected);
+    const hasBle = Boolean(this.toRadioChar && this.bleStatus.state === 'connected');
     const hasMqtt = Boolean(this.mqttClient && this.mqttClient.connected);
     if (!hasBle && !hasMqtt) {
       return {
@@ -715,41 +534,30 @@ class MeshtasticBleMqttService {
 
     const myNodeId = this.connectedNodeId || 'this device';
     const myName = this.connectedDeviceName || undefined;
-
-    const { packetV1, packetV2, packetId, toNodeNum, fromNodeNum } = this.buildMeshtasticTextToRadioPacket(
-      cleanText,
-      destinationNodeId
-    );
-
-    const isBroadcast =
-      destinationNodeId === '^all' ||
-      destinationNodeId === '*' ||
-      destinationNodeId.toLowerCase() === 'broadcast' ||
-      destinationNodeId.toUpperCase() === '!FFFFFFFF';
-    const targetDisplay = isBroadcast ? 'Broadcast (^all)' : `Direct (${destinationNodeId})`;
+    const destNum = nodeNumFromId(destinationNodeId);
+    const isBroadcast = destNum === null || destNum === BROADCAST_NUM;
+    const toNodeNum = isBroadcast ? BROADCAST_NUM : destNum!;
+    const targetDisplay = isBroadcast ? 'Broadcast (^all)' : `Direct (${canonicalNodeId(destinationNodeId)})`;
+    const packetId = newPacketId();
 
     let via: 'BLE' | 'MQTT' | undefined;
     const errors: string[] = [];
 
     // 1. Hand the packet to the tracker over Bluetooth
     if (hasBle) {
-      const write = async (packet: Uint8Array) => {
-        if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
-          await this.toRadioChar.writeValueWithoutResponse(packet);
-        } else {
-          await this.toRadioChar.writeValue(packet);
-        }
-      };
       try {
-        await write(packetV1);
+        await this.writeToRadio(encodeToRadioPacket({
+          to: toNodeNum,
+          portnum: PortNum.TEXT_MESSAGE_APP,
+          payload: new TextEncoder().encode(cleanText),
+          id: packetId,
+          wantAck: !isBroadcast,
+          // Meshtastic's default hop limit
+          hopLimit: 3,
+        }));
         via = 'BLE';
       } catch (err: any) {
-        try {
-          await write(packetV2);
-          via = 'BLE';
-        } catch (e2: any) {
-          errors.push(`Bluetooth write failed: ${e2?.message || err?.message || 'unknown error'}`);
-        }
+        errors.push(`Bluetooth write failed: ${err?.message || 'unknown error'}`);
       }
     }
 
@@ -758,12 +566,12 @@ class MeshtasticBleMqttService {
       try {
         const cleanBase = this.mqttConfig.topic.replace(/\/?[+#]$/, '').replace(/\/+$/, '');
         const hasChannel = cleanBase.split('/').length >= 4;
-        const dest = canonicalNodeId(destinationNodeId) || '^all';
+        const dest = isBroadcast ? '^all' : canonicalNodeId(destinationNodeId);
         const topic = hasChannel ? `${cleanBase}/${dest}` : `${cleanBase}/LongFast/${dest}`;
 
         const mqttPayload = JSON.stringify({
           channel: 0,
-          from: fromNodeNum || undefined,
+          from: nodeNumFromId(this.connectedNodeId) ?? undefined,
           to: toNodeNum,
           type: 'sendtext',
           sender: myName,
@@ -786,12 +594,12 @@ class MeshtasticBleMqttService {
     }
 
     this.emitPacketLog({
-      id: `pkt-tx-${packetId || Date.now()}`,
+      id: `pkt-tx-${packetId}`,
       timestamp: new Date().toLocaleTimeString(),
       rawTimestamp: Date.now(),
       fromNode: myNodeId,
       fromNodeName: myName,
-      toNode: destinationNodeId,
+      toNode: isBroadcast ? '^all' : canonicalNodeId(destinationNodeId),
       portnum: 'TEXT_MESSAGE_APP',
       hops: 0,
       payload: `TX via ${via === 'BLE' ? 'tracker (Bluetooth)' : 'MQTT broker'} [${targetDisplay}]: "${cleanText}"`,
@@ -800,503 +608,337 @@ class MeshtasticBleMqttService {
     return { success: true, packetId, via };
   }
 
+  // --- BLUETOOTH CONNECTION STATUS ---
+
+  public onBleStatusChange(cb: (status: BleStatus) => void) {
+    this.bleStatusCallbacks.push(cb);
+    cb({ ...this.bleStatus });
+    return () => {
+      this.bleStatusCallbacks = this.bleStatusCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  public getBleStatus(): BleStatus {
+    return { ...this.bleStatus };
+  }
+
+  private setBleStatus(status: BleStatus) {
+    this.bleStatus = status;
+    this.isBleConnected = status.state === 'connected' || status.state === 'configuring';
+    this.bleStatusCallbacks.forEach((cb) => cb({ ...status }));
+  }
+
+  /** Name of the tracker last connected over Bluetooth in this browser, if any */
+  public getLastBleDeviceName(): string | null {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_LAST_BLE_DEVICE) || 'null');
+      return saved?.name || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * The tracker last connected in this browser, if the browser still allows reconnecting to it
+   * without the device picker (navigator.bluetooth.getDevices, where supported).
+   */
+  public async findRememberedBleDevice(): Promise<any | null> {
+    try {
+      const bt = (navigator as any).bluetooth;
+      if (!bt || typeof bt.getDevices !== 'function') return null;
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_LAST_BLE_DEVICE) || 'null');
+      if (!saved?.id) return null;
+      const devices: any[] = await bt.getDevices();
+      return devices.find((d) => d.id === saved.id) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private rememberBleDevice(device: any) {
+    try {
+      localStorage.setItem(STORAGE_KEY_LAST_BLE_DEVICE, JSON.stringify({ id: device.id, name: device.name || '' }));
+    } catch {}
+  }
+
+  // --- WEB BLUETOOTH CONNECTION ---
+  //
+  // Follows the Meshtastic client protocol:
+  // 1. Subscribe to FromNum notifications.
+  // 2. Write ToRadio { want_config_id }.
+  // 3. Read FromRadio until empty, again on each FromNum notification, until config_complete_id
+  //    with our id arrives. Only then is the tracker's own node shown.
+  // All GATT reads and writes go through one queue, so only one runs at a time.
+
+  /** Shows the browser's device picker and connects to the chosen Meshtastic tracker. */
+  public async connectTEchoBle(): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
+    const bt = (navigator as any).bluetooth;
+    if (!bt) {
+      return { success: false, deviceName: '', nodeId: '', error: 'Web Bluetooth is not supported in this browser. Use Chrome or Edge (on Android, Windows, macOS or ChromeOS).' };
+    }
+
+    let device: any;
+    try {
+      device = await bt.requestDevice({
+        filters: [{ services: [MESHTASTIC_SERVICE_UUID] }],
+        optionalServices: [BATTERY_SERVICE_UUID],
+      });
+    } catch (err: any) {
+      if (err?.name === 'NotFoundError') {
+        return { success: false, deviceName: '', nodeId: '', error: 'No tracker was selected.' };
+      }
+      return { success: false, deviceName: '', nodeId: '', error: err?.message || 'Bluetooth request failed.' };
+    }
+    return this.connectToBleDevice(device, false);
+  }
+
+  /** Reconnects to the last tracker without the picker where possible; otherwise shows the picker. */
+  public async reconnectBle(): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
+    this.clearReconnectTimer();
+    this.reconnectAttempt = 0;
+    const device = this.gattDevice || (await this.findRememberedBleDevice());
+    if (device) return this.connectToBleDevice(device, false);
+    return this.connectTEchoBle();
+  }
+
+  /** Disconnects the Bluetooth tracker on purpose (no automatic reconnect). */
+  public disconnectBle() {
+    this.userDisconnected = true;
+    this.clearReconnectTimer();
+    this.teardownGatt(true);
+    this.markLocalNodeDisconnected();
+    this.setBleStatus({ state: 'disconnected', deviceName: this.connectedDeviceName || undefined });
+  }
+
+  private async connectToBleDevice(
+    device: any,
+    isAutoReconnect: boolean
+  ): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
+    if (this.gattDevice && this.gattDevice !== device) {
+      this.gattDevice.removeEventListener?.('gattserverdisconnected', this.onGattDisconnected);
+      this.teardownGatt(true);
+    }
+    this.userDisconnected = false;
+    this.gattDevice = device;
+    this.connectedDeviceName = device.name || '';
+    this.rememberBleDevice(device);
+    device.removeEventListener?.('gattserverdisconnected', this.onGattDisconnected);
+    device.addEventListener('gattserverdisconnected', this.onGattDisconnected);
+
+    const deviceName = this.connectedDeviceName || undefined;
+    if (!isAutoReconnect) {
+      this.setBleStatus({ state: 'connecting', deviceName });
+    }
+
+    try {
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(MESHTASTIC_SERVICE_UUID);
+      this.toRadioChar = await service.getCharacteristic(TO_RADIO_UUID);
+      this.fromRadioChar = await service.getCharacteristic(FROM_RADIO_UUID);
+      this.fromNumChar = await service.getCharacteristic(FROM_NUM_UUID);
+
+      // Battery level from the standard battery service, if exposed; applied once the node id is known
+      this.pendingBatteryLevel = undefined;
+      try {
+        const batService = await server.getPrimaryService(BATTERY_SERVICE_UUID);
+        const batChar = await batService.getCharacteristic(BATTERY_LEVEL_UUID);
+        const val: DataView = await this.gattOp(() => batChar.readValue());
+        this.pendingBatteryLevel = val.getUint8(0);
+      } catch {
+        // Not exposed by this device
+      }
+
+      // FromNum notifications tell us when to read. Poll only if notifications don't work.
+      let notifying = false;
+      try {
+        await this.gattOp(() => this.fromNumChar.startNotifications());
+        this.fromNumChar.addEventListener('characteristicvaluechanged', this.onFromNum);
+        notifying = true;
+      } catch (err) {
+        console.warn('[BLE] FromNum notifications unavailable; polling instead', err);
+      }
+      if (!notifying) this.startFallbackPolling();
+
+      this.setBleStatus({ state: 'configuring', deviceName });
+      const ok = await this.runConfigHandshake();
+      if (!ok) {
+        throw new Error('The tracker did not finish sending its configuration in time.');
+      }
+
+      this.reconnectAttempt = 0;
+      this.setBleStatus({ state: 'connected', deviceName });
+      return { success: true, deviceName: this.connectedDeviceName, nodeId: this.connectedNodeId, node: this.tEchoNodeState ?? undefined };
+    } catch (err: any) {
+      const message = this.describeBleError(err);
+      this.teardownGatt(true);
+      if (!isAutoReconnect) {
+        this.setBleStatus({ state: 'disconnected', deviceName, error: message });
+      }
+      return { success: false, deviceName: this.connectedDeviceName, nodeId: '', error: message };
+    }
+  }
+
+  private describeBleError(err: any): string {
+    const raw = err?.message || String(err || 'Bluetooth connection failed.');
+    if (/in an iframe|cross-origin|permissions policy/i.test(raw)) {
+      return `${raw} Open the app in its own tab and try again.`;
+    }
+    if (err?.name === 'NetworkError' || /GATT|connection/i.test(raw)) {
+      return `${raw} Make sure the tracker is on, in range, and not connected to the Meshtastic app or another device.`;
+    }
+    return raw;
+  }
+
+  private onFromNum = () => {
+    void this.drainFromRadio();
+  };
+
+  private onGattDisconnected = () => {
+    const wasUp = this.bleStatus.state === 'connected' || this.bleStatus.state === 'configuring';
+    this.teardownGatt(false);
+    this.markLocalNodeDisconnected();
+    if (this.userDisconnected || !wasUp) return;
+    console.warn('[BLE] Tracker disconnected; reconnecting');
+    this.reconnectAttempt = 0;
+    this.scheduleReconnect();
+  };
+
+  private scheduleReconnect() {
+    this.clearReconnectTimer();
+    const deviceName = this.connectedDeviceName || undefined;
+    if (this.reconnectAttempt >= RECONNECT_DELAYS_MS.length || !this.gattDevice) {
+      this.setBleStatus({
+        state: 'lost',
+        deviceName,
+        error: 'Lost the Bluetooth connection to the tracker and could not reconnect.',
+      });
+      return;
+    }
+    const delay = RECONNECT_DELAYS_MS[this.reconnectAttempt];
+    this.reconnectAttempt += 1;
+    this.setBleStatus({ state: 'reconnecting', deviceName, attempt: this.reconnectAttempt, maxAttempts: RECONNECT_DELAYS_MS.length });
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      if (this.userDisconnected || !this.gattDevice) return;
+      const res = await this.connectToBleDevice(this.gattDevice, true);
+      if (!res.success && !this.userDisconnected) this.scheduleReconnect();
+    }, delay);
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  /** Drops characteristics and timers. With `disconnectGatt`, also closes the GATT link. */
+  private teardownGatt(disconnectGatt: boolean) {
+    if (this.pollIntervalTimer) {
+      clearInterval(this.pollIntervalTimer);
+      this.pollIntervalTimer = null;
+    }
+    try {
+      this.fromNumChar?.removeEventListener('characteristicvaluechanged', this.onFromNum);
+    } catch {}
+    // The gattserverdisconnected event this causes is ignored: by then the status is no longer
+    // 'connected' or 'configuring', or the user disconnected on purpose
+    if (disconnectGatt && this.gattDevice?.gatt?.connected) {
+      try {
+        this.gattDevice.gatt.disconnect();
+      } catch {}
+    }
+    this.fromRadioChar = null;
+    this.toRadioChar = null;
+    this.fromNumChar = null;
+    this.configComplete = false;
+    this.configWaiter?.(false);
+    this.configWaiter = null;
+    this.isBleConnected = false;
+  }
+
+  private markLocalNodeDisconnected() {
+    // Keep the node and its last-heard time; it goes stale, then offline, on its own
+    if (this.tEchoNodeState) {
+      this.tEchoNodeState = { ...this.tEchoNodeState, isBluetoothConnected: false };
+      this.discoveredBleNodes.set(this.tEchoNodeState.id, this.tEchoNodeState);
+      this.emitNode(this.tEchoNodeState);
+    }
+  }
+
+  private startFallbackPolling() {
+    if (this.pollIntervalTimer) clearInterval(this.pollIntervalTimer);
+    this.pollIntervalTimer = setInterval(() => {
+      if (this.fromRadioChar) void this.drainFromRadio();
+    }, 2000);
+  }
+
+  /** Runs GATT operations one at a time */
+  private gattOp<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.gattChain.then(fn, fn);
+    this.gattChain = run.catch(() => undefined);
+    return run;
+  }
+
+  private async writeToRadio(bytes: Uint8Array) {
+    const ch = this.toRadioChar;
+    if (!ch) throw new Error('No tracker is connected over Bluetooth.');
+    await this.gattOp(() =>
+      typeof ch.writeValueWithResponse === 'function' ? ch.writeValueWithResponse(bytes) : ch.writeValue(bytes)
+    );
+  }
+
+  /** Reads FromRadio until it is empty. A request while draining causes one more pass. */
+  private async drainFromRadio() {
+    if (this.draining) {
+      this.drainAgain = true;
+      return;
+    }
+    this.draining = true;
+    try {
+      do {
+        this.drainAgain = false;
+        // Upper bound so a misbehaving device can't keep us here forever
+        for (let i = 0; i < 1000; i++) {
+          const ch = this.fromRadioChar;
+          if (!ch) return;
+          const dv: DataView = await this.gattOp(() => ch.readValue());
+          if (!dv || dv.byteLength === 0) break;
+          this.handleFromRadioBytes(new Uint8Array(dv.buffer.slice(dv.byteOffset, dv.byteOffset + dv.byteLength)));
+        }
+      } while (this.drainAgain && this.fromRadioChar);
+    } catch (err) {
+      console.warn('[BLE] FromRadio read failed:', err);
+    } finally {
+      this.draining = false;
+    }
+  }
+
+  /** want_config_id, then read until config_complete_id with the same id (or time out) */
+  private async runConfigHandshake(): Promise<boolean> {
+    this.configComplete = false;
+    this.configId = newPacketId();
+    const completed = new Promise<boolean>((resolve) => {
+      this.configWaiter = resolve;
+    });
+
+    await this.writeToRadio(encodeWantConfig(this.configId));
+
+    // Keep draining while the config dump is in progress, in case a notification is missed
+    const kick = setInterval(() => void this.drainFromRadio(), 500);
+    void this.drainFromRadio();
+    const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), CONFIG_TIMEOUT_MS));
+    try {
+      return await Promise.race([completed, timeout]);
+    } finally {
+      clearInterval(kick);
+      this.configWaiter = null;
+    }
+  }
+
   public getConnectedNodeState(): MeshtasticNode | null {
     return this.tEchoNodeState;
   }
-
-  // --- WEB BLUETOOTH T-ECHO CONNECT ---
-  /**
-   * Connects to a Meshtastic tracker over Web Bluetooth. The tracker's node only appears once
-   * the tracker has reported its own node number (MyNodeInfo); nothing is emitted before then,
-   * and its position only ever comes from packets the tracker sends.
-   */
-  public async connectTEchoBle(): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
-    if (!('bluetooth' in navigator)) {
-      return { success: false, deviceName: '', nodeId: '', error: 'Web Bluetooth API is not supported in this browser. Please use Google Chrome, Edge, or Brave.' };
-    }
-
-    try {
-      // Include all standard Meshtastic & BLE service UUID variants
-      const optionalServicesList = [
-        'battery_service',
-        'device_information',
-        MESHTASTIC_BLE_SERVICE_UUID,
-        MESHTASTIC_BLE_SERVICE_UUID_ALT,
-        NORDIC_UART_SERVICE_UUID,
-        LOCATION_NAV_SERVICE_UUID,
-        '6ba10000-0000-1000-8000-00805f9b34fb',
-        '6ba1b080-b13f-4152-80b1-205e21271180',
-        '0000180f-0000-1000-8000-00805f9b34fb',
-        '0000180a-0000-1000-8000-00805f9b34fb',
-      ];
-
-      let device: any = null;
-      try {
-        device = await (navigator as any).bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: optionalServicesList,
-        });
-      } catch (reqErr: any) {
-        if (reqErr.name === 'NotFoundError' || reqErr.message?.includes('cancelled')) {
-          return { success: false, deviceName: '', nodeId: '', error: 'Bluetooth connection request cancelled by user.' };
-        }
-        throw reqErr;
-      }
-
-      if (!device) {
-        return { success: false, deviceName: '', nodeId: '', error: 'No Bluetooth device selected.' };
-      }
-
-      this.gattDevice = device;
-      this.connectedDeviceName = device.name || '';
-      this.connectedNodeId = '';
-      this.tEchoNodeState = null;
-      this.pendingBatteryLevel = undefined;
-
-      device.addEventListener('gattserverdisconnected', () => {
-        this.isBleConnected = false;
-        if (this.pollIntervalTimer) {
-          clearInterval(this.pollIntervalTimer);
-          this.pollIntervalTimer = null;
-        }
-        // Keep the node and its last-heard time; it goes stale, then offline, on its own
-        if (this.tEchoNodeState) {
-          this.tEchoNodeState = { ...this.tEchoNodeState, isBluetoothConnected: false };
-          this.discoveredBleNodes.set(this.tEchoNodeState.id, this.tEchoNodeState);
-          this.emitNode(this.tEchoNodeState);
-        }
-        console.warn('T-Echo BLE Device Disconnected');
-      });
-
-      console.log(`Connecting to GATT Server on ${this.connectedDeviceName}...`);
-
-      // Robust GATT Connection with retry fallback
-      let server: any = null;
-      try {
-        server = await device.gatt.connect();
-      } catch (firstConnectErr: any) {
-        console.warn('First GATT connect attempt failed, retrying in 600ms...', firstConnectErr);
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        try {
-          server = await device.gatt.connect();
-        } catch (secondConnectErr: any) {
-          if (device.gatt && device.gatt.connected) {
-            device.gatt.disconnect();
-          }
-          const isIframe = window.self !== window.top;
-          let detailedErr = `BLE Connection Error: Connection attempt failed. (${secondConnectErr.message || secondConnectErr}).`;
-          if (isIframe) {
-            detailedErr += ' Web Bluetooth may be blocked inside this embedded preview. Open the app in its own tab and try again.';
-          } else {
-            detailedErr += ' Ensure your T-Echo node is powered ON, Bluetooth is enabled, and it is NOT currently connected to the Meshtastic Mobile App or another device.';
-          }
-          return {
-            success: false,
-            deviceName: this.connectedDeviceName,
-            nodeId: '',
-            error: detailedErr,
-          };
-        }
-      }
-
-      this.gattServer = server;
-      this.isBleConnected = true;
-
-      // Battery level from the standard BLE battery service, if the tracker exposes it. It's
-      // applied to the tracker's node once the tracker has told us its node number.
-      try {
-        const batService = await server.getPrimaryService('battery_service');
-        const batChar = await batService.getCharacteristic('00002a19-0000-1000-8000-00805f9b34fb');
-        const val = await batChar.readValue();
-        this.pendingBatteryLevel = val.getUint8(0);
-      } catch (batErr) {
-        console.log('Battery service not exposed or skipped:', batErr);
-      }
-
-      // Subscribe to the Meshtastic characteristics and request the config / NodeDB dump
-      await this.setupBleCharacteristics(server);
-
-      // Start periodic packet reader / heartbeat query
-      this.startBleHeartbeatPolling();
-
-      // Wait for MyNodeInfo so the tracker is listed under its real node id
-      const myId = await this.waitForMyNodeId(10_000);
-      if (!myId) {
-        return {
-          success: true,
-          deviceName: this.connectedDeviceName,
-          nodeId: '',
-          error: 'Connected, but the tracker has not reported its node id yet. It will appear in the list once it does.',
-        };
-      }
-
-      return {
-        success: true,
-        deviceName: this.connectedDeviceName,
-        nodeId: myId,
-        node: this.tEchoNodeState ?? undefined,
-      };
-    } catch (err: any) {
-      console.error('BLE Connect error:', err);
-      return { success: false, deviceName: '', nodeId: '', error: err.message || 'Bluetooth connection failed.' };
-    }
-  }
-
-  private waitForMyNodeId(timeoutMs: number): Promise<string | null> {
-    return new Promise((resolve) => {
-      const started = Date.now();
-      const check = () => {
-        if (this.connectedNodeId) return resolve(this.connectedNodeId);
-        if (!this.isBleConnected || Date.now() - started >= timeoutMs) return resolve(null);
-        setTimeout(check, 200);
-      };
-      check();
-    });
-  }
-
-  // Find and setup GATT characteristics across Meshtastic and Nordic UART profiles
-  public async setupBleCharacteristics(server: any) {
-    await this.listenToRadioPackets(server);
-  }
-
-  /**
-   * 1. Subscribe to FromNum notifications and discover characteristics
-   */
-  public async listenToRadioPackets(server: any) {
-    let service: any = null;
-
-    // Try Official Meshtastic Service first, fallback to legacy
-    try {
-      service = await server.getPrimaryService(MESHTASTIC_SERVICE_UUID);
-      console.log('[BLE] Found Official Meshtastic BLE Service');
-    } catch (e) {
-      try {
-        service = await server.getPrimaryService(MESHTASTIC_BLE_SERVICE_UUID_ALT);
-        console.log('[BLE] Found Legacy Meshtastic BLE Service');
-      } catch (e2) {
-        try {
-          service = await server.getPrimaryService(MESHTASTIC_BLE_SERVICE_UUID_ALT2);
-          console.log('[BLE] Found Alternative Meshtastic BLE Service');
-        } catch (e3) {
-          console.warn('[BLE] Meshtastic Primary Service not found, checking NUS...');
-        }
-      }
-    }
-
-    if (service) {
-      try {
-        this.fromNumChar = await service.getCharacteristic(FROM_NUM_UUID);
-        await this.fromNumChar.startNotifications();
-        this.fromNumChar.addEventListener('characteristicvaluechanged', async () => {
-          await this.readAllPendingFromRadio(this.fromRadioChar);
-        });
-        console.log('[BLE] Subscribed to fromNum notifications');
-      } catch (err) {
-        try {
-          this.fromNumChar = await service.getCharacteristic(MESHTASTIC_CHAR_FROMNUM_ALT2);
-          await this.fromNumChar.startNotifications();
-          this.fromNumChar.addEventListener('characteristicvaluechanged', async () => {
-            await this.readAllPendingFromRadio(this.fromRadioChar);
-          });
-        } catch (e) {
-          console.warn('[BLE] fromNum characteristic not found or failed to subscribe:', err);
-        }
-      }
-
-      try {
-        this.fromRadioChar = await service.getCharacteristic(FROM_RADIO_UUID);
-        try {
-          await this.fromRadioChar.startNotifications();
-          this.fromRadioChar.addEventListener('characteristicvaluechanged', (evt: any) => {
-            const dataView = evt.target.value;
-            if (dataView && dataView.byteLength > 0) {
-              const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
-              this.decodeFromRadioPacket(bytes);
-            }
-          });
-          console.log('[BLE] Subscribed to fromRadio direct notifications');
-        } catch (_) {}
-      } catch (err) {
-        try {
-          this.fromRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_FROMRADIO_ALT);
-        } catch (e) {
-          try {
-            this.fromRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_FROMRADIO_ALT2);
-          } catch (e2) {
-            console.warn('[BLE] fromRadio characteristic not found:', err);
-          }
-        }
-      }
-
-      try {
-        this.toRadioChar = await service.getCharacteristic(TO_RADIO_UUID);
-        console.log('[BLE] Found toRadio characteristic');
-        await this.sendToRadioHandshake();
-      } catch (err) {
-        try {
-          this.toRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_TORADIO_ALT);
-          await this.sendToRadioHandshake();
-        } catch (e) {
-          try {
-            this.toRadioChar = await service.getCharacteristic(MESHTASTIC_CHAR_TORADIO_ALT2);
-            await this.sendToRadioHandshake();
-          } catch (e2) {
-            console.warn('[BLE] toRadio characteristic not found:', err);
-          }
-        }
-      }
-
-      // Initial read to clear queue & fetch first packets
-      await this.readAllPendingFromRadio(this.fromRadioChar);
-    }
-
-    // Also check Nordic UART Service for NMEA / Serial Stream
-    try {
-      const nusService = await server.getPrimaryService(NORDIC_UART_SERVICE_UUID);
-      if (nusService) {
-        try {
-          this.nusTxChar = await nusService.getCharacteristic(NORDIC_UART_CHAR_TX);
-          await this.nusTxChar.startNotifications();
-          this.nusTxChar.addEventListener('characteristicvaluechanged', (evt: any) => {
-            this.handleBleNotification(evt.target.value);
-          });
-          console.log('[BLE] Subscribed to Nordic UART TX stream');
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
-
-  /**
-   * 2. Drain all pending packets from FromRadio until empty
-   */
-  public async readAllPendingFromRadio(fromRadioChar?: any): Promise<void> {
-    const targetChar = fromRadioChar || this.fromRadioChar;
-    if (!targetChar) return;
-
-    let emptyStreak = 0;
-    while (emptyStreak < 2) {
-      try {
-        const dataView = await targetChar.readValue();
-        if (!dataView || dataView.byteLength === 0) {
-          emptyStreak++;
-          break;
-        }
-        emptyStreak = 0;
-        const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
-        this.decodeFromRadioPacket(bytes);
-      } catch (err) {
-        break;
-      }
-    }
-  }
-
-  // Send Meshtastic Handshake Packet to ToRadio to request NodeDB (including remote LoRa mesh nodes)
-  public async sendToRadioHandshake() {
-    if (!this.toRadioChar) return;
-    try {
-      // Meshtastic ToRadio want_config_id is field 3: (3 << 3) | 0 = 0x18
-      const randId = Math.floor(Math.random() * 1000000) + 1;
-      const handshake = this.encodeVarintField(3, randId);
-      if (typeof this.toRadioChar.writeValueWithoutResponse === 'function') {
-        await this.toRadioChar.writeValueWithoutResponse(handshake);
-      } else {
-        await this.toRadioChar.writeValue(handshake);
-      }
-      console.log(`[BLE] Sent ToRadio want_config_id (${randId}) to trigger full NodeDB dump`);
-    } catch (e) {
-      try {
-        const randId = Math.floor(Math.random() * 1000000) + 1;
-        const fallback = this.encodeVarintField(100, randId);
-        await this.toRadioChar.writeValue(fallback);
-      } catch (e2) {
-        console.warn('[BLE] Could not write handshake to ToRadio:', e);
-      }
-    }
-  }
-
-  private encodeVarintField(fieldNum: number, value: number): Uint8Array {
-    const tag = (fieldNum << 3) | 0;
-    const bytes = [tag];
-    let v = value >>> 0;
-    while (v >= 0x80) {
-      bytes.push((v & 0x7F) | 0x80);
-      v >>>= 7;
-    }
-    bytes.push(v & 0x7F);
-    return new Uint8Array(bytes);
-  }
-
-  // Start periodic polling fallback
-  private startBleHeartbeatPolling() {
-    if (this.pollIntervalTimer) clearInterval(this.pollIntervalTimer);
-    this.pollIntervalTimer = setInterval(async () => {
-      if (!this.isBleConnected || !this.gattServer || !this.gattServer.connected) {
-        return;
-      }
-      try {
-        await this.readAllPendingFromRadio();
-      } catch (_) {}
-    }, 2500);
-  }
-
-
-  // Parse incoming BLE GATT characteristic notifications (binary Protobuf and text/NMEA)
-  private handleBleNotification(dataView: DataView) {
-    try {
-      const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
-      if (bytes.length === 0) return;
-
-      // Check if text/NMEA string was sent over serial BLE ($GNRMC, $GNGGA, JSON)
-      try {
-        const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-        if (text.includes('$GP') || text.includes('$GN') || text.includes('{')) {
-          this.parseRawTextTelemetry(text);
-          return;
-        }
-      } catch (_) {}
-
-      // Binary Protobuf Parser for Meshtastic FromRadio
-      this.decodeFromRadioPacket(bytes);
-    } catch (e) {
-      console.error('Notification parse error:', e);
-    }
-  }
-
-  // Helper: Read a single protobuf varint
-  private readVarint(bytes: Uint8Array, offset: number): { value: number; nextOffset: number } {
-    let val = 0;
-    let shift = 0;
-    let curr = offset;
-    while (curr < bytes.length) {
-      const b = bytes[curr++];
-      val |= (b & 0x7F) << shift;
-      shift += 7;
-      if ((b & 0x80) === 0) break;
-    }
-    return { value: val >>> 0, nextOffset: curr };
-  }
-
-  // Helper: Read length-delimited bytes sub-slice
-  private readBytes(bytes: Uint8Array, offset: number): { data: Uint8Array; nextOffset: number } {
-    const { value: len, nextOffset } = this.readVarint(bytes, offset);
-    const end = Math.min(bytes.length, nextOffset + len);
-    const data = bytes.subarray(nextOffset, end);
-    return { data, nextOffset: end };
-  }
-
-  // Helper: Read string
-  private readString(bytes: Uint8Array, offset: number): { str: string; nextOffset: number } {
-    const { data, nextOffset } = this.readBytes(bytes, offset);
-    const str = new TextDecoder('utf-8', { fatal: false }).decode(data);
-    return { str, nextOffset };
-  }
-
-  // Parse Position message protobuf payload
-  private parseProtobufPosition(bytes: Uint8Array): {
-    lat: number | null;
-    lng: number | null;
-    alt: number | null;
-    speedKt: number | null;
-    headingDeg: number | null;
-    sats: number | null;
-    precisionBits: number | null;
-    time: number | null;
-  } {
-    let offset = 0;
-    let lat: number | null = null;
-    let lng: number | null = null;
-    let alt: number | null = null;
-    let speedKt: number | null = null;
-    let headingDeg: number | null = null;
-    let sats: number | null = null;
-    let precisionBits: number | null = null;
-    let time: number | null = null;
-
-    while (offset < bytes.length) {
-      const tagByte = bytes[offset++];
-      const wireType = tagByte & 0x07;
-      const fieldNum = tagByte >> 3;
-
-      if (wireType === 0) { // Varint
-        const { value, nextOffset } = this.readVarint(bytes, offset);
-        offset = nextOffset;
-        if (fieldNum === 3) alt = value;
-        if (fieldNum === 8) speedKt = +(value * 1.94384).toFixed(1); // m/s -> knots
-        if (fieldNum === 9) headingDeg = value;
-        if (fieldNum === 10) sats = value;
-        if (fieldNum === 11) precisionBits = value;
-      } else if (wireType === 5) { // 32-bit fixed
-        if (offset + 4 <= bytes.length) {
-          const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 4);
-          const intVal = dv.getInt32(0, true);
-          offset += 4;
-          if (fieldNum === 1) lat = intVal / 1e7;
-          else if (fieldNum === 2) lng = intVal / 1e7;
-          else if (fieldNum === 4) time = intVal;
-          else if (fieldNum === 8) {
-            const floatVal = dv.getFloat32(0, true);
-            if (!isNaN(floatVal) && floatVal >= 0) speedKt = +(floatVal * 1.94384).toFixed(1);
-          }
-          else if (fieldNum === 9) {
-            const floatVal = dv.getFloat32(0, true);
-            if (!isNaN(floatVal) && floatVal >= 0) headingDeg = Math.round(floatVal);
-          }
-        } else {
-          break;
-        }
-      } else if (wireType === 2) { // Length-delimited
-        const { nextOffset } = this.readBytes(bytes, offset);
-        offset = nextOffset;
-      } else if (wireType === 1) { // 64-bit
-        offset += 8;
-      } else {
-        break;
-      }
-    }
-
-    return { lat, lng, alt, speedKt, headingDeg, sats, precisionBits, time };
-  }
-
-  // Parse User message protobuf payload
-  private parseProtobufUser(bytes: Uint8Array): {
-    id?: string;
-    longName?: string;
-    shortName?: string;
-    hwModel?: string;
-  } {
-    let offset = 0;
-    let id: string | undefined;
-    let longName: string | undefined;
-    let shortName: string | undefined;
-
-    while (offset < bytes.length) {
-      const tagByte = bytes[offset++];
-      const wireType = tagByte & 0x07;
-      const fieldNum = tagByte >> 3;
-
-      if (wireType === 2) {
-        const { str, nextOffset } = this.readString(bytes, offset);
-        offset = nextOffset;
-        if (fieldNum === 1) id = str;
-        if (fieldNum === 2) longName = str;
-        if (fieldNum === 3) shortName = str;
-      } else if (wireType === 0) {
-        const { nextOffset } = this.readVarint(bytes, offset);
-        offset = nextOffset;
-      } else if (wireType === 5) {
-        offset += 4;
-      } else if (wireType === 1) {
-        offset += 8;
-      } else {
-        break;
-      }
-    }
-
-    return { id, longName, shortName };
-  }
-
-
-
 
   /**
    * Adds or updates a node from data that node reported, and emits it.
@@ -1380,7 +1022,11 @@ class MeshtasticBleMqttService {
       this.tEchoNodeState = node;
     }
 
-    this.emitNode(node);
+    // The tracker's own node is shown once the config handshake has finished
+    const holdUntilConfigured = isLocal && source === 'BLE' && !this.configComplete;
+    if (!holdUntilConfigured) {
+      this.emitNode(node);
+    }
 
     // Only share a fresh position from this node, and never echo MQTT traffic back to the broker
     if (
@@ -1395,540 +1041,239 @@ class MeshtasticBleMqttService {
     return node;
   }
 
-  /**
-   * 3. Decode incoming FromRadio Protobuf packet using ProtoReader
-   */
-  public decodeFromRadioPacket(bytes: Uint8Array) {
+  // --- FROMRADIO HANDLING ---
+
+  /** Decodes one FromRadio message (public so recorded packets can be replayed in tests) */
+  public handleFromRadioBytes(bytes: Uint8Array) {
+    let fr: FromRadioMsg;
     try {
-      const reader = new ProtoReader(bytes);
-      while (reader.hasMore()) {
-        const tag = reader.readTag();
-        if (!tag) break;
-
-        switch (tag.fieldNum) {
-          // Tag 2 & 11: MeshPacket (LoRa radio packet)
-          case 2:
-          case 11: {
-            if (tag.wireType === 2) {
-              const packetBytes = reader.readBytes();
-              this.decodeMeshPacket(packetBytes);
-            } else {
-              reader.skip(tag.wireType);
-            }
-            break;
-          }
-
-          // Tag 3: MyNodeInfo (Node's own identity)
-          case 3: {
-            if (tag.wireType === 2) {
-              const infoBytes = reader.readBytes();
-              this.decodeMyInfo(infoBytes);
-            } else {
-              reader.skip(tag.wireType);
-            }
-            break;
-          }
-
-          // Tag 4: NodeInfo (Other nodes discovered in mesh / NodeDB)
-          case 4: {
-            if (tag.wireType === 2) {
-              const nodeBytes = reader.readBytes();
-              this.decodeNodeInfo(nodeBytes);
-            } else {
-              reader.skip(tag.wireType);
-            }
-            break;
-          }
-
-          // Tag 7: config_complete_id
-          case 7: {
-            if (tag.wireType === 0) {
-              const configId = reader.readVarint();
-              console.log(`[BLE] Mesh NodeDB & Config sync complete (ID: ${configId})`);
-            } else {
-              reader.skip(tag.wireType);
-            }
-            break;
-          }
-
-          default:
-            reader.skip(tag.wireType);
-            break;
-        }
-      }
+      fr = decodeFromRadio(bytes);
     } catch (err) {
-      console.warn('[BLE] decodeFromRadioPacket parse notice:', err);
-    }
-  }
-
-  /**
-   * Decode MyNodeInfo (Tag 3 in FromRadio)
-   */
-  public decodeMyInfo(infoBytes: Uint8Array) {
-    const reader = new ProtoReader(infoBytes);
-    let myNodeNum: number | null = null;
-    let hasGps = false;
-    let firmwareVersion: string | undefined;
-
-    while (reader.hasMore()) {
-      const tag = reader.readTag();
-      if (!tag) break;
-
-      if (tag.fieldNum === 1 && (tag.wireType === 0 || tag.wireType === 5)) { // my_node_num
-        myNodeNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
-      } else if (tag.fieldNum === 2 && tag.wireType === 0) { // has_gps
-        hasGps = reader.readVarint() !== 0;
-      } else if (tag.fieldNum === 4 && tag.wireType === 2) { // firmware_version
-        firmwareVersion = reader.readString();
-      } else {
-        reader.skip(tag.wireType);
-      }
+      console.warn('[BLE] Could not decode FromRadio:', err);
+      return;
     }
 
-    if (myNodeNum !== null) {
-      const myHexId = canonicalNodeId(myNodeNum);
-      this.connectedNodeId = myHexId;
-      const node = this.upsertDiscoveredNode(myHexId, {
-        longName: this.connectedDeviceName || undefined,
-        connectionType: 'BLE',
-        firmwareVersion,
-        battery: this.pendingBatteryLevel,
-        // The tracker is talking to us over Bluetooth right now
-        lastPingTime: Date.now(),
-      }, true);
-      this.pendingBatteryLevel = undefined;
-      this.tEchoNodeState = node;
-      console.log(`[BLE] MyNodeInfo decoded: ${myHexId}${firmwareVersion ? ` (${firmwareVersion})` : ''}${hasGps ? ', has GPS' : ''}`);
-    }
-  }
+    if (fr.myInfo?.myNodeNum !== undefined) this.handleMyInfo(fr.myInfo.myNodeNum);
+    if (fr.metadata) this.handleMetadata(fr.metadata);
+    if (fr.nodeInfo) this.handleNodeInfo(fr.nodeInfo);
+    if (fr.packet) this.handlePacket(fr.packet);
 
-  /**
-   * Decode NodeInfo (Tag 4 in FromRadio - Node Database entry from LoRa mesh)
-   */
-  public decodeNodeInfo(nodeBytes: Uint8Array) {
-    const reader = new ProtoReader(nodeBytes);
-    let nodeNum: number | null = null;
-    let user: { id?: string; longName?: string; shortName?: string; hwModel?: string } = {};
-    let pos: { lat: number | null; lng: number | null; alt: number | null; speedKt: number | null; headingDeg: number | null; sats: number | null } = { lat: null, lng: null, alt: null, speedKt: null, headingDeg: null, sats: null };
-    let snr: number | undefined;
-    let lastHeardSec: number | undefined;
-    let metrics: { batteryLevel?: number; voltage?: number; channelUtil?: number; airUtilTx?: number } = {};
-    let hopsAway: number | undefined;
-
-    while (reader.hasMore()) {
-      const tag = reader.readTag();
-      if (!tag) break;
-
-      if (tag.fieldNum === 1 && (tag.wireType === 0 || tag.wireType === 5)) { // num
-        nodeNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
-      } else if (tag.fieldNum === 2 && tag.wireType === 2) { // user
-        const uReader = new ProtoReader(reader.readBytes());
-        while (uReader.hasMore()) {
-          const uTag = uReader.readTag();
-          if (!uTag) break;
-          if (uTag.fieldNum === 1 && uTag.wireType === 2) user.id = uReader.readString();
-          else if (uTag.fieldNum === 2 && uTag.wireType === 2) user.longName = uReader.readString();
-          else if (uTag.fieldNum === 3 && uTag.wireType === 2) user.shortName = uReader.readString();
-          else if (uTag.fieldNum === 5 && uTag.wireType === 0) user.hwModel = `HW_${uReader.readVarint()}`;
-          else uReader.skip(uTag.wireType);
-        }
-      } else if (tag.fieldNum === 3 && tag.wireType === 2) { // position
-        const pReader = new ProtoReader(reader.readBytes());
-        while (pReader.hasMore()) {
-          const pTag = pReader.readTag();
-          if (!pTag) break;
-          if (pTag.fieldNum === 1 && (pTag.wireType === 5 || pTag.wireType === 0)) {
-            const rawLat = pTag.wireType === 5 ? pReader.readFixed32() : pReader.readInt32();
-            pos.lat = rawLat / 1e7;
-          } else if (pTag.fieldNum === 2 && (pTag.wireType === 5 || pTag.wireType === 0)) {
-            const rawLng = pTag.wireType === 5 ? pReader.readFixed32() : pReader.readInt32();
-            pos.lng = rawLng / 1e7;
-          } else if (pTag.fieldNum === 3 && (pTag.wireType === 0 || pTag.wireType === 5)) {
-            pos.alt = pTag.wireType === 0 ? pReader.readInt32() : pReader.readFixed32();
-          } else if (pTag.fieldNum === 8 && (pTag.wireType === 0 || pTag.wireType === 5)) {
-            const spd = pTag.wireType === 0 ? pReader.readVarint() : pReader.readFloat();
-            pos.speedKt = +(spd * 1.94384).toFixed(1);
-          } else if (pTag.fieldNum === 9 && (pTag.wireType === 0 || pTag.wireType === 5)) {
-            const hdg = pTag.wireType === 0 ? pReader.readVarint() : pReader.readFloat();
-            pos.headingDeg = Math.round(hdg);
-          } else if (pTag.fieldNum === 10 && pTag.wireType === 0) {
-            pos.sats = pReader.readVarint();
-          } else {
-            pReader.skip(pTag.wireType);
-          }
-        }
-      } else if (tag.fieldNum === 4 && tag.wireType === 5) { // snr
-        snr = +reader.readFloat().toFixed(1);
-      } else if (tag.fieldNum === 5 && tag.wireType === 5) { // last_heard (seconds since epoch)
-        lastHeardSec = reader.readFixed32() >>> 0;
-      } else if (tag.fieldNum === 6 && tag.wireType === 2) { // device_metrics
-        const mReader = new ProtoReader(reader.readBytes());
-        while (mReader.hasMore()) {
-          const mTag = mReader.readTag();
-          if (!mTag) break;
-          if (mTag.fieldNum === 1 && mTag.wireType === 0) metrics.batteryLevel = Math.max(0, mReader.readVarint()); // 101 = external power
-          else if (mTag.fieldNum === 2 && mTag.wireType === 5) metrics.voltage = +mReader.readFloat().toFixed(2);
-          else if (mTag.fieldNum === 3 && mTag.wireType === 5) metrics.channelUtil = +mReader.readFloat().toFixed(1);
-          else if (mTag.fieldNum === 4 && mTag.wireType === 5) metrics.airUtilTx = +mReader.readFloat().toFixed(1);
-          else mReader.skip(mTag.wireType);
-        }
-      } else if (tag.fieldNum === 7 && tag.wireType === 0) { // hops_away
-        hopsAway = reader.readVarint();
-      } else {
-        reader.skip(tag.wireType);
-      }
+    if (fr.configCompleteId !== undefined && fr.configCompleteId === this.configId) {
+      this.configComplete = true;
+      // The tracker's own node is shown only now, with its real id and config
+      if (this.tEchoNodeState) this.emitNode(this.tEchoNodeState);
+      this.configWaiter?.(true);
+      this.configWaiter = null;
     }
 
-    if (nodeNum !== null || user.id) {
-      const canonicalId = canonicalNodeId(user.id || nodeNum!);
-      // Only the tracker's own entry is local, and we only know which that is once MyNodeInfo arrived
-      const isLocal = Boolean(this.connectedNodeId) && canonicalId === this.connectedNodeId;
-
-      // The radio's NodeDB says when it last heard each node; a node it never heard has no time.
-      // Our own tracker is connected right now.
-      const lastPingTime = isLocal
-        ? Date.now()
-        : (lastHeardSec && lastHeardSec > 0 ? Math.min(lastHeardSec * 1000, Date.now()) : undefined);
-
-      const discovered = this.upsertDiscoveredNode(canonicalId, {
-        longName: user.longName || (isLocal ? this.connectedDeviceName || undefined : undefined),
-        shortName: user.shortName,
-        hardwareModel: user.hwModel,
-        lat: (pos.lat !== null && !isNaN(pos.lat) && pos.lat !== 0) ? pos.lat : undefined,
-        lng: (pos.lng !== null && !isNaN(pos.lng) && pos.lng !== 0) ? pos.lng : undefined,
-        altitudeMeters: pos.alt ?? undefined,
-        speedKt: pos.speedKt ?? undefined,
-        headingDeg: pos.headingDeg ?? undefined,
-        satsInFix: pos.sats ?? undefined,
-        battery: metrics.batteryLevel ?? undefined,
-        voltage: metrics.voltage ?? undefined,
-        channelUtil: metrics.channelUtil ?? undefined,
-        airUtilTx: metrics.airUtilTx ?? undefined,
-        snr,
-        hops: isLocal ? 0 : hopsAway,
-        connectionType: isLocal ? 'BLE' : 'LORA_MESH',
-        lastPingTime,
-      }, isLocal);
-
-      this.emitPacketLog({
-        id: 'pkt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-        timestamp: new Date().toLocaleTimeString(),
-        rawTimestamp: Date.now(),
-        fromNode: discovered.id,
-        fromNodeName: discovered.longName,
-        toNode: '^all',
-        portnum: 'NODEINFO_APP',
-        snr,
-        hops: isLocal ? 0 : hopsAway,
-        payload: `NodeDB Entry: ${discovered.longName} (${discovered.id}) ${discovered.lat ? `Pos:${discovered.lat.toFixed(4)},${discovered.lng?.toFixed(4)}` : 'No GPS Fix'}${hopsAway !== undefined ? ` Hops:${hopsAway}` : ''}`,
-      });
-
-      console.log(`[BLE] Discovered LoRa Node from NodeDB: ${discovered.id} (${discovered.longName})`);
-    }
-  }
-
-  /**
-   * Decode MeshPacket (Tag 2 & 11 in FromRadio)
-   */
-  public decodeMeshPacket(packetBytes: Uint8Array) {
-    const reader = new ProtoReader(packetBytes);
-    let fromNum: number | null = null;
-    let toNum: number | null = null;
-    let portnum = 0;
-    let payloadBytes: Uint8Array | null = null;
-    let rxSnr: number | undefined;
-    let rxRssi: number | undefined;
-
-    while (reader.hasMore()) {
-      const tag = reader.readTag();
-      if (!tag) break;
-
-      if (tag.fieldNum === 1 && (tag.wireType === 0 || tag.wireType === 5)) { // from
-        fromNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
-      } else if (tag.fieldNum === 2 && (tag.wireType === 0 || tag.wireType === 5)) { // to
-        toNum = tag.wireType === 0 ? reader.readVarint() : reader.readFixed32() >>> 0;
-      } else if (tag.fieldNum === 4 && tag.wireType === 2) { // decoded (Data)
-        const dReader = new ProtoReader(reader.readBytes());
-        while (dReader.hasMore()) {
-          const dTag = dReader.readTag();
-          if (!dTag) break;
-          if (dTag.fieldNum === 1 && dTag.wireType === 0) portnum = dReader.readVarint();
-          else if (dTag.fieldNum === 2 && dTag.wireType === 2) payloadBytes = dReader.readBytes();
-          else dReader.skip(dTag.wireType);
+    if (fr.rebooted && this.bleStatus.state === 'connected') {
+      // The device restarted and forgot our session; ask for its config again
+      this.setBleStatus({ state: 'configuring', deviceName: this.connectedDeviceName || undefined });
+      void this.runConfigHandshake().then((ok) => {
+        if (this.toRadioChar) {
+          this.setBleStatus(ok
+            ? { state: 'connected', deviceName: this.connectedDeviceName || undefined }
+            : { state: 'lost', deviceName: this.connectedDeviceName || undefined, error: 'The tracker restarted and did not resend its configuration.' });
         }
-      } else if (tag.fieldNum === 7 && tag.wireType === 5) { // rx_snr
-        rxSnr = +reader.readFloat().toFixed(1);
-      } else if (tag.fieldNum === 11 && (tag.wireType === 0 || tag.wireType === 5)) { // rx_rssi
-        rxRssi = reader.readInt32();
-        if (rxRssi > 0) rxRssi = -rxRssi;
-      } else {
-        reader.skip(tag.wireType);
-      }
-    }
-
-    if (fromNum !== null) {
-      const senderId = canonicalNodeId(fromNum);
-      const isLocal = Boolean(this.connectedNodeId) && senderId === this.connectedNodeId;
-
-      let updates: Partial<MeshtasticNode> = {
-        snr: rxSnr,
-        rssi: rxRssi,
-        hops: isLocal ? 0 : undefined,
-        connectionType: isLocal ? 'BLE' : 'LORA_MESH',
-        // We just received a packet from this node
-        lastPingTime: Date.now(),
-      };
-      let logPayload = `PortNum ${portnum}`;
-      let textMsg: string | undefined;
-
-      if (payloadBytes && payloadBytes.length > 0) {
-        // Port 1: TEXT_MESSAGE_APP
-        if (portnum === 1) {
-          textMsg = new TextDecoder('utf-8', { fatal: false }).decode(payloadBytes);
-          logPayload = `Text: "${textMsg}"`;
-        }
-        // Port 3: POSITION_APP
-        else if (portnum === 3) {
-          const pos = this.parseProtobufPosition(payloadBytes);
-          if (pos.lat !== null && pos.lng !== null && !isNaN(pos.lat) && !isNaN(pos.lng) && (pos.lat !== 0 || pos.lng !== 0)) {
-            updates.lat = pos.lat;
-            updates.lng = pos.lng;
-            if (pos.alt !== null) updates.altitudeMeters = pos.alt;
-            if (pos.speedKt !== null) updates.speedKt = pos.speedKt;
-            if (pos.headingDeg !== null) updates.headingDeg = pos.headingDeg;
-            if (pos.sats !== null) updates.satsInFix = pos.sats;
-
-            // GNSS satellite atomic hardware timestamp (pos.time is in seconds since epoch from GPS receiver)
-            const gnssSatelliteTime = (pos.time !== null && pos.time > 1000000000) ? Math.min(pos.time * 1000, Date.now()) : Date.now();
-
-            // Buffer point for Store-and-Forward trajectory replay and mark rounding backfill
-            const backfillPt: BackfillPoint = {
-              lat: pos.lat,
-              lng: pos.lng,
-              speedKt: pos.speedKt ?? 0,
-              headingDeg: pos.headingDeg ?? 0,
-              altitudeMeters: pos.alt ?? 0,
-              accuracy: (pos.sats && pos.sats >= 4) ? Math.max(2, 20 - pos.sats) : 5,
-              timestamp: gnssSatelliteTime,
-            };
-            const buf = this.nodePositionBuffers.get(senderId) || [];
-            buf.push(backfillPt);
-            if (buf.length > 2000) buf.shift();
-            this.nodePositionBuffers.set(senderId, buf);
-
-            const timeStr = new Date(gnssSatelliteTime).toISOString().slice(11, 19);
-            logPayload = `GNSS Sat Fix: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} SOG:${pos.speedKt ?? 0}kt COG:${pos.headingDeg ?? 0}° [GPS Time: ${timeStr}Z]`;
-          }
-        }
-        // Port 4: NODEINFO_APP
-        else if (portnum === 4) {
-          const user = this.parseProtobufUser(payloadBytes);
-          if (user.longName) updates.longName = user.longName;
-          if (user.shortName) updates.shortName = user.shortName;
-          logPayload = `Node Info: ${user.longName || user.shortName || senderId}`;
-        }
-        // Port 67: TELEMETRY_APP
-        else if (portnum === 67) {
-          const telemetry = this.decodeTelemetryPacket(payloadBytes);
-          if (telemetry.batteryPct !== undefined) updates.battery = telemetry.batteryPct;
-          if (telemetry.voltage !== undefined) updates.voltage = telemetry.voltage;
-          if (telemetry.tempC !== undefined) updates.temperature = telemetry.tempC;
-          if (telemetry.humPct !== undefined) {
-            updates.humidity = telemetry.humPct;
-            updates.relativeHumidity = telemetry.humPct;
-          }
-          if (telemetry.pressureHpa !== undefined) updates.barometricPressure = telemetry.pressureHpa;
-          if (telemetry.tempC !== undefined || telemetry.pressureHpa !== undefined) {
-            updates.sensorModel = 'BME280';
-            logPayload = `BME280: ${telemetry.tempC ?? '?'}°C, ${telemetry.humPct ?? '?'}% RH, ${telemetry.pressureHpa ?? '?'} hPa`;
-          } else if (telemetry.batteryPct !== undefined) {
-            logPayload = `Device Telemetry: Bat ${telemetry.batteryPct}% (${telemetry.voltage ?? '?'}V)`;
-          }
-        }
-      }
-
-      const senderNode = this.upsertDiscoveredNode(senderId, updates, isLocal);
-
-      this.emitPacketLog({
-        id: 'pkt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-        timestamp: new Date().toLocaleTimeString(),
-        rawTimestamp: Date.now(),
-        fromNode: senderNode.id,
-        fromNodeName: senderNode.longName,
-        toNode: toNum && toNum !== 0xFFFFFFFF ? canonicalNodeId(toNum) : '^all',
-        portnum: portnum === 1 ? 'TEXT_MESSAGE_APP' : (portnum === 3 ? 'POSITION_APP' : (portnum === 4 ? 'NODEINFO_APP' : (portnum === 67 ? 'TELEMETRY_APP' : 'ROUTING_APP'))),
-        snr: rxSnr,
-        rssi: rxRssi,
-        hops: updates.hops,
-        payload: logPayload,
-        textMessage: textMsg,
       });
     }
   }
 
-  /**
-   * 4. Decode Telemetry Protobuf Packet (Port 67)
-   */
-  public decodeTelemetryPacket(payloadBytes: Uint8Array): {
-    tempC?: number;
-    humPct?: number;
-    pressureHpa?: number;
-    batteryPct?: number;
-    voltage?: number;
-  } {
-    const reader = new ProtoReader(payloadBytes);
-    let tempC: number | undefined;
-    let humPct: number | undefined;
-    let pressureHpa: number | undefined;
-    let batteryPct: number | undefined;
-    let voltage: number | undefined;
-
-    while (reader.hasMore()) {
-      const tag = reader.readTag();
-      if (!tag) break;
-
-      // Field 2: DeviceMetrics (Battery, Voltage, Channel Util)
-      if (tag.fieldNum === 2) {
-        const dmReader = new ProtoReader(reader.readBytes());
-        while (dmReader.hasMore()) {
-          const dTag = dmReader.readTag();
-          if (dTag.fieldNum === 1) batteryPct = dmReader.readVarint();
-          else if (dTag.fieldNum === 2) voltage = parseFloat(dmReader.readFloat().toFixed(2));
-          else dmReader.skip(dTag.wireType);
-        }
-      }
-      // Field 3: EnvironmentMetrics (BME280 / SHTC3 Onboard Sensor)
-      else if (tag.fieldNum === 3) {
-        const envReader = new ProtoReader(reader.readBytes());
-        while (envReader.hasMore()) {
-          const eTag = envReader.readTag();
-          if (eTag.fieldNum === 1) tempC = parseFloat(envReader.readFloat().toFixed(1));
-          else if (eTag.fieldNum === 2) humPct = Math.round(envReader.readFloat());
-          else if (eTag.fieldNum === 3) pressureHpa = parseFloat(envReader.readFloat().toFixed(1));
-          else envReader.skip(eTag.wireType);
-        }
-      } else {
-        reader.skip(tag.wireType);
-      }
-    }
-
-    return { tempC, humPct, pressureHpa, batteryPct, voltage };
+  private handleMyInfo(myNodeNum: number) {
+    const myId = canonicalNodeId(myNodeNum);
+    this.connectedNodeId = myId;
+    this.upsertDiscoveredNode(myId, {
+      longName: this.connectedDeviceName || undefined,
+      connectionType: 'BLE',
+      battery: this.pendingBatteryLevel,
+      firmwareVersion: this.pendingMetadata?.firmwareVersion,
+      hardwareModel: hardwareModelName(this.pendingMetadata?.hwModel),
+      // The tracker is talking to us over Bluetooth right now
+      lastPingTime: Date.now(),
+    }, true);
+    this.pendingBatteryLevel = undefined;
+    this.pendingMetadata = null;
   }
 
-  /**
-   * 5. Request BME280 / Environmental Telemetry from local or remote node
-   */
-  public async requestBmeTelemetry(toRadioChar?: any): Promise<boolean> {
-    const targetChar = toRadioChar || this.toRadioChar;
-    if (!targetChar) {
-      console.warn('[BLE] toRadio characteristic not ready');
-      return false;
+  private handleMetadata(md: DeviceMetadataMsg) {
+    if (!this.connectedNodeId) {
+      this.pendingMetadata = md;
+      return;
     }
+    this.upsertDiscoveredNode(this.connectedNodeId, {
+      firmwareVersion: md.firmwareVersion,
+      hardwareModel: hardwareModelName(md.hwModel),
+    }, true);
+  }
+
+  private handleNodeInfo(ni: NodeInfoMsg) {
+    if (ni.num === undefined && !ni.user?.id) return;
+    const id = canonicalNodeId(ni.num ?? ni.user!.id!);
+    const isLocal = Boolean(this.connectedNodeId) && id === this.connectedNodeId;
+    const pos = ni.position;
+    const latLng = pos ? positionLatLng(pos) : null;
+
+    // The radio's NodeDB says when it last heard each node; a node it never heard has no time.
+    // Our own tracker is connected right now.
+    const lastPingTime = isLocal
+      ? Date.now()
+      : (ni.lastHeard && ni.lastHeard > 0 ? Math.min(ni.lastHeard * 1000, Date.now()) : undefined);
+
+    const node = this.upsertDiscoveredNode(id, {
+      longName: ni.user?.longName || (isLocal ? this.connectedDeviceName || undefined : undefined),
+      shortName: ni.user?.shortName,
+      hardwareModel: hardwareModelName(ni.user?.hwModel),
+      lat: latLng?.lat,
+      lng: latLng?.lng,
+      altitudeMeters: pos?.altitude,
+      speedKt: pos ? positionSpeedKt(pos) : undefined,
+      headingDeg: pos ? positionTrackDeg(pos) : undefined,
+      satsInView: pos?.satsInView,
+      battery: ni.deviceMetrics?.batteryLevel,
+      voltage: ni.deviceMetrics?.voltage !== undefined ? +ni.deviceMetrics.voltage.toFixed(2) : undefined,
+      channelUtil: ni.deviceMetrics?.channelUtilization !== undefined ? +ni.deviceMetrics.channelUtilization.toFixed(1) : undefined,
+      airUtilTx: ni.deviceMetrics?.airUtilTx !== undefined ? +ni.deviceMetrics.airUtilTx.toFixed(1) : undefined,
+      snr: ni.snr,
+      hops: isLocal ? 0 : ni.hopsAway,
+      connectionType: isLocal ? 'BLE' : (ni.viaMqtt ? 'MQTT' : 'LORA_MESH'),
+      lastPingTime,
+    }, isLocal);
+
+    this.emitPacketLog({
+      id: `pkt-nodedb-${id}-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString(),
+      rawTimestamp: Date.now(),
+      fromNode: node.id,
+      fromNodeName: node.longName,
+      toNode: '^all',
+      portnum: 'NODEINFO_APP',
+      snr: ni.snr,
+      hops: isLocal ? 0 : ni.hopsAway,
+      payload: `NodeDB entry: ${node.longName} (${node.id})${latLng ? ` at ${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}` : ', no position'}${ni.hopsAway !== undefined ? `, ${ni.hopsAway} hops away` : ''}`,
+    });
+  }
+
+  private handlePacket(p: MeshPacketMsg) {
+    if (p.from === undefined) return;
+    const senderId = canonicalNodeId(p.from);
+    const isLocal = Boolean(this.connectedNodeId) && senderId === this.connectedNodeId;
+    const hops = isLocal
+      ? 0
+      : (p.hopStart !== undefined && p.hopLimit !== undefined && p.hopStart >= p.hopLimit ? p.hopStart - p.hopLimit : undefined);
+
+    const updates: Partial<MeshtasticNode> = {
+      snr: p.rxSnr,
+      rssi: p.rxRssi,
+      hops,
+      connectionType: isLocal ? 'BLE' : (p.viaMqtt ? 'MQTT' : 'LORA_MESH'),
+      // We just received a packet from this node
+      lastPingTime: Date.now(),
+    };
+
+    const portnum = p.decoded?.portnum;
+    const payload = p.decoded?.payload;
+    let logPayload = p.encrypted ? 'Encrypted packet (not readable with this channel)' : `Port ${portnum ?? '?'}`;
+    let textMsg: string | undefined;
+    let logPosition: MeshtasticPacketLog['position'];
+    let logMetrics: MeshtasticPacketLog['metrics'];
 
     try {
-      // Construct a MeshPacket targeting broadcast with want_response: true on Port 67 (0x43)
-      const dataPayload = new Uint8Array([
-        0x08, 0x43, // portnum: 67 (TELEMETRY_APP)
-        0x18, 0x01, // want_response: true
-      ]);
+      if (payload && portnum === PortNum.TEXT_MESSAGE_APP) {
+        textMsg = new TextDecoder('utf-8', { fatal: false }).decode(payload);
+        logPayload = `Text: "${textMsg}"`;
+      } else if (payload && portnum === PortNum.POSITION_APP) {
+        const pos = decodePosition(payload);
+        const latLng = positionLatLng(pos);
+        if (latLng) {
+          const speedKt = positionSpeedKt(pos);
+          const headingDeg = positionTrackDeg(pos);
+          Object.assign(updates, {
+            lat: latLng.lat,
+            lng: latLng.lng,
+            altitudeMeters: pos.altitude,
+            speedKt,
+            headingDeg,
+            satsInView: pos.satsInView,
+          });
 
-      const meshPkt = new Uint8Array([
-        0x10, 0xff, 0xff, 0xff, 0xff, 0x0f, // to = 0xFFFFFFFF (broadcast)
-        0x22, dataPayload.length, ...dataPayload // decoded Data field
-      ]);
+          // GPS time of the fix if the tracker sent one, else when we received it
+          const gpsSec = pos.timestamp || pos.time;
+          const fixTime = gpsSec && gpsSec > 1_000_000_000 ? Math.min(gpsSec * 1000, Date.now()) : Date.now();
+          const buf = this.nodePositionBuffers.get(senderId) || [];
+          buf.push({ lat: latLng.lat, lng: latLng.lng, speedKt, headingDeg, altitudeMeters: pos.altitude ?? null, timestamp: fixTime });
+          if (buf.length > 2000) buf.shift();
+          this.nodePositionBuffers.set(senderId, buf);
 
-      // Wrap in ToRadio envelope (field 2 = packet)
-      const toRadioPacket = new Uint8Array([0x12, meshPkt.length, ...meshPkt]);
-      if (typeof targetChar.writeValueWithoutResponse === 'function') {
-        await targetChar.writeValueWithoutResponse(toRadioPacket);
-      } else {
-        await targetChar.writeValue(toRadioPacket);
-      }
-      console.log('[BLE] Sent BME280 Telemetry Request (Port 67 want_response)');
-      return true;
-    } catch (err) {
-      console.warn('[BLE] Failed to send BME telemetry request:', err);
-      return false;
-    }
-  }
-
-
-  // Parse Text / NMEA if Bluetooth serial stream is used ($GNRMC, $GNGGA, $GNVTG)
-  private parseRawTextTelemetry(text: string) {
-    if (!this.tEchoNodeState) return;
-
-    const lines = text.split(/\r?\n/);
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('$')) continue;
-
-      if (trimmed.includes('RMC')) {
-        const parts = trimmed.split(',');
-        if (parts.length > 6 && parts[2] === 'A') { // Valid fix
-          const rawLat = parseFloat(parts[3]);
-          const latDeg = Math.floor(rawLat / 100);
-          const latMin = rawLat - latDeg * 100;
-          let lat = latDeg + latMin / 60;
-          if (parts[4] === 'S') lat = -lat;
-
-          const rawLng = parseFloat(parts[5]);
-          const lngDeg = Math.floor(rawLng / 100);
-          const lngMin = rawLng - lngDeg * 100;
-          let lng = lngDeg + lngMin / 60;
-          if (parts[6] === 'W') lng = -lng;
-
-          const spdKt = parseFloat(parts[7]) || 0;
-          const cog = parseFloat(parts[8]) || 0;
-
-          this.tEchoNodeState.lat = lat;
-          this.tEchoNodeState.lng = lng;
-          this.tEchoNodeState.speedKt = spdKt;
-          this.tEchoNodeState.headingDeg = Math.round(cog);
-          this.tEchoNodeState.gpsFix = true;
-          this.tEchoNodeState.lastPingTime = Date.now();
-          this.emitNode(this.tEchoNodeState);
+          logPosition = { lat: latLng.lat, lng: latLng.lng, alt: pos.altitude, speedKt, headingDeg, sats: pos.satsInView };
+          logPayload = `Position ${latLng.lat.toFixed(5)}, ${latLng.lng.toFixed(5)}` +
+            ` SOG ${speedKt !== undefined ? `${speedKt} kt` : '—'} COG ${headingDeg !== undefined ? `${headingDeg}°` : '—'}` +
+            `${gpsSec ? ` (GPS ${new Date(fixTime).toISOString().slice(11, 19)}Z)` : ''}`;
+        } else {
+          logPayload = 'Position without a fix';
         }
-      } else if (trimmed.includes('GGA')) {
-        const parts = trimmed.split(',');
-        if (parts.length > 9) {
-          const fixQuality = parseInt(parts[6], 10);
-          if (fixQuality > 0) {
-            const rawLat = parseFloat(parts[2]);
-            const latDeg = Math.floor(rawLat / 100);
-            const latMin = rawLat - latDeg * 100;
-            let lat = latDeg + latMin / 60;
-            if (parts[3] === 'S') lat = -lat;
-
-            const rawLng = parseFloat(parts[4]);
-            const lngDeg = Math.floor(rawLng / 100);
-            const lngMin = rawLng - lngDeg * 100;
-            let lng = lngDeg + lngMin / 60;
-            if (parts[5] === 'W') lng = -lng;
-
-            const sats = parseInt(parts[7], 10);
-            const alt = parseFloat(parts[9]);
-
-            this.tEchoNodeState.lat = lat;
-            this.tEchoNodeState.lng = lng;
-            if (!isNaN(sats)) this.tEchoNodeState.satsInFix = sats;
-            if (!isNaN(alt)) this.tEchoNodeState.altitudeMeters = alt;
-            this.tEchoNodeState.gpsFix = true;
-            this.tEchoNodeState.lastPingTime = Date.now();
-            this.emitNode(this.tEchoNodeState);
+      } else if (payload && portnum === PortNum.NODEINFO_APP) {
+        const user = decodeUser(payload);
+        if (user.longName) updates.longName = user.longName;
+        if (user.shortName) updates.shortName = user.shortName;
+        const hw = hardwareModelName(user.hwModel);
+        if (hw) updates.hardwareModel = hw;
+        logPayload = `Node info: ${user.longName || user.shortName || senderId}`;
+      } else if (payload && portnum === PortNum.TELEMETRY_APP) {
+        const t = decodeTelemetry(payload);
+        const dm = t.deviceMetrics;
+        const env = t.environmentMetrics;
+        if (dm) {
+          if (dm.batteryLevel !== undefined) updates.battery = dm.batteryLevel;
+          if (dm.voltage !== undefined) updates.voltage = +dm.voltage.toFixed(2);
+          if (dm.channelUtilization !== undefined) updates.channelUtil = +dm.channelUtilization.toFixed(1);
+          if (dm.airUtilTx !== undefined) updates.airUtilTx = +dm.airUtilTx.toFixed(1);
+          logPayload = `Device telemetry: battery ${dm.batteryLevel !== undefined ? formatBattery(dm.batteryLevel) : '—'}${dm.voltage !== undefined ? ` (${dm.voltage.toFixed(2)} V)` : ''}`;
+        }
+        if (env) {
+          if (env.temperature !== undefined) updates.temperature = +env.temperature.toFixed(1);
+          if (env.relativeHumidity !== undefined) {
+            updates.humidity = +env.relativeHumidity.toFixed(1);
+            updates.relativeHumidity = updates.humidity;
           }
+          if (env.barometricPressure !== undefined) updates.barometricPressure = +env.barometricPressure.toFixed(1);
+          if (env.gasResistance !== undefined) updates.gasResistance = env.gasResistance;
+          if (env.iaq !== undefined) updates.iaq = env.iaq;
+          logPayload = `Environment: ${env.temperature !== undefined ? `${env.temperature.toFixed(1)} °C` : '—'}, ` +
+            `${env.relativeHumidity !== undefined ? `${env.relativeHumidity.toFixed(0)}% RH` : '—'}, ` +
+            `${env.barometricPressure !== undefined ? `${env.barometricPressure.toFixed(1)} hPa` : '—'}`;
         }
-      } else if (trimmed.includes('VTG')) {
-        const parts = trimmed.split(',');
-        if (parts.length > 7) {
-          const cog = parseFloat(parts[1]) || 0;
-          const spdKt = parseFloat(parts[7]) || 0;
-          this.tEchoNodeState.headingDeg = Math.round(cog);
-          this.tEchoNodeState.speedKt = spdKt;
-          this.tEchoNodeState.lastPingTime = Date.now();
-          this.emitNode(this.tEchoNodeState);
-        }
+        logMetrics = {
+          batteryLevel: dm?.batteryLevel,
+          voltage: dm?.voltage,
+          temperature: env?.temperature,
+          relativeHumidity: env?.relativeHumidity,
+          barometricPressure: env?.barometricPressure,
+          gasResistance: env?.gasResistance,
+          iaq: env?.iaq,
+        };
       }
+    } catch (err) {
+      console.warn(`[BLE] Could not decode port ${portnum} payload from ${senderId}:`, err);
     }
+
+    const senderNode = this.upsertDiscoveredNode(senderId, updates, isLocal);
+
+    this.emitPacketLog({
+      id: `pkt-${p.id ?? Date.now()}-${senderId}`,
+      timestamp: new Date().toLocaleTimeString(),
+      rawTimestamp: Date.now(),
+      fromNode: senderNode.id,
+      fromNodeName: senderNode.longName,
+      toNode: p.to !== undefined && p.to !== BROADCAST_NUM ? canonicalNodeId(p.to) : '^all',
+      portnum: (portnum !== undefined && PORT_LABELS[portnum]) || (portnum !== undefined ? `PORT_${portnum}` : 'ENCRYPTED'),
+      snr: p.rxSnr,
+      rssi: p.rxRssi,
+      hops,
+      payload: logPayload,
+      textMessage: textMsg,
+      position: logPosition,
+      metrics: logMetrics,
+    });
   }
 
   // --- LORA NODES ADDED BY ID ---
@@ -2128,9 +1473,9 @@ class MeshtasticBleMqttService {
         latitude_i: Math.round(node.lat * 1e7),
         longitude_i: Math.round(node.lng * 1e7),
         altitude: node.altitudeMeters !== undefined ? Math.round(node.altitudeMeters) : undefined,
-        // ground_speed is m/s in the Meshtastic spec (1 knot = 0.514444 m/s)
-        ground_speed: node.speedKt !== undefined ? +(node.speedKt * 0.514444).toFixed(1) : undefined,
-        ground_track: node.headingDeg !== undefined ? Math.round(node.headingDeg) : undefined,
+        // Same units as the firmware: ground_speed in whole km/h, ground_track in degrees × 1e5
+        ground_speed: node.speedKt !== undefined ? Math.round(node.speedKt / KMH_TO_KT) : undefined,
+        ground_track: node.headingDeg !== undefined ? Math.round(node.headingDeg * 1e5) : undefined,
         battery_level: node.battery !== undefined ? Math.round(node.battery) : undefined,
         voltage: node.voltage !== undefined ? +node.voltage.toFixed(2) : undefined,
         sats_in_view: node.satsInView,
@@ -2171,9 +1516,10 @@ class MeshtasticBleMqttService {
         const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
         const lat = num(p.latitude_i) !== undefined ? p.latitude_i / 1e7 : (num(p.lat) ?? num(p.latitude));
         const lng = num(p.longitude_i) !== undefined ? p.longitude_i / 1e7 : (num(p.lng) ?? num(p.longitude));
-        // ground_speed in the Meshtastic position message is m/s (1 m/s = 1.94384 knots)
-        const speedKt = num(p.ground_speed) !== undefined ? +(p.ground_speed * 1.94384).toFixed(1) : num(p.speed);
-        const headingDeg = num(p.ground_track) ?? num(p.heading);
+        // Firmware JSON carries the raw position fields: ground_speed in whole km/h, ground_track
+        // in degrees × 1e5. It leaves them out when they are 0 or the device doesn't send them.
+        const speedKt = num(p.ground_speed) !== undefined ? +(p.ground_speed * KMH_TO_KT).toFixed(1) : undefined;
+        const headingDeg = num(p.ground_track) !== undefined ? Math.round(p.ground_track / 1e5) % 360 : undefined;
 
         if (lat === undefined || lng === undefined || (lat === 0 && lng === 0)) return;
 
@@ -2200,25 +1546,13 @@ class MeshtasticBleMqttService {
   }
 
   public disconnectAll() {
-    if (this.pollIntervalTimer) {
-      clearInterval(this.pollIntervalTimer);
-      this.pollIntervalTimer = null;
-    }
-    if (this.gattDevice && this.gattDevice.gatt && this.gattDevice.gatt.connected) {
-      this.gattDevice.gatt.disconnect();
-    }
-    this.isBleConnected = false;
-    this.gattServer = null;
-    this.fromRadioChar = null;
-    this.toRadioChar = null;
-    this.fromNumChar = null;
-    this.nusTxChar = null;
-
+    this.disconnectBle();
     if (this.mqttClient) {
       this.mqttClient.end();
       this.mqttClient = null;
     }
   }
+
 }
 
 export const meshtasticService = new MeshtasticBleMqttService();
