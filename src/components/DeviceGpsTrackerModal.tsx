@@ -320,7 +320,7 @@ export const DeviceGpsTrackerModal: React.FC<DeviceGpsTrackerModalProps> = ({
                 <div className="flex items-center justify-between border-b border-line pb-2">
                   <span className="text-ink-muted">Mesh Transport:</span>
                   <span className="text-accent font-bold">
-                    WebSocket MQTT + BroadcastChannel Fleet Mesh
+                    TMTRAC server (per event) + other tabs on this device
                   </span>
                 </div>
 

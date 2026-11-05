@@ -1,4 +1,3 @@
-import mqtt, { MqttClient } from 'mqtt';
 import { meshtasticService } from './meshtasticBleMqttService';
 import { canonicalNodeId } from '../utils/nodeId';
 import { nodeStatusFromLastPing } from '../utils/formatters';
@@ -178,8 +177,6 @@ class HybridDeviceTrackerService {
 
   // Secondary communication channels
   private broadcastChannel: BroadcastChannel | null = null;
-  private mqttClient: MqttClient | null = null;
-  private mqttConnected = false;
   private broadcastIntervalTimer: any = null;
 
   // Previous position to calculate speed/heading if device doesn't report it
@@ -230,7 +227,6 @@ class HybridDeviceTrackerService {
     this.initBroadcastChannel();
     this.initBatteryReporting();
     this.initWebSocketClient();
-    this.initMqttFleetMesh();
 
     // Listen to network online event to flush buffered points on reconnection
     if (typeof window !== 'undefined') {
@@ -1047,50 +1043,6 @@ class HybridDeviceTrackerService {
     }
   }
 
-  // Secondary public MQTT Relay Fleet Mesh
-  private initMqttFleetMesh() {
-    if (typeof window === 'undefined') return;
-
-    try {
-      const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
-      const clientId = `tmtrac_hybrid_${this.profile.deviceId}_` + Math.random().toString(16).substring(2, 6);
-
-      const client = mqtt.connect(brokerUrl, {
-        clientId,
-        clean: true,
-        connectTimeout: 8000,
-        reconnectPeriod: 10000,
-      });
-
-      client.on('connect', () => {
-        this.mqttConnected = true;
-        client.subscribe('tmtrac/hybrid_fleet/trackers/+', (err) => {
-          if (!err) {
-            console.log('Subscribed to Hybrid Fleet Mesh MQTT topic: tmtrac/hybrid_fleet/trackers/+');
-          }
-        });
-      });
-
-      client.on('message', (topic, message) => {
-        try {
-          const str = message.toString();
-          const parsed = JSON.parse(str);
-          if (parsed && parsed.deviceId && parsed.deviceId !== this.profile.deviceId) {
-            this.handleIncomingFleetPacket(parsed);
-          }
-        } catch (e) {}
-      });
-
-      client.on('error', (err) => {
-        console.warn('Hybrid Fleet MQTT notice:', err);
-      });
-
-      this.mqttClient = client;
-    } catch (e) {
-      console.warn('Failed to init Hybrid MQTT client:', e);
-    }
-  }
-
   // Handle packet received from another phone/tablet/PC
   private handleIncomingFleetPacket(payload: any) {
     if (!payload || !payload.deviceId || payload.deviceId === this.profile.deviceId) return;
@@ -1462,14 +1414,6 @@ class HybridDeviceTrackerService {
           type: 'FLEET_GPS_BROADCAST',
           payload,
         });
-      } catch (e) {}
-    }
-
-    // 3. Broadcast over MQTT Fleet Mesh topic
-    if (this.mqttClient && this.mqttConnected) {
-      try {
-        const topic = `tmtrac/hybrid_fleet/trackers/${this.profile.deviceId}`;
-        this.mqttClient.publish(topic, JSON.stringify(payload), { qos: 0 });
       } catch (e) {}
     }
 
