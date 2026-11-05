@@ -25,6 +25,7 @@ import {
   positionLatLng,
   positionSpeedKt,
   positionTrackDeg,
+  hopsTaken,
   KMH_TO_KT,
   BROADCAST_NUM,
   DataMsg,
@@ -206,7 +207,7 @@ export function decodeEnvelope(
     channel: channelName,
     gatewayId: env.gatewayId ? canonicalNodeId(env.gatewayId) : undefined,
     packetId: p.id,
-    hops: p.hopStart !== undefined && p.hopLimit !== undefined && p.hopStart >= p.hopLimit ? p.hopStart - p.hopLimit : undefined,
+    hops: hopsTaken(p.hopStart, p.hopLimit),
     lastPingTime: now,
   };
 

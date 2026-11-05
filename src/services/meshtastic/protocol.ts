@@ -379,6 +379,16 @@ export const KMH_TO_KT = 0.539957;
  * Position.precision_bits (32 or missing = exact). The firmware keeps the top N bits of each
  * coordinate and reports the centre of the remaining square.
  */
+/**
+ * Hops a packet took: hop_start − hop_limit. proto3 leaves a zero hop_limit off the wire, so a
+ * packet that used every hop arrives with hop_start set and hop_limit missing: that means 0.
+ */
+export function hopsTaken(hopStart: number | undefined, hopLimit: number | undefined): number | undefined {
+  if (hopStart === undefined || hopStart === 0) return undefined;
+  const limit = hopLimit ?? 0;
+  return hopStart >= limit ? hopStart - limit : undefined;
+}
+
 export function positionErrorMeters(precisionBits: number | undefined): number | undefined {
   if (precisionBits === undefined || precisionBits === 0 || precisionBits >= 32) return undefined;
   const stepDeg = Math.pow(2, 32 - precisionBits) * 1e-7;

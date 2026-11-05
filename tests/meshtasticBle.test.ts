@@ -28,6 +28,12 @@ class FakeTracker {
   connected = false;
   failConnect = false;
   notificationsWork = true;
+  /** Link drops right after want_config_id, before the config arrives (edge of range) */
+  dropDuringConfig = false;
+  /** Chrome fires gattserverdisconnected asynchronously */
+  asyncDisconnectEvent = false;
+  connectAttempts = 0;
+  failReads = false;
   private fromNumHandler: (() => void) | null = null;
   private disconnectHandler: (() => void) | null = null;
 
@@ -47,6 +53,13 @@ class FakeTracker {
         const msg = fromBinary(Mesh.ToRadioSchema, bytes);
         this.writes.push(msg);
         if (msg.payloadVariant.case === 'wantConfigId') {
+          if (this.dropDuringConfig) {
+            setImmediate(() => {
+              this.device.gatt.connected = false;
+              this.drop();
+            });
+            return;
+          }
           this.queue.push(...this.configReply(msg.payloadVariant.value as number));
           this.notify();
         }
@@ -54,6 +67,7 @@ class FakeTracker {
       readValue: async () => {
         assert.equal(kind, 'from');
         this.reads++;
+        if (this.failReads) throw Object.assign(new Error('GATT operation failed for unknown reason.'), { name: 'NetworkError' });
         this.readsInFlight++;
         this.maxReadsInFlight = Math.max(this.maxReadsInFlight, this.readsInFlight);
         await tick();
@@ -93,6 +107,7 @@ class FakeTracker {
     gatt: {
       connected: false,
       connect: async () => {
+        this.connectAttempts++;
         if (this.failConnect) throw Object.assign(new Error('Connection attempt failed'), { name: 'NetworkError' });
         this.connected = true;
         this.device.gatt.connected = true;
@@ -108,7 +123,8 @@ class FakeTracker {
       },
       disconnect: () => {
         this.device.gatt.connected = false;
-        this.drop();
+        if (this.asyncDisconnectEvent) setImmediate(() => this.drop());
+        else this.drop();
       },
     },
   };
@@ -278,4 +294,42 @@ test('text messages are a valid ToRadio packet', async () => {
   assert.equal(pkt.wantAck, true);
   assert.equal(pkt.payloadVariant.value.portnum, Portnums.PortNum.TEXT_MESSAGE_APP);
   assert.equal(new TextDecoder().decode(pkt.payloadVariant.value.payload), 'Hello');
+});
+
+test('a tracker that keeps dropping during setup is retried 5 times, then the user is asked (no endless loop)', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const { svc, dev } = await connected();
+    const seen: any[] = [];
+    svc.onBleStatusChange((st: any) => seen.push(st));
+    dev.asyncDisconnectEvent = true;
+    dev.dropDuringConfig = true;
+    const attemptsBefore = dev.connectAttempts;
+    dev.drop();
+    for (const ms of [1000, 2000, 4000, 8000, 15000, 15000, 15000]) {
+      for (let i = 0; i < 20; i++) await tick();
+      mock.timers.tick(ms);
+      for (let i = 0; i < 20; i++) await tick();
+    }
+    assert.equal(svc.getBleStatus().state, 'lost');
+    assert.equal(dev.connectAttempts - attemptsBefore, 5, 'exactly five retries');
+    assert.deepEqual(seen.filter((st) => st.state === 'reconnecting').map((st) => st.attempt), [1, 2, 3, 4, 5]);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('reads that keep failing while GATT says connected are treated as a drop', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const { svc, dev } = await connected();
+    dev.failReads = true;
+    for (let i = 0; i < 3; i++) {
+      dev.notify();
+      for (let j = 0; j < 10; j++) await tick();
+    }
+    assert.equal(svc.getBleStatus().state, 'reconnecting');
+  } finally {
+    mock.timers.reset();
+  }
 });

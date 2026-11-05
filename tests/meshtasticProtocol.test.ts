@@ -221,3 +221,12 @@ test('port numbers and hardware model numbers match the official enums', () => {
     assert.ok(HARDWARE_MODEL_NAMES[num], `name for ${name}`);
   }
 });
+
+test('hops taken: a missing hop_limit (proto3 zero) means every hop was used', async () => {
+  const { hopsTaken } = await import('../src/services/meshtastic/protocol');
+  assert.equal(hopsTaken(3, 1), 2);
+  assert.equal(hopsTaken(3, undefined), 3);
+  assert.equal(hopsTaken(3, 3), 0);
+  assert.equal(hopsTaken(undefined, 2), undefined, 'old firmware without hop_start');
+  assert.equal(hopsTaken(2, 5), undefined, 'inconsistent values');
+});

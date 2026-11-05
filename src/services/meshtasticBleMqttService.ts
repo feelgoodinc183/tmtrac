@@ -20,6 +20,7 @@ import {
   positionLatLng,
   positionSpeedKt,
   positionTrackDeg,
+  hopsTaken,
 } from './meshtastic/protocol';
 
 export interface MeshtasticPacketLog {
@@ -227,6 +228,7 @@ export class MeshtasticBleMqttService {
   private userDisconnected = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
+  private readFailures = 0;
   private bleStatus: BleStatus = { state: 'disconnected' };
   private bleStatusCallbacks: Array<(status: BleStatus) => void> = [];
 
@@ -717,14 +719,31 @@ export class MeshtasticBleMqttService {
   };
 
   private onGattDisconnected = () => {
-    const wasUp = this.bleStatus.state === 'connected' || this.bleStatus.state === 'configuring';
+    // Only a drop from a working connection starts a new round of retries. A drop while
+    // connecting or configuring (including during an automatic retry) makes that attempt fail,
+    // and the retry loop counts it, so it ends in 'lost' instead of starting over forever.
+    const wasConnected = this.bleStatus.state === 'connected';
     this.teardownGatt(false);
     this.markLocalNodeDisconnected();
-    if (this.userDisconnected || !wasUp) return;
+    if (this.userDisconnected || !wasConnected) return;
     console.warn('[BLE] Tracker disconnected; reconnecting');
     this.reconnectAttempt = 0;
     this.scheduleReconnect();
   };
+
+  /** Several FromRadio reads failing in a row while GATT still claims to be connected: treat as a drop */
+  private onReadFailure(err: unknown) {
+    this.readFailures += 1;
+    console.warn('[BLE] FromRadio read failed:', err);
+    if (this.readFailures < 3 || this.bleStatus.state !== 'connected') return;
+    this.readFailures = 0;
+    console.warn('[BLE] Reads keep failing; reconnecting');
+    this.teardownGatt(true);
+    this.markLocalNodeDisconnected();
+    if (this.userDisconnected) return;
+    this.reconnectAttempt = 0;
+    this.scheduleReconnect();
+  }
 
   private scheduleReconnect() {
     this.clearReconnectTimer();
@@ -826,12 +845,13 @@ export class MeshtasticBleMqttService {
           const ch = this.fromRadioChar;
           if (!ch) return;
           const dv: DataView = await this.gattOp(() => ch.readValue());
+          this.readFailures = 0;
           if (!dv || dv.byteLength === 0) break;
           this.handleFromRadioBytes(new Uint8Array(dv.buffer.slice(dv.byteOffset, dv.byteOffset + dv.byteLength)));
         }
       } while (this.drainAgain && this.fromRadioChar);
     } catch (err) {
-      console.warn('[BLE] FromRadio read failed:', err);
+      this.onReadFailure(err);
     } finally {
       this.draining = false;
     }
@@ -850,11 +870,15 @@ export class MeshtasticBleMqttService {
     // Keep draining while the config dump is in progress, in case a notification is missed
     const kick = setInterval(() => void this.drainFromRadio(), 500);
     void this.drainFromRadio();
-    const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), CONFIG_TIMEOUT_MS));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(false), CONFIG_TIMEOUT_MS);
+    });
     try {
       return await Promise.race([completed, timeout]);
     } finally {
       clearInterval(kick);
+      if (timer) clearTimeout(timer);
       this.configWaiter = null;
     }
   }
@@ -1075,7 +1099,7 @@ export class MeshtasticBleMqttService {
     const isLocal = Boolean(this.connectedNodeId) && senderId === this.connectedNodeId;
     const hops = isLocal
       ? 0
-      : (p.hopStart !== undefined && p.hopLimit !== undefined && p.hopStart >= p.hopLimit ? p.hopStart - p.hopLimit : undefined);
+      : hopsTaken(p.hopStart, p.hopLimit);
 
     const updates: Partial<MeshtasticNode> = {
       snr: p.rxSnr,
