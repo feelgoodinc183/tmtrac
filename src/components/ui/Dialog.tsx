@@ -25,6 +25,11 @@ export interface DialogProps {
   size?: 'sm' | 'md' | 'lg';
   /** system dialogs (like "signed out") sit above everything else */
   layer?: 'normal' | 'system';
+  /**
+   * For dialogs with steps: change this when the content is replaced, so focus moves to the new
+   * step's first control instead of falling out of the dialog (which would break Esc and Tab)
+   */
+  focusKey?: string | number;
 }
 
 const WIDTHS = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl' };
@@ -46,23 +51,39 @@ export const Dialog: React.FC<DialogProps> = ({
   dismissible = true,
   size = 'sm',
   layer = 'normal',
+  focusKey,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descId = useId();
 
-  useEffect(() => {
-    if (!open) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
+  const focusFirst = () => {
     const panel = panelRef.current;
     const target =
       initialFocusRef?.current ||
       panel?.querySelector<HTMLElement>('[data-autofocus]') ||
       panel?.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled])') ||
-      panel?.querySelector<HTMLElement>(FOCUSABLE);
+      panel?.querySelector<HTMLElement>(FOCUSABLE) ||
+      panel;
     target?.focus();
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    focusFirst();
     return () => previouslyFocused?.focus?.();
   }, [open]);
+
+  // A new step: move focus into it (skipped on the first render, which the effect above handles)
+  const firstFocusKey = useRef(true);
+  useEffect(() => {
+    if (firstFocusKey.current) {
+      firstFocusKey.current = false;
+      return;
+    }
+    if (open) focusFirst();
+  }, [focusKey]);
 
   if (!open) return null;
 
@@ -99,8 +120,9 @@ export const Dialog: React.FC<DialogProps> = ({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
+        tabIndex={-1}
         onKeyDown={onKeyDown}
-        className={`w-full ${WIDTHS[size]} max-h-[90vh] overflow-y-auto rounded-container border border-line bg-surface p-5 text-ink shadow-2xl`}
+        className={`w-full ${WIDTHS[size]} max-h-[90vh] overflow-y-auto outline-none rounded-container border border-line bg-surface p-5 text-ink shadow-2xl`}
       >
         <div className="flex items-start justify-between gap-3">
           <h2 id={titleId} className="text-base font-bold text-ink">

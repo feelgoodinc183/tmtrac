@@ -37,6 +37,14 @@ import {
 import { createSession, endSession, endAllSessionsForUser, findActiveUserByToken } from './src/server/sessions';
 import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
+import mqtt from 'mqtt';
+import {
+  DEFAULT_ROOM_MQTT_CONFIG,
+  MeshtasticMqttBridge,
+  RoomMqttConfig,
+  mergeRoomMqttConfig,
+  toPublicConfig,
+} from './src/server/mqttBridge';
 
 const isDevMode = process.env.NODE_ENV !== 'production';
 
@@ -85,7 +93,35 @@ export interface ActiveRoomState {
   trackers: Map<string, any>;
   vhfBulletins: any[];
   seriesRaces: any[];
+  /** Meshtastic MQTT bridge settings, with secrets. Server-side only. */
+  mqttConfig: RoomMqttConfig;
 }
+
+function parseRoomMqttConfig(raw: string | null | undefined): RoomMqttConfig {
+  if (!raw) return { ...DEFAULT_ROOM_MQTT_CONFIG };
+  try {
+    const v = JSON.parse(raw);
+    const str = (x: unknown, fallback: string) => (typeof x === 'string' ? x : fallback);
+    const channels = Array.isArray(v?.channels)
+      ? v.channels
+          .filter((c: any) => c && typeof c.name === 'string' && typeof c.psk === 'string')
+          .map((c: any) => ({ name: c.name, psk: c.psk }))
+      : DEFAULT_ROOM_MQTT_CONFIG.channels;
+    return {
+      enabled: v?.enabled === true,
+      brokerUrl: str(v?.brokerUrl, ''),
+      username: str(v?.username, ''),
+      password: str(v?.password, ''),
+      rootTopic: str(v?.rootTopic, DEFAULT_ROOM_MQTT_CONFIG.rootTopic),
+      channels,
+    };
+  } catch {
+    return { ...DEFAULT_ROOM_MQTT_CONFIG };
+  }
+}
+
+// Called when a room is loaded so the MQTT bridge knows its settings (set once the bridge exists)
+let onRoomLoaded: (room: ActiveRoomState) => void = () => {};
 
 const activeRooms = new Map<string, ActiveRoomState>();
 
@@ -144,8 +180,10 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
       trackers: new Map(),
       vhfBulletins,
       seriesRaces,
+      mqttConfig: parseRoomMqttConfig(row.mqtt_config_json),
     };
     activeRooms.set(code, room);
+    onRoomLoaded(room);
     return room;
   }
 
@@ -175,9 +213,19 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
     trackers: new Map(),
     vhfBulletins: [],
     seriesRaces: [],
+    mqttConfig: { ...DEFAULT_ROOM_MQTT_CONFIG },
   };
   activeRooms.set(code, room);
+  onRoomLoaded(room);
   return room;
+}
+
+function persistRoomMqttConfig(room: ActiveRoomState) {
+  try {
+    db.prepare('UPDATE events SET mqtt_config_json = ? WHERE code = ?').run(JSON.stringify(room.mqttConfig), room.code);
+  } catch (e) {
+    console.warn(`Failed to persist MQTT settings for room ${room.code}:`, e);
+  }
 }
 
 /**
@@ -418,6 +466,30 @@ async function startServer() {
     });
   }
 
+  // --- Meshtastic MQTT bridge ---
+  // Runs a room's MQTT subscriptions only while the room has MQTT on and someone has it open.
+  const mqttBridge = new MeshtasticMqttBridge({
+    connect: (url, opts) => mqtt.connect(url, opts) as any,
+    onNodeUpdate: (roomCode, update) => broadcastAllInRoom(roomCode, 'MQTT_NODE_UPDATE', update),
+    onStatus: (roomCode, status) => broadcastAllInRoom(roomCode, 'MQTT_STATUS', status),
+    allowAnyBroker: process.env.MQTT_ALLOW_ANY_BROKER === '1',
+    maxConnections: Number(process.env.MQTT_MAX_BROKER_CONNECTIONS) || 10,
+  });
+  onRoomLoaded = (room) => mqttBridge.setRoomConfig(room.code, room.mqttConfig);
+  for (const room of activeRooms.values()) onRoomLoaded(room);
+
+  function openClientCount(roomCode: string): number {
+    let count = 0;
+    wss.clients.forEach((c) => {
+      if ((c as any).roomCode === roomCode && c.readyState === WebSocket.OPEN) count++;
+    });
+    return count;
+  }
+
+  function refreshRoomActivity(roomCode: string) {
+    mqttBridge.setRoomActive(roomCode, openClientCount(roomCode) > 0);
+  }
+
   // Register Stripe Payment & Subscription Routes
   registerStripeRoutes(app, { broadcastGlobal });
 
@@ -479,11 +551,13 @@ async function startServer() {
       trackers: trackerList,
       vhfBulletins: room.vhfBulletins,
       seriesRaces: room.seriesRaces || [],
+      mqttStatus: mqttBridge.getStatus(room.code),
       serverTime: Date.now(),
     };
 
     ws.send(JSON.stringify({ type: 'SESSION_INIT_STATE', payload: initState }));
     broadcastAllInRoom(room.code, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(room.code) });
+    refreshRoomActivity(room.code);
 
     ws.on('message', (raw) => {
       try {
@@ -537,12 +611,15 @@ async function startServer() {
                 trackers: Array.from(newRoom.trackers.values()),
                 vhfBulletins: newRoom.vhfBulletins,
                 seriesRaces: newRoom.seriesRaces || [],
+                mqttStatus: mqttBridge.getStatus(newRoom.code),
                 serverTime: Date.now(),
               };
               ws.send(JSON.stringify({ type: 'SESSION_INIT_STATE', payload: newInitState }));
+              refreshRoomActivity(newCode);
 
               if (oldCode && oldCode !== newCode) {
                 broadcastAllInRoom(oldCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(oldCode) });
+                refreshRoomActivity(oldCode);
               }
               broadcastAllInRoom(newCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(newCode) });
             }
@@ -583,7 +660,12 @@ async function startServer() {
                 return;
               }
 
-              (ws as any).deviceId = payload.deviceId;
+              // A phone relaying a LoRa tracker it's connected to sends `relayedBy`. That position
+              // belongs to the tracker, not to this socket, so it must not take over the socket's
+              // identity (which is what gets marked offline when the socket closes).
+              if (!payload.relayedBy) {
+                (ws as any).deviceId = payload.deviceId;
+              }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const updatedTracker = {
                 ...existing,
@@ -607,7 +689,10 @@ async function startServer() {
                 return;
               }
 
-              (ws as any).deviceId = payload.deviceId;
+              // As for GPS_BROADCAST: a relayed tracker's history doesn't take over this socket's identity
+              if (!payload.relayedBy) {
+                (ws as any).deviceId = payload.deviceId;
+              }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const existingTrail = existing.trail || [];
               const newCoords = payload.points.map((p: any) => ({ lat: p.lat, lng: p.lng }));
@@ -843,6 +928,7 @@ async function startServer() {
         }
       }
       broadcastAllInRoom(roomCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(roomCode) });
+      refreshRoomActivity(roomCode);
     });
 
     ws.on('error', (err) => {
@@ -1743,6 +1829,7 @@ async function startServer() {
       return res.status(500).json({ success: false, error: 'Failed to delete room: ' + (e.message || 'database error') });
     }
     activeRooms.delete(room.code);
+    mqttBridge.removeRoom(room.code);
     // Disconnect devices still in the room; they reconnect and land in LOBBY
     wss.clients.forEach((client) => {
       if ((client as any).roomCode === room.code) {
@@ -2156,6 +2243,41 @@ async function startServer() {
     }
   });
 
+  // Meshtastic MQTT settings for a room. Everyone in the room can see the status and which
+  // channels are bridged; only editors see/change broker and channel settings. Passwords and
+  // channel keys are write-only.
+  app.get('/api/session/mqtt', (req, res) => {
+    const room = resolveRoom(req);
+    const canEdit = canEditRoom(requestRoomRole(req, room));
+    const pub = toPublicConfig(room.mqttConfig);
+    res.json({
+      roomCode: room.code,
+      canEdit,
+      config: canEdit ? pub : { enabled: pub.enabled, rootTopic: pub.rootTopic, channels: pub.channels.map((c) => ({ name: c.name, keyKind: c.keyKind })) },
+      status: mqttBridge.getStatus(room.code),
+    });
+  });
+
+  app.put('/api/session/mqtt', (req, res) => {
+    const room = resolveRoom(req);
+    if (!canEditRoom(requestRoomRole(req, room))) {
+      return res.status(403).json({ error: 'Only the race office can change MQTT settings for this event.' });
+    }
+    let next: RoomMqttConfig;
+    try {
+      next = mergeRoomMqttConfig(room.mqttConfig, req.body?.config ?? req.body, {
+        allowAnyBroker: process.env.MQTT_ALLOW_ANY_BROKER === '1',
+      });
+    } catch (err: any) {
+      return res.status(400).json({ error: err?.message || 'Invalid MQTT settings' });
+    }
+    room.mqttConfig = next;
+    persistRoomMqttConfig(room);
+    mqttBridge.setRoomConfig(room.code, next);
+    refreshRoomActivity(room.code);
+    res.json({ roomCode: room.code, canEdit: true, config: toPublicConfig(next), status: mqttBridge.getStatus(room.code) });
+  });
+
   app.post('/api/session/series', (req, res) => {
     const room = resolveRoom(req);
     if (!canEditRoom(requestRoomRole(req, room))) {
@@ -2552,7 +2674,10 @@ async function startServer() {
 
       // Delete associated events and active rooms
       const events = (db.prepare('SELECT code, tenant_id FROM events WHERE tenant_id = ?').all(clubId) as any[]).filter((ev) => ev.tenant_id === clubId);
-      events.forEach(ev => activeRooms.delete(ev.code));
+      events.forEach((ev) => {
+        activeRooms.delete(ev.code);
+        mqttBridge.removeRoom(ev.code);
+      });
 
       db.prepare('DELETE FROM tenants WHERE id = ?').run(clubId);
 
@@ -2630,6 +2755,7 @@ async function startServer() {
 
       db.prepare('DELETE FROM events WHERE id = ? OR code = ?').run(row.code, row.code);
       activeRooms.delete(row.code);
+      mqttBridge.removeRoom(row.code);
 
       insertAuditLog({
         tenantId: row.tenant_id,
@@ -2706,6 +2832,10 @@ async function startServer() {
           }
           activeRooms.set(newCode, memRoom);
           activeRooms.delete(existing.code);
+          // The bridge keys rooms by code: move it to the new one
+          mqttBridge.removeRoom(existing.code);
+          mqttBridge.setRoomConfig(newCode, memRoom.mqttConfig);
+          refreshRoomActivity(newCode);
         }
       } else if (activeRooms.has(newCode)) {
         const memRoom = activeRooms.get(newCode);

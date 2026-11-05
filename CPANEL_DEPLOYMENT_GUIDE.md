@@ -180,6 +180,19 @@ For stronger isolation, set `DATA_DIR` in **Setup Node.js App** to a folder outs
 
 ---
 
+## 📡 Meshtastic MQTT bridge
+
+The server connects to the Meshtastic MQTT broker for events that turn MQTT on (Hardware window → MQTT, or the Malaysia LoRa & MQTT window), decrypts packets with the event's channel keys and sends node updates to everyone viewing the event. Channel keys and broker passwords are stored in the event's row in SQLite and are never sent to browsers.
+
+- **First deploy with the bridge:** it needs the `protobufjs` package on the server. Upload the full `tmtrac-cpanel-deployment.zip` (it carries the updated `package.json`), click **Run NPM Install**, then **Restart**. Update-only zips are fine after that.
+- **Default broker:** `mqtts://mqtt.meshtastic.org:8883` (username `meshdev`). Override server-wide with the environment variables `MESHTASTIC_MQTT_URL`, `MESHTASTIC_MQTT_USERNAME` and `MESHTASTIC_MQTT_PASSWORD` in **Setup Node.js App**.
+- **Other brokers:** an event can use its own broker only if its host name is on the server's approved list. Add host names, separated by commas, in the environment variable `MQTT_ALLOWED_BROKER_HOSTS` (for example `broker.myclub.my`). The server connects on the event's behalf, so it only ever connects to brokers you approve, on standard MQTT ports.
+- **Limits:** at most 10 broker connections for the whole server (change with `MQTT_MAX_BROKER_CONNECTIONS`); messages over 4 KB and more than 50 node updates per second per event are dropped.
+- **Outbound ports:** the server must be able to open an outgoing connection to the broker (port 8883, or 1883 for `mqtt://`). Some shared hosts block these. If the MQTT status says it can't reach the broker, ask Exabytes to allow outgoing TCP 8883 to `mqtt.meshtastic.org`, or use a broker that offers MQTT over WebSockets on port 443 (`wss://…`).
+- **Idle shutdown:** Passenger may stop the app when nobody is using it. The bridge only runs while someone has an MQTT-enabled event open, and starts again when the next person opens it, so nothing needs to stay running.
+- **Position precision:** on the public default key (LongFast, `AQ==`), Meshtastic only shares approximate positions (about ±0.7–3 km). For race tracking, put the trackers on a club channel with its own key and add that channel to the event.
+- **Testing only:** `MQTT_ALLOW_ANY_BROKER=1` turns the approved list off (e.g. to test with `mqtt://127.0.0.1:1883`). Never set it in production.
+
 ## 🛠️ Troubleshooting & Database Path Notes
 
 ### Why did my server show `/data/regatta.db` instead of `tmtrac.db`?

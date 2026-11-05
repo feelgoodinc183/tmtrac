@@ -925,6 +925,11 @@ export function runSafeColumnMigrations(targetDb: any = db) {
       if (!eventCols.includes('unlocked_with_event_pass')) {
         try { targetDb.exec('ALTER TABLE events ADD COLUMN unlocked_with_event_pass INTEGER DEFAULT 0;'); } catch {}
       }
+      // Meshtastic MQTT bridge settings per room, including channel keys and broker password.
+      // Kept server-side only; never sent to browsers.
+      if (!eventCols.includes('mqtt_config_json')) {
+        try { targetDb.exec('ALTER TABLE events ADD COLUMN mqtt_config_json TEXT DEFAULT NULL;'); } catch {}
+      }
     }
 
     // Check & migrate packages columns
@@ -1225,6 +1230,7 @@ export function initDatabase() {
       vhf_bulletins_json TEXT,
       series_races_json TEXT,
       unlocked_with_event_pass INTEGER DEFAULT 0,
+      mqtt_config_json TEXT DEFAULT NULL,
       created_at INTEGER,
       last_active INTEGER,
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE

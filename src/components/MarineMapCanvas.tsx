@@ -27,7 +27,8 @@ import {
   Smartphone,
   Route,
 } from 'lucide-react';
-import { formatBattery } from '../utils/formatters';
+import { formatBattery, trackerFreshness } from '../utils/formatters';
+import { sameNodeId } from '../utils/nodeId';
 
 // Strict Coordinate Validation Helper to prevent Leaflet LatLng NaN crashes
 const isValidCoord = (lat: any, lng: any): boolean => {
@@ -634,7 +635,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       const isSelected = b.id === selectedBoatId;
 
       // Identify if this boat is bound to a physical LoRa Node or Phone/Tablet/Device GPS
-      const boundNode = (nodes || []).find((n) => n.boundBoatId === b.id || (b.nodeId && n.id === b.nodeId));
+      const boundNode = (nodes || []).find((n) => n.boundBoatId === b.id || sameNodeId(n.id, b.nodeId));
+      // A boat whose tracker has gone quiet is drawn faded, so its last position isn't mistaken for a live one
+      const trackerOffline = !replayActive && !!boundNode && trackerFreshness(boundNode.lastPingTime) === 'offline';
       const isPhoneGpsBound =
         boundNode?.connectionType === 'PHONE' ||
         boundNode?.isDeviceGps ||
@@ -678,6 +681,10 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         }).addTo(group);
       }
 
+      const offlineBadgeHtml = trackerOffline
+        ? `<span style="background: rgba(148,163,184,0.25); color: #CBD5E1; border: 1px solid rgba(148,163,184,0.5); font-size: 12px; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">TRACKER OFFLINE</span>`
+        : '';
+
       const trackerBadgeHtml = boundNode
         ? `<span style="background: ${isPhoneGpsBound ? 'rgba(0,212,255,0.25)' : 'rgba(0,255,157,0.25)'}; color: ${isPhoneGpsBound ? '#00D4FF' : '#00FF9D'}; font-size: 12px; font-weight: 800; padding: 1px 4px; border-radius: 3px; border: 1px solid ${isPhoneGpsBound ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,157,0.5)'}; display: inline-flex; align-items: center; gap: 2px;">${isPhoneGpsBound ? 'PHONE GPS' : `${boundNode.shortName || boundNode.id.slice(-4)}`}</span>`
         : '';
@@ -693,7 +700,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         : '';
 
       const boatHtml = `
-        <div style="display:flex; flex-direction:column; align-items:center; transform: translate(-50%, -50%); cursor: grab;" title="Drag boat to relocate position or click to select">
+        <div style="display:flex; flex-direction:column; align-items:center; transform: translate(-50%, -50%); cursor: grab;${trackerOffline ? ' opacity: 0.45;' : ''}" title="${trackerOffline ? 'Tracker offline: last known position' : 'Drag boat to relocate position or click to select'}">
           <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
             ${isSelected ? `<div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00D4FF; animation: pulse 1.5s infinite;"></div>` : ''}
             <div style="transform: rotate(${boatHeading}deg); transform-origin: center; transition: transform 0.15s ease-out;">
@@ -707,6 +714,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               <span>${b.name}</span>
               ${statusBadgeHtml}
               ${trackerBadgeHtml}
+              ${offlineBadgeHtml}
             </div>
             <div style="font-size: 12px; color: #00FF9D;">${(b.sog || 0).toFixed(1)} kt • DTW: ${(b.dtw || 0).toFixed(2)}NM</div>
           </div>
@@ -840,12 +848,14 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         iconSize: [0, 0],
       });
 
+      // Trackers are drawn where they reported themselves; they can't be dragged to a new spot
+      const nodeDraggable = !showReplayBar && !!onMoveNodePosition;
       const nodeMarker = L.marker([nodeLat, nodeLng], {
         icon: nodeIcon,
-        draggable: !showReplayBar,
+        draggable: nodeDraggable,
       }).addTo(group);
 
-      if (!showReplayBar) {
+      if (nodeDraggable) {
         nodeMarker.on('dragstart', () => {
           isDraggingRef.current = true;
           activeDraggingEntityIdRef.current = node.id;

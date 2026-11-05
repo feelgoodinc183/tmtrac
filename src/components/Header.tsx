@@ -34,13 +34,10 @@ interface HeaderProps {
   activeRoomCode?: string;
   onOpenLobby?: () => void;
   onOpenPinUnlock?: () => void;
-  onOpenNodeBinding?: () => void;
   onOpenMqttInspector?: () => void;
   onOpenOfflineCache?: () => void;
   onOpenQrModal?: () => void;
-  onOpenHardwareScan?: () => void;
   onOpenVhfJuryModal?: () => void;
-  onOpenNmeaMalaysiaModal?: () => void;
   onOpenResults?: () => void;
   onOpenCourseProfiles?: () => void;
   onOpenBoatQr?: () => void;

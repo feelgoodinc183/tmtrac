@@ -212,7 +212,7 @@ export const NodeBindingModal: React.FC<NodeBindingModalProps> = ({
                   </div>
                   <div>
                     <span className="text-ink font-bold block">{activeNode.longName} ({activeNode.id})</span>
-                    <span className="text-ink-muted">MAC: {activeNode.mac || '24:6F:28:7A:2C:10'} • Model: {activeNode.hardwareModel || 'T-Echo / LoRa'}</span>
+                    <span className="text-ink-muted">MAC: {activeNode.mac || '—'} • Model: {activeNode.hardwareModel || '—'}</span>
                   </div>
                 </div>
 

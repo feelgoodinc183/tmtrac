@@ -200,7 +200,7 @@ export interface RacePlaybackState {
 }
 
 export interface MeshtasticNode {
-  id: string;             // e.g. "!7A2C" or "!MY-TECHO-BLE"
+  id: string;             // Meshtastic: "!" + 8 lowercase hex, e.g. "!a1b2c3d4" (see utils/nodeId); phones: "!DEV-1A2B"
   longName: string;       // e.g. "T-Echo-WindRunner" or "LilyGO T-Echo nRF52840"
   shortName: string;      // e.g. "7A2C"
   mac: string;            // e.g. "24:6F:28:7A:2C:10"
@@ -214,6 +214,9 @@ export interface MeshtasticNode {
   headingDeg?: number;    // e.g. 312°
   lat?: number;
   lng?: number;
+  /** Worst-case error of lat/lng in metres when the tracker sent a reduced-precision position
+   *  (e.g. the public MQTT channel); undefined or null means exact */
+  positionErrorMeters?: number | null;
   snr?: number;           // dB, e.g. +4.5; missing until a packet reports it
   rssi?: number;          // dBm, e.g. -78
   hops?: number;          // 0-4
@@ -442,9 +445,10 @@ export interface HybridFleetMember {
   role: TrackerVesselRole;
   lat: number;
   lng: number;
-  accuracy: number;
-  speedKt: number;
-  headingDeg: number;
+  // Missing when the device didn't report it
+  accuracy?: number;
+  speedKt?: number;
+  headingDeg?: number;
   altitudeMeters?: number;
   battery?: number;
   timestamp: number;

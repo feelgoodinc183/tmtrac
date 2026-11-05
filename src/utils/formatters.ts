@@ -67,3 +67,9 @@ export function trackerFreshness(lastPingTime?: number): TrackerFreshness {
   if (age <= 10 * 60_000) return 'stale';
   return 'offline';
 }
+
+/** Node status as shown in the app, from how recently the tracker was heard */
+export function nodeStatusFromLastPing(lastPingTime?: number): 'OPTIMAL' | 'DEGRADED' | 'OFFLINE' {
+  const f = trackerFreshness(lastPingTime);
+  return f === 'live' ? 'OPTIMAL' : f === 'stale' ? 'DEGRADED' : 'OFFLINE';
+}
