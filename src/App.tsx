@@ -92,6 +92,9 @@ import {
 import { Navigation, Trophy, X } from 'lucide-react';
 import { formatBattery, nodeStatusFromLastPing } from './utils/formatters';
 
+/** Boat colours, distinct on the map */
+const BOAT_PALETTE = ['#00D4FF', '#00FF9D', '#FBBC04', '#EA4335', '#A142F4', '#FF8A80', '#38BDF8', '#F43F5E'];
+
 const isValidNumber = (val: any): boolean => typeof val === 'number' && Number.isFinite(val) && !Number.isNaN(val);
 
 export function deduplicateBoats(boatList: Boat[]): Boat[] {
@@ -2232,14 +2235,15 @@ export default function App() {
         class: boatData.class || (raceClasses[0]?.name ?? 'Class 1'),
         handicapSystem: boatData.handicapSystem || 'IRC',
         handicapRating: boatData.handicapRating || 1.0,
-        skipper: boatData.skipper || 'Skipper',
+        skipper: boatData.skipper || '',
         nodeId: effectiveNodeId,
         lat: initLat,
         lng: initLng,
         sog: initSog,
         cog: initCog,
         vmg: typeof boatData.vmg === 'number' ? boatData.vmg : 0,
-        dtw: typeof boatData.dtw === 'number' ? boatData.dtw : 1.2,
+        // Worked out from the course once the boat has a position; not a made-up 1.2 NM
+        dtw: typeof boatData.dtw === 'number' ? boatData.dtw : 0,
         heading: initCog,
         status: boatData.status || 'RACING',
         markRoundings: [],
@@ -2290,7 +2294,7 @@ export default function App() {
   const handleImportCompetitors = (imported: CompetitorImportRecord[]) => {
     setBoats((prev) => {
       const updated = [...prev];
-      const palette = ['#00D4FF', '#00FF9D', '#FBBC04', '#EA4335', '#A142F4', '#FF8A80', '#38BDF8', '#F43F5E'];
+      const palette = BOAT_PALETTE;
       imported.forEach((rec, idx) => {
         const existingIdx = updated.findIndex(
           (b) => b.sailNumber.toLowerCase().trim() === rec.sailNumber.toLowerCase().trim()
@@ -2398,11 +2402,14 @@ export default function App() {
   // Creates a boat from the Connect device flow and binds the tracker to it
   const handleCreateBoatForTracker = (nodeId: string, name: string, sailNumber: string) => {
     // Created with the tracker so it starts at the tracker's position (no jump from the map centre)
+    const used = new Set(boats.map((b) => (b.color || '').toLowerCase()));
+    const color = BOAT_PALETTE.find((c) => !used.has(c.toLowerCase())) || BOAT_PALETTE[boats.length % BOAT_PALETTE.length];
     const boatId = handleSaveBoat(
       {
         name,
         sailNumber,
         nodeId,
+        color,
         class: raceState.activeClass && raceState.activeClass !== 'ALL' ? raceState.activeClass : undefined,
         status: 'PRE_START',
       },
@@ -2615,12 +2622,10 @@ export default function App() {
           setShowAuthModal(true);
         }}
         onOpenPinUnlock={() => setShowPinUnlockModal(true)}
-        onOpenNodeBinding={() => handleOpenNodeBindingWithSelection()}
         onOpenMqttInspector={() => setShowMqttInspector(true)}
         onOpenOfflineCache={() => setShowOfflineCache(true)}
         onOpenQrModal={() => setShowSpectatorQr(true)}
         onOpenVhfJuryModal={() => setShowVhfJuryModal(true)}
-        onOpenNmeaMalaysiaModal={() => setShowNmeaMalaysiaModal(true)}
         onOpenResults={() => setShowResultsModal(true)}
         onOpenBoatQr={() => handleOpenBoatQr()}
         onOpenSkipperCheckIn={() => handleOpenSkipperCheckIn()}
@@ -3064,7 +3069,6 @@ export default function App() {
         onToggleDeviceGps={handleToggleDeviceGps}
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
         onOpenBoatQr={() => handleOpenBoatQr()}
-        onOpenNodeBinding={handleOpenNodeBindingWithSelection}
         onOpenConnectDevice={() => setShowConnectDevice(true)}
         onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
         onSelectBoat={(id) => {

@@ -24,6 +24,7 @@ import {
   DeviceGpsState,
 } from '../types/regatta';
 import { safeFixed } from '../utils/formatters';
+import { sameNodeId } from '../utils/nodeId';
 import { APP_VERSION } from '../appVersion';
 import { Button } from './ui/Button';
 
@@ -40,7 +41,6 @@ export interface UnifiedHubModalProps {
   onToggleDeviceGps: () => void;
   hybridTrackerCount: number;
   onOpenBoatQr?: () => void;
-  onOpenNodeBinding?: () => void;
   /** Opens the Connect device flow */
   onOpenConnectDevice?: () => void;
   onOpenBoatEditor?: (boat?: Boat) => void;
@@ -75,7 +75,6 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   onToggleDeviceGps,
   hybridTrackerCount,
   onOpenBoatQr,
-  onOpenNodeBinding,
   onOpenConnectDevice,
   onOpenBoatEditor,
   onSelectBoat,
@@ -98,6 +97,19 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
   // Results moved out of the hub (race console / sidebar); old callers land on Fleet
   const normalizeTab = (t: HubTab): HubTab => (t === 'RESULTS' ? 'FLEET' : t);
   const [activeTab, setActiveTab] = useState<HubTab>(normalizeTab(initialHub as HubTab));
+
+  // This event's trackers: devices sharing GPS, the Bluetooth tracker here, and nodes bound to a
+  // boat. Public nodes heard nearby are not counted (the Mesh Nodes tab shows them on request).
+  const eventTrackerCount = nodes.filter(
+    (n) =>
+      n.isBluetoothConnected ||
+      n.isDeviceGps ||
+      n.connectionType === 'PHONE' ||
+      n.connectionType === 'TABLET' ||
+      n.connectionType === 'DEVICE_GPS' ||
+      n.connectionType === 'PC' ||
+      boats.some((b) => (n.boundBoatId && b.id === n.boundBoatId) || sameNodeId(b.nodeId, n.id))
+  ).length;
 
   // Sync initialHub when modal opens
   React.useEffect(() => {
@@ -301,7 +313,7 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                         Trackers
                       </span>
                       <span className="text-xs text-accent font-bold">
-                        {nodes.length} {nodes.length === 1 ? 'node' : 'nodes'}
+                        {eventTrackerCount} {eventTrackerCount === 1 ? 'tracker' : 'trackers'}
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-ink mt-1">LoRa trackers</h3>
@@ -309,16 +321,18 @@ export const UnifiedHubModal: React.FC<UnifiedHubModalProps> = ({
                       Connect a Meshtastic tracker over Bluetooth or the internet, then pick its boat
                     </p>
                   </div>
-                  <Button
-                    variant="primary"
-                    icon={<Plus />}
-                    onClick={() => {
-                      onClose();
-                      onOpenConnectDevice?.();
-                    }}
-                  >
-                    Connect device
-                  </Button>
+                  {viewMode !== 'SPECTATOR' && (
+                    <Button
+                      variant="primary"
+                      icon={<Plus />}
+                      onClick={() => {
+                        onClose();
+                        onOpenConnectDevice?.();
+                      }}
+                    >
+                      Connect device
+                    </Button>
+                  )}
                 </div>
               </div>
 
