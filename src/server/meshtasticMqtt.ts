@@ -184,7 +184,12 @@ function updateFromData(base: BridgeNodeUpdate, data: DataMsg): BridgeNodeUpdate
  * Decodes one protobuf ServiceEnvelope. `channels` are the keys this room knows; a packet is
  * only decrypted with the key whose channel name matches the envelope and whose hash matches.
  */
-export function decodeEnvelope(bytes: Uint8Array, channels: ChannelKey[], now = Date.now()): DecodeResult {
+export function decodeEnvelope(
+  bytes: Uint8Array,
+  channels: ChannelKey[],
+  now = Date.now(),
+  opts: { requireEncryption?: Set<string> } = {}
+): DecodeResult {
   let env;
   try {
     env = decodeServiceEnvelope(bytes);
@@ -206,6 +211,9 @@ export function decodeEnvelope(bytes: Uint8Array, channels: ChannelKey[], now = 
   };
 
   let data = p.decoded;
+  // A channel with its own key only trusts packets encrypted with that key; anyone can publish
+  // an unencrypted envelope with any node's id
+  if (data && opts.requireEncryption?.has(channelName)) return { ok: false, reason: 'unencrypted packet on a private channel' };
   if (!data && p.encrypted && p.encryptedPayload) {
     const ch = channels.find((c) => c.name === channelName && (p.channel === undefined || channelHash(c.name, c.key) === p.channel));
     if (!ch) return { ok: false, reason: `no key for channel ${channelName || '?'}` };

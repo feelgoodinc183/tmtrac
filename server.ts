@@ -100,7 +100,21 @@ export interface ActiveRoomState {
 function parseRoomMqttConfig(raw: string | null | undefined): RoomMqttConfig {
   if (!raw) return { ...DEFAULT_ROOM_MQTT_CONFIG };
   try {
-    return { ...DEFAULT_ROOM_MQTT_CONFIG, ...JSON.parse(raw) };
+    const v = JSON.parse(raw);
+    const str = (x: unknown, fallback: string) => (typeof x === 'string' ? x : fallback);
+    const channels = Array.isArray(v?.channels)
+      ? v.channels
+          .filter((c: any) => c && typeof c.name === 'string' && typeof c.psk === 'string')
+          .map((c: any) => ({ name: c.name, psk: c.psk }))
+      : DEFAULT_ROOM_MQTT_CONFIG.channels;
+    return {
+      enabled: v?.enabled === true,
+      brokerUrl: str(v?.brokerUrl, ''),
+      username: str(v?.username, ''),
+      password: str(v?.password, ''),
+      rootTopic: str(v?.rootTopic, DEFAULT_ROOM_MQTT_CONFIG.rootTopic),
+      channels,
+    };
   } catch {
     return { ...DEFAULT_ROOM_MQTT_CONFIG };
   }
@@ -458,6 +472,8 @@ async function startServer() {
     connect: (url, opts) => mqtt.connect(url, opts) as any,
     onNodeUpdate: (roomCode, update) => broadcastAllInRoom(roomCode, 'MQTT_NODE_UPDATE', update),
     onStatus: (roomCode, status) => broadcastAllInRoom(roomCode, 'MQTT_STATUS', status),
+    allowAnyBroker: process.env.MQTT_ALLOW_ANY_BROKER === '1',
+    maxConnections: Number(process.env.MQTT_MAX_BROKER_CONNECTIONS) || 10,
   });
   onRoomLoaded = (room) => mqttBridge.setRoomConfig(room.code, room.mqttConfig);
   for (const room of activeRooms.values()) onRoomLoaded(room);
@@ -1813,6 +1829,7 @@ async function startServer() {
       return res.status(500).json({ success: false, error: 'Failed to delete room: ' + (e.message || 'database error') });
     }
     activeRooms.delete(room.code);
+    mqttBridge.removeRoom(room.code);
     // Disconnect devices still in the room; they reconnect and land in LOBBY
     wss.clients.forEach((client) => {
       if ((client as any).roomCode === room.code) {
@@ -2249,7 +2266,7 @@ async function startServer() {
     let next: RoomMqttConfig;
     try {
       next = mergeRoomMqttConfig(room.mqttConfig, req.body?.config ?? req.body, {
-        allowPrivateBrokers: process.env.MQTT_ALLOW_PRIVATE_BROKERS === '1',
+        allowAnyBroker: process.env.MQTT_ALLOW_ANY_BROKER === '1',
       });
     } catch (err: any) {
       return res.status(400).json({ error: err?.message || 'Invalid MQTT settings' });
@@ -2657,7 +2674,10 @@ async function startServer() {
 
       // Delete associated events and active rooms
       const events = (db.prepare('SELECT code, tenant_id FROM events WHERE tenant_id = ?').all(clubId) as any[]).filter((ev) => ev.tenant_id === clubId);
-      events.forEach(ev => activeRooms.delete(ev.code));
+      events.forEach((ev) => {
+        activeRooms.delete(ev.code);
+        mqttBridge.removeRoom(ev.code);
+      });
 
       db.prepare('DELETE FROM tenants WHERE id = ?').run(clubId);
 
@@ -2735,6 +2755,7 @@ async function startServer() {
 
       db.prepare('DELETE FROM events WHERE id = ? OR code = ?').run(row.code, row.code);
       activeRooms.delete(row.code);
+      mqttBridge.removeRoom(row.code);
 
       insertAuditLog({
         tenantId: row.tenant_id,
@@ -2811,6 +2832,10 @@ async function startServer() {
           }
           activeRooms.set(newCode, memRoom);
           activeRooms.delete(existing.code);
+          // The bridge keys rooms by code: move it to the new one
+          mqttBridge.removeRoom(existing.code);
+          mqttBridge.setRoomConfig(newCode, memRoom.mqttConfig);
+          refreshRoomActivity(newCode);
         }
       } else if (activeRooms.has(newCode)) {
         const memRoom = activeRooms.get(newCode);
