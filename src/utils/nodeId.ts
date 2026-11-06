@@ -15,8 +15,11 @@ export function canonicalNodeId(raw: string | number | null | undefined): string
   }
   const trimmed = raw.trim();
   if (!trimmed) return '';
+  // With a "!" or "0x" prefix, up to 8 hex digits. Bare strings must be the full 8 hex digits
+  // with at least one letter, so plain numbers (e.g. a decimal node number) aren't read as hex.
+  const prefixed = /^(!|0x)/i.test(trimmed);
   const hex = trimmed.replace(/^!/, '').replace(/^0x/i, '');
-  if (/^[0-9a-f]{1,8}$/i.test(hex)) {
+  if (prefixed ? /^[0-9a-f]{1,8}$/i.test(hex) : /^(?=.*[a-f])[0-9a-f]{8}$/i.test(hex)) {
     return `!${hex.toLowerCase().padStart(8, '0')}`;
   }
   return trimmed;

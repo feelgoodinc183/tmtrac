@@ -553,6 +553,11 @@ export default function App() {
         return [node, ...prevNodes];
       });
 
+      // Positions from the server's MQTT bridge reach every viewer, can be kilometres off on public
+      // channels, and anyone on the broker can publish them: show the node, but only the device
+      // whose own radio heard the tracker relays it and moves/scores the boat
+      if (node.positionSource === 'MQTT') return;
+
       // Only trackers bound to a boat in this room are shared with the room
       const decision = trackerRelay.decide(node, boatsRef.current);
       if (!decision.boundBoatId) return;

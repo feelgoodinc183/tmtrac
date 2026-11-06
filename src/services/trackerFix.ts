@@ -113,7 +113,8 @@ export function createTrackerFixApplier(getRaceState: () => RaceState, getMarks:
     let rounding: TrackerFixResult['rounding'] = null;
 
     const updated = boats.map((b) => {
-      const matches = (fix.boundBoatId && b.id === fix.boundBoatId) || sameNodeId(b.nodeId, fix.trackerId);
+      // A known binding names exactly one boat; a stale nodeId on another boat must not move it too
+      const matches = fix.boundBoatId ? b.id === fix.boundBoatId : sameNodeId(b.nodeId, fix.trackerId);
       if (!matches) return b;
       changed = true;
 

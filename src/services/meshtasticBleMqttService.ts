@@ -942,6 +942,7 @@ export class MeshtasticBleMqttService {
       lng,
       // A new position brings its own precision (exact unless the packet said otherwise)
       positionErrorMeters: hasNewPosition ? (partial.positionErrorMeters ?? null) : existing?.positionErrorMeters,
+      positionSource: hasNewPosition ? source : existing?.positionSource,
       snr: partial.snr ?? existing?.snr,
       rssi: partial.rssi ?? existing?.rssi,
       hops: partial.hops ?? existing?.hops,

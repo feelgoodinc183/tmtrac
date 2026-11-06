@@ -217,6 +217,8 @@ export interface MeshtasticNode {
   /** Worst-case error of lat/lng in metres when the tracker sent a reduced-precision position
    *  (e.g. the public MQTT channel); undefined or null means exact */
   positionErrorMeters?: number | null;
+  /** Where the current position came from: heard by this device's radio, or the server's MQTT bridge */
+  positionSource?: 'BLE' | 'MQTT';
   snr?: number;           // dB, e.g. +4.5; missing until a packet reports it
   rssi?: number;          // dBm, e.g. -78
   hops?: number;          // 0-4
