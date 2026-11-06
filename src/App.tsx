@@ -183,13 +183,36 @@ export default function App() {
   // (binding checked first; repeated fixes not re-scored; relayed at least every 60 s)
   const [trackerRelay] = useState(() => createTrackerRelayGate());
 
+  // Boat edits are sent to the room once React has applied them, not from inside the setBoats
+  // updater: React may run an updater more than once (always twice in development's StrictMode),
+  // which sent every change to the room twice. An updater only marks that the boats need sending,
+  // which is safe to repeat; the effect below sends the committed boats once.
+  const boatsBroadcastPendingRef = useRef(false);
+  const pendingHornRef = useRef<{ frequency: number; durationMs: number } | null>(null);
+  const scheduleBoatsBroadcast = () => {
+    boatsBroadcastPendingRef.current = true;
+  };
+  useEffect(() => {
+    if (boatsBroadcastPendingRef.current) {
+      boatsBroadcastPendingRef.current = false;
+      deviceTrackerService.broadcastBoats(boats);
+    }
+    const horn = pendingHornRef.current;
+    if (horn) {
+      pendingHornRef.current = null;
+      playHornRef.current(horn.frequency, horn.durationMs);
+    }
+  }, [boats]);
+
   const applyFixAndBroadcast = (prevBoats: Boat[], fix: TrackerFix): Boat[] => {
     const res = applyTrackerFix(prevBoats, fix);
     if (!res.changed) return prevBoats;
     if (res.rounding) {
-      playHornRef.current(res.rounding.isFinished ? 880 : 660, res.rounding.isFinished ? 1000 : 400);
+      pendingHornRef.current = res.rounding.isFinished
+        ? { frequency: 880, durationMs: 1000 }
+        : { frequency: 660, durationMs: 400 };
     }
-    deviceTrackerService.broadcastBoats(res.boats);
+    scheduleBoatsBroadcast();
     return res.boats;
   };
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null);
@@ -1147,7 +1170,7 @@ export default function App() {
                 }
                 return b;
               });
-              deviceTrackerService.broadcastBoats(updated);
+              scheduleBoatsBroadcast();
               return updated;
             });
           }
@@ -1346,7 +1369,7 @@ export default function App() {
         }
         return b;
       });
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
 
@@ -1498,7 +1521,7 @@ export default function App() {
               return b;
             });
             if (hasChanges) {
-              deviceTrackerService.broadcastBoats(updated);
+              scheduleBoatsBroadcast();
               return updated;
             }
             return prevBoats;
@@ -1584,7 +1607,7 @@ export default function App() {
             return b;
           });
           if (hasChanges) {
-            deviceTrackerService.broadcastBoats(updated);
+            scheduleBoatsBroadcast();
             return updated;
           }
           return prevBoats;
@@ -1638,7 +1661,7 @@ export default function App() {
         }
         return b;
       });
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
 
@@ -1681,7 +1704,7 @@ export default function App() {
   const handleUpdateBoatStatus = (boatId: string, status: Boat['status']) => {
     setBoats((prev) => {
       const updated = prev.map((b) => (b.id === boatId ? { ...b, status } : b));
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
   };
@@ -1701,7 +1724,7 @@ export default function App() {
         }
         return b;
       });
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
   };
@@ -1824,7 +1847,7 @@ export default function App() {
         }
         return b;
       });
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
 
@@ -1892,7 +1915,7 @@ export default function App() {
         }
         return b;
       });
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
 
@@ -2154,7 +2177,7 @@ export default function App() {
         }
         return b;
       });
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
   };
@@ -2252,7 +2275,7 @@ export default function App() {
           }
           return b;
         });
-        deviceTrackerService.broadcastBoats(updated);
+        scheduleBoatsBroadcast();
         return updated;
       });
 
@@ -2324,7 +2347,7 @@ export default function App() {
       };
       setBoats((prev) => {
         const updated = [...prev, newBoat];
-        deviceTrackerService.broadcastBoats(updated);
+        scheduleBoatsBroadcast();
         return updated;
       });
       if (effectiveNodeId) {
@@ -2342,7 +2365,7 @@ export default function App() {
   const handleDeleteBoat = (boatId: string) => {
     setBoats((prev) => {
       const updated = prev.filter((b) => b.id !== boatId);
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
     setNodes((prevNodes) =>
@@ -2407,7 +2430,7 @@ export default function App() {
         }
       });
       const deduped = deduplicateBoats(updated);
-      deviceTrackerService.broadcastBoats(deduped);
+      scheduleBoatsBroadcast();
       return deduped;
     });
   };
@@ -2436,7 +2459,7 @@ export default function App() {
       const newName = updated.name;
       setBoats((prev) => {
         const remapped = prev.map((b) => (b.class === oldName ? { ...b, class: newName } : b));
-        deviceTrackerService.broadcastBoats(remapped);
+        scheduleBoatsBroadcast();
         return remapped;
       });
       if (raceState.activeClass === oldName) {
@@ -2460,7 +2483,7 @@ export default function App() {
       const updated = prev.map((b) =>
         b.class === classToDelete.name ? { ...b, class: fallbackClass } : b
       );
-      deviceTrackerService.broadcastBoats(updated);
+      scheduleBoatsBroadcast();
       return updated;
     });
 
