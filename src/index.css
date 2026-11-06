@@ -25,6 +25,22 @@
   }
 }
 
+/* Touch target: at least 44 x 44 px to tap, without changing how the control looks. An invisible
+   box centred on the control takes the taps; it is never smaller than the control itself. Don't use
+   it inside a scrolling or overflow-hidden parent (the box gets clipped): size those controls instead. */
+.tap-target {
+  position: relative;
+}
+.tap-target::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 /* Custom subtle scrollbars */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;

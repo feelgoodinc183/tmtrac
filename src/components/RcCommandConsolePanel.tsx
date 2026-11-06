@@ -245,7 +245,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                 key={cls}
                 onClick={() => onUpdateRaceState({ activeClass: cls })}
                 aria-pressed={raceState.activeClass === cls}
-                className={`px-2.5 py-0.5 rounded-full font-bold transition-all shrink-0 ${
+                className={`px-2.5 py-0.5 max-sm:min-h-11 rounded-full font-bold transition-all shrink-0 ${
                   raceState.activeClass === cls
                     ? 'bg-accent text-on-accent shadow-sm'
                     : 'text-ink-muted hover:text-ink'
@@ -257,8 +257,9 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
             {onOpenClassManager && (
               <button
                 onClick={onOpenClassManager}
-                className="px-2 py-0.5 rounded-full text-accent hover:text-ink hover:bg-raised transition-all flex items-center gap-1 font-bold text-xs"
+                className="px-2 py-0.5 max-sm:min-h-11 max-sm:min-w-11 justify-center rounded-full text-accent hover:text-ink hover:bg-raised transition-all flex items-center gap-1 font-bold text-xs"
                 title="Manage Regatta Race Classes"
+                aria-label="Manage classes"
               >
                 <Layers className="w-3 h-3" />
                 <span className="hidden md:inline">Classes</span>
@@ -293,7 +294,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               aria-expanded={isExpanded}
-              className="px-2 py-1 rounded-full text-xs font-bold text-ink-muted hover:text-ink hover:bg-raised transition-all flex items-center gap-1"
+              className="tap-target px-2 py-1 rounded-full text-xs font-bold text-ink-muted hover:text-ink hover:bg-raised transition-all flex items-center gap-1"
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
@@ -321,7 +322,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'SEQUENCE'}
               onClick={() => setActiveTab('SEQUENCE')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'SEQUENCE'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -335,7 +336,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'MARKS'}
               onClick={() => setActiveTab('MARKS')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'MARKS'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -349,7 +350,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'OCS_FLEET'}
               onClick={() => setActiveTab('OCS_FLEET')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'OCS_FLEET'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -363,7 +364,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'ENVIRONMENT'}
               onClick={() => setActiveTab('ENVIRONMENT')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'ENVIRONMENT'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -377,7 +378,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'ANNOUNCE'}
               onClick={() => setActiveTab('ANNOUNCE')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'ANNOUNCE'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'

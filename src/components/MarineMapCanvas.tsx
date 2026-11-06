@@ -1051,7 +1051,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         {/* Fit All Fleet Button (Sized like Replay icon button) */}
         <button
           onClick={handleFitAllFleet}
-          className="min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center bg-surface/95 hover:bg-raised border border-line text-ink"
+          aria-label="Fit all"
+          className="tap-target min-h-10 max-sm:min-h-11 max-sm:min-w-11 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center bg-surface/95 hover:bg-raised border border-line text-ink"
           title="Fit All Fleet & Marks (Zoom to view fleet)"
         >
           <Crosshair className="w-4 h-4" />
@@ -1067,7 +1068,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
                 mapRef.current.flyTo([target.lat, target.lng], 15);
               }
             }}
-            className="p-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center backdrop-blur-md bg-canvas/90 hover:bg-accent/20 border border-accent text-accent relative"
+            aria-label="Zoom to active phone"
+            className="tap-target p-2 max-sm:min-h-11 max-sm:min-w-11 rounded-xl text-xs font-bold transition-all flex items-center justify-center backdrop-blur-md bg-canvas/90 hover:bg-accent/20 border border-accent text-accent relative"
             title={`Zoom to Active Mobile Device: ${mobileNodes[0].shortName || mobileNodes[0].longName.slice(0, 8)} (${mobileNodes.length} active)`}
           >
             <Smartphone className="w-4 h-4 text-accent" />
@@ -1087,7 +1089,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         {viewMode !== 'SPECTATOR' && (
           <button
             onClick={() => setIsCourseBarOpen((prev) => !prev)}
-            className={`min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center relative ${
+            aria-label="Course tools"
+            aria-expanded={isCourseBarOpen}
+            className={`tap-target min-h-10 max-sm:min-h-11 max-sm:min-w-11 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center relative ${
               isCourseBarOpen
                 ? 'bg-accent text-on-accent border border-accent'
                 : 'bg-surface/95 hover:bg-raised border border-line text-ink'
@@ -1108,7 +1112,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         {boats.length >= 2 && (
           <button
             onClick={() => onOpenHeadToHead(boats[0].id, boats[1].id)}
-            className="p-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center bg-accent hover:brightness-110 text-on-accent"
+            aria-label="Head-to-head comparison"
+            className="tap-target p-2 max-sm:min-h-11 max-sm:min-w-11 rounded-xl text-xs font-bold transition-all flex items-center justify-center bg-accent hover:brightness-110 text-on-accent"
             title="Open Head-to-Head Comparison"
           >
             <Zap className="w-4 h-4" />
@@ -1119,7 +1124,9 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
         {onToggleReplayBar && (
           <button
             onClick={onToggleReplayBar}
-            className={`min-h-10 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center ${
+            aria-label="Replay"
+            aria-pressed={!!showReplayBar}
+            className={`tap-target min-h-10 max-sm:min-h-11 max-sm:min-w-11 px-2.5 rounded-control text-xs font-bold transition-colors shadow-lg flex items-center justify-center ${
               showReplayBar
                 ? 'bg-accent text-on-accent border border-accent'
                 : 'bg-surface/95 hover:bg-raised border border-line text-ink'

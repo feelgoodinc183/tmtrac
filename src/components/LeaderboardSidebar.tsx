@@ -241,7 +241,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
       >
         <button
           onClick={() => setActiveTab('LEADERBOARD')}
-          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
+          className={`flex-1 min-h-11 landscape:min-h-0 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
             activeTab === 'LEADERBOARD'
               ? 'border-accent text-accent bg-accent/5'
               : 'border-transparent text-ink-muted hover:text-ink-muted'
@@ -252,7 +252,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('MESH_NODES')}
-          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
+          className={`flex-1 min-h-11 landscape:min-h-0 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
             activeTab === 'MESH_NODES'
               ? 'border-accent text-accent bg-accent/5'
               : 'border-transparent text-ink-muted hover:text-ink-muted'
@@ -291,11 +291,11 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               Standings (IRC/ORC)
             </h2>
             {/* Filters the leaderboard only; the race console's class tabs pick the active class */}
-            <div role="group" aria-label="Show class" className="flex items-center gap-1 flex-wrap">
+            <div role="group" aria-label="Show class" className="flex items-center gap-1 max-sm:gap-2 flex-wrap">
               <span className="text-xs text-ink-muted mr-0.5">Show</span>
               <button
                 onClick={() => setFilterClass('ALL')}
-                className={`text-xs px-1.5 py-0.5 rounded  transition-all ${
+                className={`text-xs px-1.5 py-0.5 max-sm:min-h-11 max-sm:min-w-11 max-sm:px-3 rounded  transition-all ${
                   filterClass === 'ALL'
                     ? 'bg-accent text-on-accent font-bold'
                     : 'bg-raised/60 text-ink-muted hover:text-ink'
@@ -318,7 +318,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   <button
                     key={cls.id}
                     onClick={() => setFilterClass(cls.name)}
-                    className={`text-xs px-1.5 py-0.5 rounded  transition-all flex items-center gap-1 ${
+                    className={`text-xs px-1.5 py-0.5 max-sm:min-h-11 max-sm:px-3 rounded  transition-all flex items-center gap-1 ${
                       filterClass === cls.name
                         ? 'bg-accent text-on-accent font-bold'
                         : 'bg-raised/60 text-ink-muted hover:text-ink'
@@ -395,7 +395,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 {onOpenBoatQr && boats.length > 0 && (
                   <button
                     onClick={() => onOpenBoatQr(boats[0]?.id || '')}
-                    className="font-bold text-accent bg-accent/15 hover:bg-accent/25 border border-accent/40 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all text-xs"
+                    className="font-bold text-accent bg-accent/15 hover:bg-accent/25 border border-accent/40 px-2 py-0.5 max-sm:min-h-11 max-sm:px-3 rounded-lg flex items-center gap-1 transition-all text-xs"
                     title="Generate and print Smart Boat QR codes for 1-tap skipper check-in"
                   >
                     <QrCode className="w-2.5 h-2.5" />
@@ -407,7 +407,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 {onOpenResults && viewMode === 'SPECTATOR' && (
                   <button
                     onClick={onOpenResults}
-                    className="font-bold text-warning-ink bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all"
+                    className="font-bold text-warning-ink bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/40 px-2 py-0.5 max-sm:min-h-11 max-sm:px-3 rounded flex items-center gap-1 transition-all"
                     title="View official finish results and scoring breakdown"
                   >
                     <Trophy className="w-2.5 h-2.5 text-warning-ink" />

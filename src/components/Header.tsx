@@ -12,6 +12,7 @@ import {
   Sun,
   Settings2,
   MoreHorizontal,
+  Sailboat,
 } from 'lucide-react';
 import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
@@ -30,6 +31,8 @@ interface HeaderProps {
   hybridTrackerCount?: number;
   connectedPeerCount?: number;
   viewMode: 'RC_CONSOLE' | 'SPECTATOR';
+  /** Unlocked with the skipper PIN: the read-only chip says Skipper instead of Spectator */
+  isSkipper?: boolean;
   setViewMode?: (mode: 'RC_CONSOLE' | 'SPECTATOR') => void;
   activeRoomCode?: string;
   onOpenLobby?: () => void;
@@ -62,6 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSunlightMode,
   connectedPeerCount = 1,
   viewMode,
+  isSkipper = false,
   setViewMode,
   activeRoomCode = 'LOBBY',
   onOpenLobby,
@@ -87,22 +91,24 @@ export const Header: React.FC<HeaderProps> = ({
       }`}
     >
       {/* Left: Brand + Realtime Sync + Room Selector */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
         {/* Brand Logo & Name */}
-        <div
+        <button
+          type="button"
           onClick={onOpenLandingPage}
-          className="flex items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+          className="tap-target flex items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
           title="Return to Front Landing Page"
+          aria-label="TMTRAC home"
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/20 border border-accent/50 text-accent flex items-center justify-center font-bold shadow-sm shrink-0">
             <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5 fill-current">
               <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
             </svg>
           </div>
-          <span className="hidden xs:inline text-sm sm:text-base font-bold tracking-tight text-ink">
+          <span className="hidden sm:inline text-sm sm:text-base font-bold tracking-tight text-ink">
             TMTRAC
           </span>
-        </div>
+        </button>
 
         {onOpenLandingPage && (
           <button
@@ -120,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-live-peer-badge"
           onClick={onOpenQrModal}
-          className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs  font-bold transition-all cursor-pointer ${
+          className={`tap-target hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs  font-bold transition-all cursor-pointer ${
             connectedPeerCount > 1
               ? 'bg-success-ink/15 text-success-ink border border-success-ink/40 hover:bg-success-ink/25'
               : 'bg-raised text-ink border border-line hover:text-ink'
@@ -136,39 +142,50 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-room-selector"
           onClick={onOpenLobby}
-          className="flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-lg bg-surface hover:bg-raised border border-accent/30 hover:border-accent text-accent text-xs sm:text-xs transition-all cursor-pointer shadow-xs"
+          className="tap-target flex items-center gap-1 px-2 py-1 rounded-lg bg-surface hover:bg-raised border border-accent/30 hover:border-accent text-accent text-xs transition-all cursor-pointer shadow-xs"
           title="Switch Regatta Room or Host Session"
         >
-          <Radio className="w-3 h-3 text-accent shrink-0" />
+          <Radio className="hidden sm:block w-3 h-3 text-accent shrink-0" />
           <span className="font-bold max-w-[65px] sm:max-w-[100px] truncate">#{activeRoomCode}</span>
           <ChevronDown className="w-2.5 h-2.5 text-ink-muted shrink-0" />
         </button>
 
 
         {/* Mode Toggle Indicator (RC Officer vs Spectator) */}
-        {viewMode === 'SPECTATOR' ? (
+        {viewMode === 'SPECTATOR' && isSkipper ? (
           <button
             id="header-mode-unlock-btn"
             onClick={onOpenPinUnlock}
-            className="flex items-center gap-1 p-2 xs:px-2 xs:py-0.5 rounded-full shrink-0 bg-warning-ink/15 hover:bg-warning-ink/25 border border-warning-ink/40 text-warning-ink text-xs transition-colors cursor-pointer"
+            className="tap-target flex items-center gap-1 p-2 sm:px-2 sm:py-0.5 rounded-full shrink-0 bg-accent/15 hover:bg-accent/25 border border-accent/40 text-accent text-xs transition-colors cursor-pointer"
+            aria-label="Skipper. Unlock Race Officer console"
+            title="Skipper: you share your boat's position. Tap to enter the Race Officer PIN."
+          >
+            <Sailboat className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline font-bold">SKIPPER</span>
+          </button>
+        ) : viewMode === 'SPECTATOR' ? (
+          <button
+            id="header-mode-unlock-btn"
+            onClick={onOpenPinUnlock}
+            className="tap-target flex items-center gap-1 p-2 sm:px-2 sm:py-0.5 rounded-full shrink-0 bg-warning-ink/15 hover:bg-warning-ink/25 border border-warning-ink/40 text-warning-ink text-xs transition-colors cursor-pointer"
             aria-label="Spectator mode. Unlock Race Officer console"
             title="Spectator Mode (Read-only). Tap to enter PIN and unlock Race Officer Console."
           >
-            <Lock className="w-3.5 h-3.5 xs:w-2.5 xs:h-2.5 text-warning-ink shrink-0" />
+            <Lock className="w-3.5 h-3.5 sm:w-2.5 sm:h-2.5 text-warning-ink shrink-0" aria-hidden="true" />
             <span className="hidden xl:inline font-bold">SPECTATOR</span>
-            <span className="hidden xs:inline xl:hidden font-bold">SPEC</span>
+            <span className="hidden sm:inline xl:hidden font-bold">SPEC</span>
           </button>
         ) : (
           <button
             id="header-mode-spectator-btn"
             onClick={() => setViewMode?.('SPECTATOR')}
-            className="flex items-center gap-1 p-2 xs:px-2 xs:py-0.5 rounded-full shrink-0 bg-success-ink/15 hover:bg-success-ink/25 border border-success-ink/40 text-success-ink text-xs transition-colors cursor-pointer"
+            className="tap-target flex items-center gap-1 p-2 sm:px-2 sm:py-0.5 rounded-full shrink-0 bg-success-ink/15 hover:bg-success-ink/25 border border-success-ink/40 text-success-ink text-xs transition-colors cursor-pointer"
             aria-label="Race Officer console active. Switch to spectator view"
             title="Race Officer Console Active. Tap to preview Spectator view."
           >
-            <ShieldCheck className="w-3.5 h-3.5 xs:w-2.5 xs:h-2.5 text-success-ink shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 sm:w-2.5 sm:h-2.5 text-success-ink shrink-0" aria-hidden="true" />
             <span className="hidden xl:inline font-bold">RC ADMIN</span>
-            <span className="hidden xs:inline xl:hidden font-bold">RC</span>
+            <span className="hidden sm:inline xl:hidden font-bold">RC</span>
           </button>
         )}
       </div>
@@ -234,14 +251,14 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right: Consolidated 4 Hubs + Quick Track Boat + User Profile */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-3 sm:gap-2 shrink-0">
         {/* Setup and More. On phones these are in the bottom bar. */}
         {onOpenSetup && (
           <button
             id="header-setup-btn"
             onClick={onOpenSetup}
             aria-label={`Setup, ${setupDoneCount} of 4 steps done`}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-accent/60 bg-accent/15 hover:bg-accent/25 text-accent text-xs font-bold transition-colors shrink-0"
+            className="tap-target hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-accent/60 bg-accent/15 hover:bg-accent/25 text-accent text-xs font-bold transition-colors shrink-0"
           >
             <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Setup</span>
@@ -255,7 +272,7 @@ export const Header: React.FC<HeaderProps> = ({
             id="header-more-btn"
             onClick={onOpenMore}
             aria-label="More"
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-line bg-raised/60 hover:bg-raised text-ink text-xs font-bold transition-colors shrink-0"
+            className="tap-target hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-line bg-raised/60 hover:bg-raised text-ink text-xs font-bold transition-colors shrink-0"
           >
             <MoreHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden xl:inline">More</span>
@@ -268,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onToggleSunlightMode}
           aria-pressed={directSunlightMode}
           aria-label="Sunlight mode"
-          className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+          className={`tap-target px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
             directSunlightMode
               ? 'bg-warning-ink text-canvas border-warning-ink'
               : 'bg-raised/60 text-ink border-line hover:text-ink'
@@ -284,7 +301,7 @@ export const Header: React.FC<HeaderProps> = ({
             id="header-skipper-checkin-btn"
             onClick={onOpenSkipperCheckIn}
             aria-label="Track my boat"
-            className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-accent/70 bg-accent/20 hover:bg-accent/35 text-accent font-bold text-xs sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+            className="tap-target px-2.5 sm:px-3 py-1.5 rounded-lg border border-accent/70 bg-accent/20 hover:bg-accent/35 text-accent font-bold text-xs sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
             title="Skipper 1-Tap Check-In: Auto-bind your vessel & start live fleet GPS tracking"
           >
             <Navigation className="w-3.5 h-3.5" />
@@ -297,7 +314,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-superadmin-btn"
             onClick={onOpenSuperAdmin}
-            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-line/70 bg-raised/70 hover:bg-raised/90 text-ink transition-all flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+            className="tap-target p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-line/70 bg-raised/70 hover:bg-raised/90 text-ink transition-all flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
             title="Open Super Admin Master Panel"
           >
             <ShieldAlert className="w-3.5 h-3.5 text-ink-muted shrink-0" />
@@ -312,7 +329,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-user-dashboard-btn"
             onClick={onOpenDashboard}
-            className="p-1 sm:px-2.5 sm:py-1 rounded-lg border border-accent/40 bg-surface/40 hover:bg-accent/60 text-accent transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            className="tap-target p-1 sm:px-2.5 sm:py-1 rounded-lg border border-accent/40 bg-surface/40 hover:bg-accent/60 text-accent transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
             title={`Signed in as ${currentUser.fullName}. Open Sailor Dashboard.`}
           >
             <div className="w-5 h-5 rounded-full bg-accent/30 text-accent text-xs font-bold flex items-center justify-center shrink-0">
@@ -326,7 +343,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-login-btn"
             onClick={() => onOpenAuth?.('login')}
-            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-line bg-surface hover:bg-raised text-ink hover:text-ink transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="tap-target p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-line bg-surface hover:bg-raised text-ink hover:text-ink transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             title="Sign in or register account"
           >
             <User className="w-3.5 h-3.5 text-accent shrink-0" />

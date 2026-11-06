@@ -2750,6 +2750,7 @@ export default function App() {
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
         connectedPeerCount={connectedPeerCount}
         viewMode={viewMode}
+        isSkipper={isSkipper && !isUserAdminOrOfficer}
         setViewMode={setViewMode}
         activeRoomCode={activeRoomCode}
         onOpenLobby={() => setShowLobbyModal(true)}

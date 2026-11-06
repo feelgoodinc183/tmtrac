@@ -6,7 +6,7 @@ type Size = 'md' | 'lg';
 type CommonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
   /** primary: the one main action; secondary: everything else; danger: destroys or ends something; ghost: low-emphasis */
   variant?: Variant;
-  /** md is 40px tall; lg is 48px, for controls used on deck */
+  /** md is 40px tall (44px on phones); lg is 48px, for controls used on deck */
   size?: Size;
   icon?: React.ReactNode;
   /** Shows loadingLabel and disables the button while an action runs */
@@ -27,7 +27,8 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, { text: string; icon: string }> = {
-  md: { text: 'min-h-10 px-4 text-sm', icon: 'h-10 w-10' },
+  // 44px on phones: a scrolling dialog clips the tap-target box, so the button itself is that tall
+  md: { text: 'min-h-10 max-sm:min-h-11 px-4 text-sm', icon: 'h-10 w-10 max-sm:h-11 max-sm:w-11' },
   lg: { text: 'min-h-12 px-5 text-base', icon: 'h-12 w-12' },
 };
 
@@ -43,7 +44,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={[
-        'inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-[filter,background-color] select-none',
+        // tap-target: a 40px button still takes taps over 44 x 44
+        'tap-target inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-[filter,background-color] select-none',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANTS[variant],
         iconOnly ? SIZES[size].icon : SIZES[size].text,
