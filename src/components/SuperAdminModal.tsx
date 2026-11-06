@@ -136,17 +136,12 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
 
   const getHeaders = () => {
     const activeToken = getActiveToken();
-    const activeUser = currentUser || authService.getCurrentUser();
-    const userEmail = activeUser?.email || 'irsyadismail@gmail.com';
-    const userId = activeUser?.id || 'user-admin-0';
 
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${activeToken}`,
       'x-auth-token': activeToken,
       'x-super-admin-token': activeToken,
-      'x-user-email': userEmail,
-      'x-user-id': userId,
     };
   };
 

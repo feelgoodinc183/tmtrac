@@ -171,6 +171,8 @@ try {
 } catch (e) {}
 
 const FALLBACK_STORE_PATH = path.join(DATA_DIR, 'tmtrac_store.json');
+// Id of the first Super Admin account. Declared up here: the JSON store seeds while this module loads.
+export const SUPER_ADMIN_ID = 'user-admin-0';
 
 export interface DbDiagnosticCheck {
   id: string;
@@ -273,8 +275,8 @@ function createFallbackDatabase() {
         id: 'tenant-rlyc-default',
         name: 'Royal Langkawi Yacht Club (RLYC)',
         slug: 'rlyc',
-        owner_id: 'user-admin-0',
-        owner_email: 'irsyadismail@gmail.com',
+        owner_id: SUPER_ADMIN_ID,
+        owner_email: superAdminSeedIdentity().email,
         plan_tier: 'CLUB',
         max_active_rooms: 10,
         max_boats_per_room: 60,
@@ -292,19 +294,20 @@ function createFallbackDatabase() {
       modified = true;
     }
 
-    // 2. Super Administrator Account
-    const hasAdmin = store.users['user-admin-0'] || Object.values(store.users).some((u: any) => u.email === 'irsyadismail@gmail.com');
-    if (!hasAdmin) {
-      store.users['user-admin-0'] = {
-        id: 'user-admin-0',
+    // 2. Super Administrator Account: only on an install that has none yet
+    const hasSuperAdmin = Object.values(store.users).some((u: any) => u.is_super_admin === 1);
+    if (!hasSuperAdmin && !store.users[SUPER_ADMIN_ID]) {
+      const seed = superAdminSeedIdentity();
+      store.users[SUPER_ADMIN_ID] = {
+        id: SUPER_ADMIN_ID,
         tenant_id: 'tenant-rlyc-default',
-        email: 'irsyadismail@gmail.com',
-        username: 'irsyadismail',
+        email: seed.email,
+        username: seed.username,
         password_hash: initialSuperAdminPasswordHash(),
-        full_name: 'Irsyad Ismail',
-        sailing_club: 'Royal Langkawi Yacht Club (RLYC)',
-        sail_number: 'MAS 001',
-        handicap_rating: 'IRC 1.000',
+        full_name: seed.fullName,
+        sailing_club: '',
+        sail_number: '',
+        handicap_rating: 'Standard',
         role: 'ADMIN',
         participant_type: 'RACE_OFFICER',
         status: 'ACTIVE',
@@ -322,16 +325,6 @@ function createFallbackDatabase() {
         created_at: now,
       };
       modified = true;
-    } else {
-      // Ensure super admin flag is affirmative
-      Object.values(store.users).forEach((u: any) => {
-        if (u.id === 'user-admin-0' || u.email === 'irsyadismail@gmail.com') {
-          if (u.is_super_admin !== 1) {
-            u.is_super_admin = 1;
-            modified = true;
-          }
-        }
-      });
     }
 
     // 3. Default Rooms (LOBBY and RLIR26)
@@ -545,11 +538,11 @@ function createFallbackDatabase() {
               const uId = userObj.id || `user-${Date.now()}`;
               store.users[uId] = {
                 ...userObj,
-                is_super_admin: userObj.is_super_admin ?? (userObj.email === 'irsyadismail@gmail.com' ? 1 : 0),
+                is_super_admin: userObj.is_super_admin ?? 0,
               };
             } else if (params.length >= 16) {
               const [id, tenant_id, email, username, password_hash, full_name, sailing_club, sail_number, handicap_rating, role, participant_type, status, token] = params;
-              const isSuper = params.length >= 17 ? params[13] : (email === 'irsyadismail@gmail.com' ? 1 : 0);
+              const isSuper = params.length >= 17 ? params[13] : 0;
               const statsJson = params.length >= 17 ? params[14] : params[13];
               const raceHistoryJson = params.length >= 17 ? params[15] : params[14];
               const createdAt = params.length >= 17 ? params[16] : params[15];
@@ -566,7 +559,7 @@ function createFallbackDatabase() {
               store.users[id] = {
                 id, tenant_id, email, username, password_hash, full_name, sailing_club,
                 sail_number: '', handicap_rating: 'Standard', role, participant_type,
-                status, token, is_super_admin: (email === 'irsyadismail@gmail.com' ? 1 : 0),
+                status, token, is_super_admin: 0,
                 stats_json: typeof stats_json === 'string' ? stats_json : JSON.stringify(stats_json || {}),
                 race_history_json: typeof race_history_json === 'string' ? race_history_json : JSON.stringify(race_history_json || []),
                 created_at: created_at || Date.now(),
@@ -584,25 +577,9 @@ function createFallbackDatabase() {
             delete store.users[params[0]];
           } else if (cleanSql.includes('DELETE FROM tenants WHERE id = ?')) {
             delete store.tenants[params[0]];
-          } else if (cleanSql.includes('UPDATE users SET is_super_admin')) {
-            Object.values(store.users).forEach((u: any) => {
-              if (u.id === 'user-admin-0' || u.email === 'irsyadismail@gmail.com' || u.username === 'irsyadismail') {
-                u.is_super_admin = 1;
-              }
-            });
           } else if (cleanSql.includes('UPDATE users SET token = ? WHERE id = ?')) {
             const [token, id] = params;
             if (store.users[id]) store.users[id].token = token;
-          } else if (cleanSql.includes('UPDATE users SET password_hash = ? WHERE')) {
-            const [password_hash] = params;
-            Object.values(store.users).forEach((u: any) => {
-              if (u.id === 'user-admin-0' || u.email === 'irsyadismail@gmail.com' || u.username === 'irsyadismail' || u.username === 'admin') {
-                u.password_hash = password_hash;
-              }
-            });
-            if (params.length > 1 && store.users[params[1]]) {
-              store.users[params[1]].password_hash = password_hash;
-            }
           } else if (cleanSql.includes('INSERT INTO events') || cleanSql.includes('INSERT OR REPLACE INTO events')) {
             const [id, tenant_id, code, title, location_name, admin_pin, participant_pin, is_public, owner_id, status, race_state_json, marks_json, boats_json, vhf_bulletins_json, series_races_json, created_at, last_active] = params;
             store.events[code] = { id, tenant_id, code, title, location_name, admin_pin, participant_pin, is_public, owner_id, status, race_state_json, marks_json, boats_json, vhf_bulletins_json, series_races_json, created_at, last_active };
@@ -709,13 +686,9 @@ function createFallbackDatabase() {
               }
             }
 
-            // 2. Literal checks in query (e.g. diagnostics or internal startup assertions). Only for
-            // parameterless queries: the login query also mentions 'user-admin-0', and matching it here
-            // resolved every login to the Super Admin row.
-            if (!u && params.length === 0 && (cleanSql.includes("'user-admin-0'") || cleanSql.includes("'irsyadismail@gmail.com'") || cleanSql.includes("'irsyadismail'"))) {
-              u = store.users['user-admin-0'] || Object.values(store.users).find((user: any) =>
-                user.email === 'irsyadismail@gmail.com' || user.id === 'user-admin-0' || user.username === 'irsyadismail'
-              );
+            // 2. The first account with Super Admin rights (seeding, diagnostics)
+            if (!u && params.length === 0 && /is_super_admin\s*=\s*1/i.test(cleanSql)) {
+              u = Object.values(store.users).find((user: any) => user.is_super_admin === 1);
             }
 
             // 3. Parameterized ID query
@@ -729,8 +702,7 @@ function createFallbackDatabase() {
               const queryVal = (params[0] || '').toString().toLowerCase();
               u = Object.values(store.users).find((user: any) =>
                 (user.email && user.email.toLowerCase() === queryVal) ||
-                (user.username && user.username.toLowerCase() === queryVal) ||
-                ((queryVal === 'admin' || queryVal === 'irsyadismail') && (user.id === 'user-admin-0' || user.role === 'ADMIN' || user.is_super_admin === 1))
+                (user.username && user.username.toLowerCase() === queryVal)
               );
               // Handle secondary param if present (e.g. WHERE id = ? OR email = ?)
               if (!u && params.length > 1) {
@@ -744,7 +716,7 @@ function createFallbackDatabase() {
 
             if (u) {
               const t = store.tenants[u.tenant_id] || store.tenants['tenant-rlyc-default'] || {};
-              const isSuper = u.is_super_admin ?? (u.email === 'irsyadismail@gmail.com' || u.id === 'user-admin-0' ? 1 : 0);
+              const isSuper = u.is_super_admin ?? 0;
               return {
                 ...u,
                 is_super_admin: isSuper,
@@ -1099,6 +1071,40 @@ export function hashPassword(pwd: string): string {
  * Password for a freshly seeded Super Admin. Taken from SUPER_ADMIN_PASSWORD, otherwise random and
  * never logged; set SUPER_ADMIN_PASSWORD before first start to choose it.
  */
+/** The first Super Admin, created on a fresh install. Super Admin rights come only from an account's
+ * is_super_admin flag, never from its email, username or id. */
+export function superAdminSeedIdentity() {
+  return {
+    email: (process.env.SUPER_ADMIN_EMAIL || 'superadmin@tmtrac.local').trim().toLowerCase(),
+    username: 'superadmin',
+    fullName: 'Super Admin',
+  };
+}
+
+/**
+ * Creates the first Super Admin when no account has the rights yet. Rights come from the
+ * is_super_admin flag alone: nothing promotes an existing account by email, username or id (that
+ * let anyone who registered a freed-up address become Super Admin at the next restart).
+ */
+export function seedSuperAdminIfNone(tenantId = 'tenant-rlyc-default'): 'EXISTS' | 'SEEDED' | 'NONE_ID_TAKEN' {
+  if (db.prepare('SELECT id FROM users WHERE is_super_admin = 1 LIMIT 1').get()) return 'EXISTS';
+  if (db.prepare('SELECT id FROM users WHERE id = ?').get(SUPER_ADMIN_ID)) return 'NONE_ID_TAKEN';
+  const seed = superAdminSeedIdentity();
+  db.prepare(`
+    INSERT INTO users (
+      id, tenant_id, email, username, password_hash, full_name,
+      sailing_club, sail_number, handicap_rating, role, participant_type,
+      status, token, stats_json, race_history_json, is_super_admin, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    SUPER_ADMIN_ID, tenantId, seed.email, seed.username, initialSuperAdminPasswordHash(), seed.fullName,
+    '', '', 'Standard', 'ADMIN', 'RACE_OFFICER', 'ACTIVE', null,
+    JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
+    '[]', 1, Date.now()
+  );
+  return 'SEEDED';
+}
+
 export function initialSuperAdminPasswordHash(): string {
   const fromEnv = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
   if (!fromEnv) {
@@ -1259,11 +1265,6 @@ export function initDatabase() {
     }
   }
 
-  // Ensure default super admin account is marked as is_super_admin
-  try {
-    db.prepare("UPDATE users SET is_super_admin = 1 WHERE email = 'irsyadismail@gmail.com' OR id = 'user-admin-0' OR username = 'irsyadismail'").run();
-  } catch (e) {}
-
   // Seed default pricing packages if table is empty
   const packageCount = (db.prepare('SELECT COUNT(*) as count FROM packages').get() as any)?.count || 0;
   if (packageCount === 0) {
@@ -1296,7 +1297,7 @@ export function initDatabase() {
   const tenantCount = (db.prepare('SELECT COUNT(*) as count FROM tenants').get() as any)?.count || 0;
   const defaultTenantId = 'tenant-rlyc-default';
   if (tenantCount === 0) {
-    const adminUserId = 'user-admin-0';
+    const adminUserId = SUPER_ADMIN_ID;
     const now = Date.now();
 
     const insertTenant = db.prepare(`
@@ -1312,7 +1313,7 @@ export function initDatabase() {
       'Royal Langkawi Yacht Club (RLYC)',
       'rlyc',
       adminUserId,
-      'irsyadismail@gmail.com',
+      superAdminSeedIdentity().email,
       'CLUB',
       PLAN_CONFIG.CLUB.maxActiveRooms,
       PLAN_CONFIG.CLUB.maxBoatsPerRoom,
@@ -1329,7 +1330,7 @@ export function initDatabase() {
       eventId: 'event-rlir26',
       roomCode: 'RLIR26',
       userId: adminUserId,
-      userEmail: 'irsyadismail@gmail.com',
+      userEmail: superAdminSeedIdentity().email,
       userRole: 'ADMIN',
       action: 'ORGANIZATION_PROVISIONED',
       platform: 'WEB',
@@ -1341,56 +1342,18 @@ export function initDatabase() {
     console.log('[SQLite DB] Seeded default tenant RLYC');
   }
 
-  // Affirmative Super Admin seeding & validation (decoupled from tenantCount === 0)
-  try {
-    const adminUserId = 'user-admin-0';
-    const adminToken = generateToken();
-    const now = Date.now();
-
-    const adminUser = db.prepare("SELECT id FROM users WHERE email = 'irsyadismail@gmail.com' OR id = 'user-admin-0' OR username = 'irsyadismail'").get();
-    if (!adminUser) {
-      db.prepare(`
-        INSERT INTO users (
-          id, tenant_id, email, username, password_hash, full_name,
-          sailing_club, sail_number, handicap_rating, role, participant_type,
-          status, token, stats_json, race_history_json, is_super_admin, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-      `).run(
-        adminUserId,
-        defaultTenantId,
-        'irsyadismail@gmail.com',
-        'irsyadismail',
-        initialSuperAdminPasswordHash(),
-        'Irsyad Ismail',
-        'Royal Langkawi Yacht Club (RLYC)',
-        'MAS 001',
-        'IRC 1.000',
-        'ADMIN',
-        'RACE_OFFICER',
-        'ACTIVE',
-        adminToken,
-        JSON.stringify({
-          racesOrganized: 1,
-          racesParticipated: 0,
-          podiumFinishes: 0,
-          totalNauticalMiles: 0,
-          vmgEfficiency: 0,
-          winRate: 0,
-        }),
-        JSON.stringify([]),
-        now
-      );
-      console.log('[SQLite DB] Seeded Super Admin irsyadismail@gmail.com');
-    } else {
-      // Keep privileges affirmed, but never touch the password of an existing account
-      db.prepare(`
-        UPDATE users
-        SET is_super_admin = 1, status = 'ACTIVE', role = 'ADMIN'
-        WHERE email = 'irsyadismail@gmail.com' OR id = 'user-admin-0' OR username = 'irsyadismail'
-      `).run();
+  // The first Super Admin, on a fresh install only (the JSON store seeds its own)
+  if (dbDiagnosticsState.isNative) {
+    try {
+      const result = seedSuperAdminIfNone(defaultTenantId);
+      if (result === 'SEEDED') {
+        console.log(`[SQLite DB] Seeded Super Admin ${superAdminSeedIdentity().email} (set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD before first start)`);
+      } else if (result === 'NONE_ID_TAKEN') {
+        console.warn('[SQLite DB] No account has Super Admin rights. Grant them to an account in the database (is_super_admin = 1).');
+      }
+    } catch (err: any) {
+      console.warn('[SQLite DB] Super Admin seed warning:', err?.message);
     }
-  } catch (err: any) {
-    console.warn('[SQLite DB] Super admin affirmative seed warning:', err?.message);
   }
 
   // Ensure default event RLIR26 exists
@@ -2121,12 +2084,7 @@ export function getComprehensiveDiagnostics(): {
 
   // 8. Super Admin & Lobby Verification
   try {
-    let adminUser = db.prepare(`SELECT id, email, is_super_admin FROM users WHERE id = 'user-admin-0' OR LOWER(email) = 'irsyadismail@gmail.com'`).get() as any;
-    if (!adminUser) {
-      try {
-        adminUser = db.prepare('SELECT id, email, is_super_admin FROM users WHERE id = ? OR LOWER(email) = ?').get('user-admin-0', 'irsyadismail@gmail.com');
-      } catch (e) {}
-    }
+    const adminUser = db.prepare('SELECT id, email, is_super_admin FROM users WHERE is_super_admin = 1 LIMIT 1').get() as any;
 
     let lobbyEvent = db.prepare(`SELECT id, code FROM events WHERE code = 'LOBBY'`).get() as any;
     if (!lobbyEvent) {
@@ -2150,8 +2108,8 @@ export function getComprehensiveDiagnostics(): {
       check: 'Super Administrator Account & Default Lobby',
       status: adminOk && lobbyOk ? 'PASS' : 'WARN',
       value: `Super Admin: ${adminOk ? 'FOUND' : 'MISSING'} • Default Room: ${lobbyOk ? (lobbyEvent?.code || 'LOBBY') + ' READY' : 'NEEDS SEED'}`,
-      details: `Admin: ${adminUser ? adminUser.email : 'irsyadismail@gmail.com'} (ID: ${adminUser?.id || 'user-admin-0'}). Lobby: ${lobbyEvent ? lobbyEvent.code : 'LOBBY'}.`,
-      detail: `Admin: ${adminUser ? adminUser.email : 'irsyadismail@gmail.com'} (ID: ${adminUser?.id || 'user-admin-0'}). Lobby: ${lobbyEvent ? lobbyEvent.code : 'LOBBY'}.`,
+      details: `Super Admin: ${adminUser ? `${adminUser.email} (ID: ${adminUser.id})` : 'none'}. Lobby: ${lobbyEvent ? lobbyEvent.code : 'LOBBY'}.`,
+      detail: `Super Admin: ${adminUser ? `${adminUser.email} (ID: ${adminUser.id})` : 'none'}. Lobby: ${lobbyEvent ? lobbyEvent.code : 'LOBBY'}.`,
       recommendation: (!adminOk || !lobbyOk) ? `Click Self-Repair to restore super administrator credentials and LOBBY event.` : undefined,
     });
   } catch (err: any) {
@@ -2285,35 +2243,14 @@ export function repairDatabase(): {
     }
 
     try {
-      let admin = db.prepare(`SELECT id FROM users WHERE id = 'user-admin-0' OR LOWER(email) = 'irsyadismail@gmail.com'`).get();
-      if (!admin) {
-        db.prepare(`
-          INSERT INTO users (id, tenant_id, email, username, password_hash, full_name, sailing_club, sail_number, handicap_rating, role, participant_type, status, token, is_super_admin, stats_json, race_history_json, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          'user-admin-0',
-          'tenant-rlyc-default',
-          'irsyadismail@gmail.com',
-          'irsyadismail',
-          initialSuperAdminPasswordHash(),
-          'Irsyad Ismail',
-          'Royal Langkawi Yacht Club (RLYC)',
-          'MAS 001',
-          'IRC 1.045',
-          'ADMIN',
-          'RACE_OFFICER',
-          'ACTIVE',
-          generateToken(),
-          1,
-          JSON.stringify({ racesOrganized: 0, racesParticipated: 0, podiumFinishes: 0, totalNauticalMiles: 0, vmgEfficiency: 0, winRate: 0 }),
-          '[]',
-          Date.now()
-        );
-        repairedItems.push('Re-seeded Super Administrator account (irsyadismail@gmail.com)');
+      const result = seedSuperAdminIfNone();
+      if (result === 'SEEDED') {
+        repairedItems.push(`Seeded a Super Admin account (${superAdminSeedIdentity().email}); none existed`);
         seededEntities.push('Super Admin user');
+      } else if (result === 'NONE_ID_TAKEN') {
+        repairedItems.push('No account has Super Admin rights; grant them in the database (is_super_admin = 1)');
       } else {
-        db.prepare(`UPDATE users SET is_super_admin = 1, role = 'ADMIN', status = 'ACTIVE' WHERE id = 'user-admin-0' OR LOWER(email) = 'irsyadismail@gmail.com'`).run();
-        repairedItems.push('Confirmed Super Administrator privileges for irsyadismail@gmail.com');
+        repairedItems.push('Super Admin account present');
       }
     } catch (e: any) {
       repairedItems.push(`Admin check: ${e.message}`);

@@ -597,11 +597,11 @@ RewriteRule ^ index.html [L]
               <div className="text-xs space-y-2 mt-2">
                 <div className="p-2 rounded bg-surface flex justify-between items-center">
                   <span className="text-ink-muted">Email:</span>
-                  <span className="text-accent font-bold">irsyadismail@gmail.com</span>
+                  <span className="text-accent font-bold">SUPER_ADMIN_EMAIL (default superadmin@tmtrac.local)</span>
                 </div>
                 <div className="p-2 rounded bg-surface flex justify-between items-center">
                   <span className="text-ink-muted">Username:</span>
-                  <span className="text-accent font-bold">irsyadismail</span>
+                  <span className="text-accent font-bold">superadmin</span>
                 </div>
                 <div className="p-2 rounded bg-surface flex justify-between items-center">
                   <span className="text-ink-muted">Password:</span>
