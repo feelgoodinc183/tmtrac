@@ -22,6 +22,9 @@
  * Type: Tailwind's scale, with text-xs (12px) as the smallest size used in the app.
  */
 @theme {
+  /* Small-phone breakpoint (480px) below Tailwind's default sm (640px). */
+  --breakpoint-xs: 30rem;
+
   --color-canvas: #0a0f1e;
   --color-surface: #0f172a;
   --color-raised: #1e293b;

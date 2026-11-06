@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
               <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
             </svg>
           </div>
-          <span className="max-[359px]:hidden text-sm sm:text-base font-bold tracking-tight text-ink">
+          <span className="hidden xs:inline text-sm sm:text-base font-bold tracking-tight text-ink">
             TMTRAC
           </span>
         </div>
@@ -147,23 +147,25 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-mode-unlock-btn"
             onClick={onOpenPinUnlock}
-            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning-ink/15 hover:bg-warning-ink/25 border border-warning-ink/40 text-warning-ink text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1 p-2 xs:px-2 xs:py-0.5 rounded-full shrink-0 bg-warning-ink/15 hover:bg-warning-ink/25 border border-warning-ink/40 text-warning-ink text-xs transition-colors cursor-pointer"
+            aria-label="Spectator mode. Unlock Race Officer console"
             title="Spectator Mode (Read-only). Tap to enter PIN and unlock Race Officer Console."
           >
-            <Lock className="w-2.5 h-2.5 text-warning-ink shrink-0" />
+            <Lock className="w-3.5 h-3.5 xs:w-2.5 xs:h-2.5 text-warning-ink shrink-0" />
             <span className="hidden md:inline font-bold">SPECTATOR</span>
-            <span className="md:hidden font-bold">SPEC</span>
+            <span className="hidden xs:inline md:hidden font-bold">SPEC</span>
           </button>
         ) : (
           <button
             id="header-mode-spectator-btn"
             onClick={() => setViewMode?.('SPECTATOR')}
-            className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-ink/15 hover:bg-success-ink/25 border border-success-ink/40 text-success-ink text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1 p-2 xs:px-2 xs:py-0.5 rounded-full shrink-0 bg-success-ink/15 hover:bg-success-ink/25 border border-success-ink/40 text-success-ink text-xs transition-colors cursor-pointer"
+            aria-label="Race Officer console active. Switch to spectator view"
             title="Race Officer Console Active. Tap to preview Spectator view."
           >
-            <ShieldCheck className="w-2.5 h-2.5 text-success-ink shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 xs:w-2.5 xs:h-2.5 text-success-ink shrink-0" />
             <span className="hidden md:inline font-bold">RC ADMIN</span>
-            <span className="md:hidden font-bold">RC</span>
+            <span className="hidden xs:inline md:hidden font-bold">RC</span>
           </button>
         )}
       </div>
