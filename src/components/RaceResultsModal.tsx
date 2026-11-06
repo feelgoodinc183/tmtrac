@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useId } from 'react';
 import { Boat, RaceClassDefinition, RaceState, CompletedRace, SeriesStanding, CompetitorImportRecord } from '../types/regatta';
 import {
   Trophy,
@@ -34,6 +34,7 @@ import {
   exportToSailwaveCsv,
   parseCompetitorRoster,
 } from '../services/scoringService';
+import { DialogFrame } from './ui/Dialog';
 
 interface RaceResultsModalProps {
   isOpen: boolean;
@@ -68,6 +69,11 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
   onImportCompetitors,
   viewMode: appViewMode = 'RC_CONSOLE',
 }) => {
+  const titleId = useId();
+  const saveTitleId = useId();
+  const deleteTitleId = useId();
+  const seriesTitleId = useId();
+  const rosterTitleId = useId();
   // Navigation: 'SERIES' (Overall Series Standings) or specific race ID ('live-race', 'race-1', 'race-2', etc.)
   const [activeTab, setActiveTab] = useState<string>('SERIES');
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
@@ -515,8 +521,14 @@ Wave Runner,MAS 12,Ahmad Kamil,Class 3,0.940,Port Dickson Yacht Club`;
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-5 landscape:p-1.5 bg-canvas/75 backdrop-blur-xs animate-in fade-in duration-200 select-none overflow-y-auto">
-      <div className="bg-surface/95 backdrop-blur-md border border-line/80 rounded-2xl sm:rounded-3xl w-full max-w-6xl max-h-[calc(100dvh-16px)] sm:max-h-[90vh] landscape:max-h-[98dvh] landscape:h-[98dvh] flex flex-col shadow-2xl overflow-y-auto overflow-x-hidden custom-scrollbar overscroll-contain touch-pan-y text-ink relative my-auto">
+    <>
+      <DialogFrame
+        onClose={onClose}
+        labelledBy={titleId}
+        initialFocus="container"
+        overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-5 landscape:p-1.5 bg-canvas/75 backdrop-blur-xs animate-in fade-in duration-200 select-none overflow-y-auto"
+        className="bg-surface/95 backdrop-blur-md border border-line/80 rounded-2xl sm:rounded-3xl w-full max-w-6xl max-h-[calc(100dvh-16px)] sm:max-h-[90vh] landscape:max-h-[98dvh] landscape:h-[98dvh] flex flex-col shadow-2xl overflow-y-auto overflow-x-hidden custom-scrollbar overscroll-contain touch-pan-y text-ink relative my-auto"
+      >
         
         {/* Floating Feedback Toast */}
         {feedbackToast && (
@@ -534,7 +546,7 @@ Wave Runner,MAS 12,Ahmad Kamil,Class 3,0.940,Port Dickson Yacht Club`;
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold text-ink leading-snug">Results</h2>
+                <h2 id={titleId} className="text-base sm:text-lg font-bold text-ink leading-snug">Results</h2>
               </div>
               <p className="text-xs sm:text-xs text-ink-muted mt-1 break-words leading-relaxed whitespace-normal">
                 Low-point scoring (RRS Appendix A) · {classSeriesRaces.length} completed {classSeriesRaces.length === 1 ? 'race' : 'races'}{selectedClass === 'ALL' ? '' : ` in ${selectedClass}`}
@@ -680,6 +692,7 @@ Wave Runner,MAS 12,Ahmad Kamil,Class 3,0.940,Port Dickson Yacht Club`;
             </button>
 
             <button
+              aria-label="Close"
               onClick={onClose}
               className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised transition-colors"
             >
@@ -1530,388 +1543,405 @@ Wave Runner,MAS 12,Ahmad Kamil,Class 3,0.940,Port Dickson Yacht Club`;
           </div>
         </div>
 
-      </div>
+      </DialogFrame>
 
       {/* ========================================================= */}
       {/* DIALOG 1: SAVE LIVE RACE SNAPSHOT TO SERIES */}
       {/* ========================================================= */}
       {showSaveDialog && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/70 backdrop-blur-sm">
-          <div className="bg-surface border border-line rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 text-ink">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-ink font-bold text-base">
-                <Save className="w-5 h-5 text-accent" />
-                <h3>Save Race to Series</h3>
-              </div>
-              <button
-                onClick={() => setShowSaveDialog(false)}
-                className="p-1 rounded-lg text-ink-muted hover:text-ink"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <DialogFrame
+          onClose={() => setShowSaveDialog(false)}
+          labelledBy={saveTitleId}
+          overlayClassName="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/70 backdrop-blur-sm"
+          className="bg-surface border border-line rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 text-ink"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-ink font-bold text-base">
+              <Save className="w-5 h-5 text-accent" />
+              <h3 id={saveTitleId}>Save Race to Series</h3>
             </div>
-
-            <p className="text-xs text-ink-muted">
-              Save the current fleet elapsed times, corrected scores, and mark roundings as <strong>Race {nextRaceNum}</strong> in the regatta series.
-            </p>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-ink">Race Title / Course Name:</label>
-              <input
-                type="text"
-                value={customRaceTitle}
-                placeholder={`Race ${nextRaceNum}: Harbour Passage & Windward Leg`}
-                onChange={(e) => setCustomRaceTitle(e.target.value)}
-                className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowSaveDialog(false)}
-                className="px-3 py-1.5 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveCurrentRace}
-                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-accent to-accent hover:from-accent hover:to-accent text-canvas font-bold text-xs transition-all shadow-md"
-              >
-                Confirm & Save Race {nextRaceNum}
-              </button>
-            </div>
+            <button
+              aria-label="Close"
+              onClick={() => setShowSaveDialog(false)}
+              className="p-1 rounded-lg text-ink-muted hover:text-ink"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </div>
+
+          <p className="text-xs text-ink-muted">
+            Save the current fleet elapsed times, corrected scores, and mark roundings as <strong>Race {nextRaceNum}</strong> in the regatta series.
+          </p>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-ink">Race Title / Course Name:</label>
+            <input
+              type="text"
+              value={customRaceTitle}
+              placeholder={`Race ${nextRaceNum}: Harbour Passage & Windward Leg`}
+              onChange={(e) => setCustomRaceTitle(e.target.value)}
+              className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              onClick={() => setShowSaveDialog(false)}
+              className="px-3 py-1.5 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveCurrentRace}
+              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-accent to-accent hover:from-accent hover:to-accent text-canvas font-bold text-xs transition-all shadow-md"
+            >
+              Confirm & Save Race {nextRaceNum}
+            </button>
+          </div>
+        </DialogFrame>
       )}
 
       {/* ========================================================= */}
       {/* DIALOG 2: DELETE PARTICULAR RACE CONFIRMATION */}
       {/* ========================================================= */}
       {raceToDelete && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/75 backdrop-blur-sm">
-          <div className="bg-surface border border-danger-ink/50 rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 text-ink">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-danger-ink font-bold text-base">
-                <Trash2 className="w-5 h-5" />
-                <h3>Delete Race {raceToDelete.raceNumber}?</h3>
-              </div>
-              <button
-                onClick={() => setRaceToDelete(null)}
-                className="p-1 rounded-lg text-ink-muted hover:text-ink"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <DialogFrame
+          onClose={() => setRaceToDelete(null)}
+          labelledBy={deleteTitleId}
+          role="alertdialog"
+          overlayClassName="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/75 backdrop-blur-sm"
+          className="bg-surface border border-danger-ink/50 rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 text-ink"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-danger-ink font-bold text-base">
+              <Trash2 className="w-5 h-5" />
+              <h3 id={deleteTitleId}>Delete Race {raceToDelete.raceNumber}?</h3>
             </div>
+            <button
+              aria-label="Close"
+              onClick={() => setRaceToDelete(null)}
+              className="p-1 rounded-lg text-ink-muted hover:text-ink"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-            <div className="p-3 bg-canvas rounded-xl border border-line space-y-1">
-              <div className="text-xs font-bold text-ink">
-                {raceToDelete.raceTitle || `Race ${raceToDelete.raceNumber}`}
-              </div>
-              <div className="text-xs text-ink-muted">
-                {raceToDelete.results?.length || 0} boat finish results • Wind: {raceToDelete.windSpeedKt} kt @ {raceToDelete.windDirectionDeg}°
-              </div>
+          <div className="p-3 bg-canvas rounded-xl border border-line space-y-1">
+            <div className="text-xs font-bold text-ink">
+              {raceToDelete.raceTitle || `Race ${raceToDelete.raceNumber}`}
             </div>
-
-            <p className="text-xs text-ink-muted">
-              Are you sure you want to permanently remove this race from the regatta series? Overall series points, podium standings, and discard calculations will update immediately.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setRaceToDelete(null)}
-                className="px-3 py-1.5 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDeleteRace}
-                className="px-4 py-1.5 rounded-xl bg-danger hover:brightness-110 text-on-danger font-bold text-xs transition-all shadow-md flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Race</span>
-              </button>
+            <div className="text-xs text-ink-muted">
+              {raceToDelete.results?.length || 0} boat finish results • Wind: {raceToDelete.windSpeedKt} kt @ {raceToDelete.windDirectionDeg}°
             </div>
           </div>
-        </div>
+
+          <p className="text-xs text-ink-muted">
+            Are you sure you want to permanently remove this race from the regatta series? Overall series points, podium standings, and discard calculations will update immediately.
+          </p>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              onClick={() => setRaceToDelete(null)}
+              className="px-3 py-1.5 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmDeleteRace}
+              className="px-4 py-1.5 rounded-xl bg-danger hover:brightness-110 text-on-danger font-bold text-xs transition-all shadow-md flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Race</span>
+            </button>
+          </div>
+        </DialogFrame>
       )}
 
       {/* ========================================================= */}
       {/* DIALOG 3: REGATTA SERIES MANAGEMENT (NEW / CLEAR SERIES) */}
       {/* ========================================================= */}
       {showSeriesManagerDialog && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/75 backdrop-blur-sm">
-          <div className="bg-surface border border-line rounded-2xl p-5 sm:p-6 w-full max-w-lg shadow-2xl space-y-5 text-ink max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="flex items-center justify-between border-b border-line pb-3">
-              <div className="flex items-center gap-2.5 text-ink font-bold text-base">
-                <FolderPlus className="w-5 h-5 text-accent" />
-                <h3>Regatta Series Management</h3>
+        <DialogFrame
+          onClose={() => setShowSeriesManagerDialog(false)}
+          labelledBy={seriesTitleId}
+          overlayClassName="fixed inset-0 z-60 flex items-center justify-center p-4 bg-canvas/75 backdrop-blur-sm"
+          className="bg-surface border border-line rounded-2xl p-5 sm:p-6 w-full max-w-lg shadow-2xl space-y-5 text-ink max-h-[90vh] overflow-y-auto custom-scrollbar"
+        >
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <div className="flex items-center gap-2.5 text-ink font-bold text-base">
+              <FolderPlus className="w-5 h-5 text-accent" />
+              <h3 id={seriesTitleId}>Regatta Series Management</h3>
+            </div>
+            <button
+              aria-label="Close"
+              onClick={() => setShowSeriesManagerDialog(false)}
+              className="p-1 rounded-lg text-ink-muted hover:text-ink"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Current Series Summary */}
+          <div className="grid grid-cols-3 gap-2 bg-canvas border border-line rounded-xl p-3 text-center">
+            <div>
+              <div className="text-xs text-ink-muted">Completed Races</div>
+              <div className="text-sm font-bold text-accent">{seriesRaces.length}</div>
+            </div>
+            <div>
+              <div className="text-xs text-ink-muted">Participating Fleet</div>
+              <div className="text-sm font-bold text-ink">{boats.length} Boats</div>
+            </div>
+            <div>
+              <div className="text-xs text-ink-muted">Discards</div>
+              <div className="text-sm font-bold text-success-ink">
+                {discardRule === 'NONE' ? 'None' : '1 Drop'}
               </div>
+            </div>
+          </div>
+
+          {/* Section 1: Start New / Clear Series */}
+          <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-ink">
+              <Sparkles className="w-4 h-4 text-warning-ink" />
+              <h4>Start a New Regatta Series</h4>
+            </div>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Clears all past race results from local storage and starts a fresh series for today's championship round or regatta day.
+            </p>
+
+            <label className="flex items-center gap-2 text-xs text-ink cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={resetFleetWithNewSeries}
+                onChange={(e) => setResetFleetWithNewSeries(e.target.checked)}
+                className="rounded border-line bg-canvas text-accent focus:ring-0"
+              />
+              <span>Also reset live fleet timers & mark roundings to Race 1</span>
+            </label>
+
+            <div className="pt-2">
               <button
-                onClick={() => setShowSeriesManagerDialog(false)}
-                className="p-1 rounded-lg text-ink-muted hover:text-ink"
+                onClick={handleConfirmStartNewSeries}
+                className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-danger/80 to-warning-ink/80 hover:from-danger hover:to-warning-ink text-ink font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
               >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Current Series Summary */}
-            <div className="grid grid-cols-3 gap-2 bg-canvas border border-line rounded-xl p-3 text-center">
-              <div>
-                <div className="text-xs text-ink-muted">Completed Races</div>
-                <div className="text-sm font-bold text-accent">{seriesRaces.length}</div>
-              </div>
-              <div>
-                <div className="text-xs text-ink-muted">Participating Fleet</div>
-                <div className="text-sm font-bold text-ink">{boats.length} Boats</div>
-              </div>
-              <div>
-                <div className="text-xs text-ink-muted">Discards</div>
-                <div className="text-sm font-bold text-success-ink">
-                  {discardRule === 'NONE' ? 'None' : '1 Drop'}
-                </div>
-              </div>
-            </div>
-
-            {/* Section 1: Start New / Clear Series */}
-            <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-ink">
-                <Sparkles className="w-4 h-4 text-warning-ink" />
-                <h4>Start a New Regatta Series</h4>
-              </div>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                Clears all past race results from local storage and starts a fresh series for today's championship round or regatta day.
-              </p>
-
-              <label className="flex items-center gap-2 text-xs text-ink cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={resetFleetWithNewSeries}
-                  onChange={(e) => setResetFleetWithNewSeries(e.target.checked)}
-                  className="rounded border-line bg-canvas text-accent focus:ring-0"
-                />
-                <span>Also reset live fleet timers & mark roundings to Race 1</span>
-              </label>
-
-              <div className="pt-2">
-                <button
-                  onClick={handleConfirmStartNewSeries}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-danger/80 to-warning-ink/80 hover:from-danger hover:to-warning-ink text-ink font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Clear Historical Races & Start Fresh Series</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Section 2: Manage Existing Races List */}
-            {seriesRaces.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-ink flex items-center justify-between">
-                  <span>Completed Historical Races ({seriesRaces.length})</span>
-                  <span className="text-xs text-ink-muted">Click trash to remove individual race</span>
-                </div>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
-                  {seriesRaces.map((r) => (
-                    <div
-                      key={r.id}
-                      className="p-2 bg-canvas border border-line rounded-xl flex items-center justify-between gap-2 text-xs"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-bold text-ink truncate">
-                          Race {r.raceNumber}{r.raceTitle ? `: ${r.raceTitle}` : ''}
-                        </div>
-                        <div className="text-xs text-ink-muted">
-                          {r.results?.length || 0} finishes • Wind {r.windSpeedKt}kt @ {r.windDirectionDeg}°
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setRaceToDelete(r);
-                        }}
-                        className="p-1.5 rounded-lg text-danger-ink hover:text-ink hover:bg-danger/50 transition-all shrink-0"
-                        title={`Delete Race ${r.raceNumber}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end pt-2">
-              <button
-                onClick={() => setShowSeriesManagerDialog(false)}
-                className="px-4 py-1.5 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
-              >
-                Close
+                <RotateCcw className="w-4 h-4" />
+                <span>Clear Historical Races & Start Fresh Series</span>
               </button>
             </div>
           </div>
-        </div>
+
+          {/* Section 2: Manage Existing Races List */}
+          {seriesRaces.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-ink flex items-center justify-between">
+                <span>Completed Historical Races ({seriesRaces.length})</span>
+                <span className="text-xs text-ink-muted">Click trash to remove individual race</span>
+              </div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+                {seriesRaces.map((r) => (
+                  <div
+                    key={r.id}
+                    className="p-2 bg-canvas border border-line rounded-xl flex items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-ink truncate">
+                        Race {r.raceNumber}{r.raceTitle ? `: ${r.raceTitle}` : ''}
+                      </div>
+                      <div className="text-xs text-ink-muted">
+                        {r.results?.length || 0} finishes • Wind {r.windSpeedKt}kt @ {r.windDirectionDeg}°
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setRaceToDelete(r);
+                      }}
+                      className="p-1.5 rounded-lg text-danger-ink hover:text-ink hover:bg-danger/50 transition-all shrink-0"
+                      title={`Delete Race ${r.raceNumber}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end pt-2">
+            <button
+              onClick={() => setShowSeriesManagerDialog(false)}
+              className="px-4 py-1.5 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </DialogFrame>
       )}
 
       {/* Roster Import Modal (Sailwave / World Sailing / CSV / JSON) */}
       {showRosterImportModal && (
-        <div className="fixed inset-0 z-60 bg-canvas/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200">
-          <div className="bg-surface border border-line w-full max-w-2xl rounded-3xl landscape:rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4 max-h-[90vh] landscape:max-h-[96dvh] flex flex-col text-ink overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-line pb-3 shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-ink/15 border border-line/40 flex items-center justify-center text-ink-muted shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-ink flex items-center gap-2">
-                    Import Competitor Fleet Roster
-                    <span className="text-xs bg-ink/20 text-ink-muted px-2 py-0.5 rounded-full border border-line/30">
-                      SAILWAVE &amp; WS
-                    </span>
-                  </h3>
-                  <p className="text-xs text-ink-muted">
-                    Upload or paste CSV / JSON entries to automatically register boats, sail numbers &amp; ratings
-                  </p>
-                </div>
+        <DialogFrame
+          onClose={() => setShowRosterImportModal(false)}
+          labelledBy={rosterTitleId}
+          overlayClassName="fixed inset-0 z-60 bg-canvas/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200"
+          className="bg-surface border border-line w-full max-w-2xl rounded-3xl landscape:rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4 max-h-[90vh] landscape:max-h-[96dvh] flex flex-col text-ink overflow-hidden"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-line pb-3 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-ink/15 border border-line/40 flex items-center justify-center text-ink-muted shrink-0">
+                <Users className="w-5 h-5" />
               </div>
-              <button
-                onClick={() => setShowRosterImportModal(false)}
-                className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-1">
-              {/* File drop / select + sample buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="px-3 py-1.5 bg-raised hover:bg-raised text-ink text-xs font-bold rounded-xl border border-line cursor-pointer flex items-center gap-1.5 transition-all">
-                    <Upload className="w-3.5 h-3.5 text-accent" />
-                    <span>Upload CSV / JSON</span>
-                    <input
-                      type="file"
-                      accept=".csv,.json,.txt"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const content = event.target?.result as string;
-                          setRosterInputText(content);
-                          handleParseRoster(content);
-                        };
-                        reader.readAsText(file);
-                      }}
-                    />
-                  </label>
-                  <button
-                    onClick={handleLoadSampleRoster}
-                    className="px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold rounded-xl border border-accent/30 transition-all"
-                  >
-                    Load Sample Roster
-                  </button>
-                </div>
-
-                <span className="text-xs text-ink-muted">
-                  Headers: BoatName, SailNo, Skipper, Class, Rating
-                </span>
-              </div>
-
-              {/* Textarea for pasting */}
               <div>
-                <textarea
-                  rows={5}
-                  value={rosterInputText}
-                  onChange={(e) => {
-                    setRosterInputText(e.target.value);
-                    handleParseRoster(e.target.value);
-                  }}
-                  placeholder={`Paste CSV or JSON competitor data here...\ne.g.\nBoatName,SailNo,Skipper,Class,Rating\nOcean Spirit,MAS 101,Azlan Shah,Class 1,1.025`}
-                  className="w-full bg-canvas border border-line rounded-2xl p-3 text-xs text-ink placeholder:text-ink-muted focus:border-line outline-none"
-                />
+                <h3 id={rosterTitleId} className="text-base font-bold text-ink flex items-center gap-2">
+                  Import Competitor Fleet Roster
+                  <span className="text-xs bg-ink/20 text-ink-muted px-2 py-0.5 rounded-full border border-line/30">
+                    SAILWAVE &amp; WS
+                  </span>
+                </h3>
+                <p className="text-xs text-ink-muted">
+                  Upload or paste CSV / JSON entries to automatically register boats, sail numbers &amp; ratings
+                </p>
+              </div>
+            </div>
+            <button
+              aria-label="Close"
+              onClick={() => setShowRosterImportModal(false)}
+              className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-1">
+            {/* File drop / select + sample buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <label className="px-3 py-1.5 bg-raised hover:bg-raised text-ink text-xs font-bold rounded-xl border border-line cursor-pointer flex items-center gap-1.5 transition-all">
+                  <Upload className="w-3.5 h-3.5 text-accent" />
+                  <span>Upload CSV / JSON</span>
+                  <input
+                    type="file"
+                    accept=".csv,.json,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const content = event.target?.result as string;
+                        setRosterInputText(content);
+                        handleParseRoster(content);
+                      };
+                      reader.readAsText(file);
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={handleLoadSampleRoster}
+                  className="px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold rounded-xl border border-accent/30 transition-all"
+                >
+                  Load Sample Roster
+                </button>
               </div>
 
-              {/* Parsing status / errors */}
-              {rosterParseError && (
-                <div className="p-3 rounded-xl bg-danger/15 border border-danger-ink/40 text-danger-ink text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-danger-ink shrink-0" />
-                  <span>{rosterParseError}</span>
+              <span className="text-xs text-ink-muted">
+                Headers: BoatName, SailNo, Skipper, Class, Rating
+              </span>
+            </div>
+
+            {/* Textarea for pasting */}
+            <div>
+              <textarea
+                rows={5}
+                value={rosterInputText}
+                onChange={(e) => {
+                  setRosterInputText(e.target.value);
+                  handleParseRoster(e.target.value);
+                }}
+                placeholder={`Paste CSV or JSON competitor data here...\ne.g.\nBoatName,SailNo,Skipper,Class,Rating\nOcean Spirit,MAS 101,Azlan Shah,Class 1,1.025`}
+                className="w-full bg-canvas border border-line rounded-2xl p-3 text-xs text-ink placeholder:text-ink-muted focus:border-line outline-none"
+              />
+            </div>
+
+            {/* Parsing status / errors */}
+            {rosterParseError && (
+              <div className="p-3 rounded-xl bg-danger/15 border border-danger-ink/40 text-danger-ink text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-danger-ink shrink-0" />
+                <span>{rosterParseError}</span>
+              </div>
+            )}
+
+            {/* Parsed records preview table */}
+            {parsedRosterRecords.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-success-ink font-bold flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-success-ink" />
+                    Detected {parsedRosterRecords.length} Competitors:
+                  </span>
+                  <span className="text-ink-muted">Ready to register into active fleet</span>
                 </div>
-              )}
 
-              {/* Parsed records preview table */}
-              {parsedRosterRecords.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-success-ink font-bold flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-success-ink" />
-                      Detected {parsedRosterRecords.length} Competitors:
-                    </span>
-                    <span className="text-ink-muted">Ready to register into active fleet</span>
-                  </div>
-
-                  <div className="border border-line rounded-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-canvas text-ink-muted border-b border-line sticky top-0">
-                        <tr>
-                          <th className="p-2">Sail #</th>
-                          <th className="p-2">Boat Name</th>
-                          <th className="p-2">Skipper</th>
-                          <th className="p-2">Class</th>
-                          <th className="p-2 text-right">Rating</th>
+                <div className="border border-line rounded-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-canvas text-ink-muted border-b border-line sticky top-0">
+                      <tr>
+                        <th className="p-2">Sail #</th>
+                        <th className="p-2">Boat Name</th>
+                        <th className="p-2">Skipper</th>
+                        <th className="p-2">Class</th>
+                        <th className="p-2 text-right">Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line/60 bg-surface">
+                      {parsedRosterRecords.map((r, idx) => (
+                        <tr key={idx} className="hover:bg-raised/40">
+                          <td className="p-2 font-bold text-accent">{r.sailNumber}</td>
+                          <td className="p-2 text-ink">{r.name}</td>
+                          <td className="p-2 text-ink">{r.skipper}</td>
+                          <td className="p-2">
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-raised text-ink-muted">
+                              {r.className}
+                            </span>
+                          </td>
+                          <td className="p-2 text-right font-bold text-warning-ink">
+                            {safeFixed(r.handicapRating, 3, '1.000')}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-line/60 bg-surface">
-                        {parsedRosterRecords.map((r, idx) => (
-                          <tr key={idx} className="hover:bg-raised/40">
-                            <td className="p-2 font-bold text-accent">{r.sailNumber}</td>
-                            <td className="p-2 text-ink">{r.name}</td>
-                            <td className="p-2 text-ink">{r.skipper}</td>
-                            <td className="p-2">
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-raised text-ink-muted">
-                                {r.className}
-                              </span>
-                            </td>
-                            <td className="p-2 text-right font-bold text-warning-ink">
-                              {safeFixed(r.handicapRating, 3, '1.000')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
-
-            {/* Footer buttons */}
-            <div className="flex items-center justify-between pt-3 border-t border-line shrink-0">
-              <button
-                onClick={() => setShowRosterImportModal(false)}
-                className="px-4 py-2 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleConfirmRosterImport}
-                disabled={parsedRosterRecords.length === 0}
-                className={`px-5 py-2 rounded-xl text-xs  font-bold flex items-center gap-2 transition-all ${
-                  parsedRosterRecords.length > 0
-                    ? 'bg-accent text-on-accent hover:brightness-110'
-                    : 'bg-raised text-ink-muted cursor-not-allowed'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>Sync {parsedRosterRecords.length} Boats to Fleet</span>
-              </button>
-            </div>
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Footer buttons */}
+          <div className="flex items-center justify-between pt-3 border-t border-line shrink-0">
+            <button
+              onClick={() => setShowRosterImportModal(false)}
+              className="px-4 py-2 rounded-xl bg-raised hover:bg-raised text-xs text-ink-muted hover:text-ink transition-all"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleConfirmRosterImport}
+              disabled={parsedRosterRecords.length === 0}
+              className={`px-5 py-2 rounded-xl text-xs  font-bold flex items-center gap-2 transition-all ${
+                parsedRosterRecords.length > 0
+                  ? 'bg-accent text-on-accent hover:brightness-110'
+                  : 'bg-raised text-ink-muted cursor-not-allowed'
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              <span>Sync {parsedRosterRecords.length} Boats to Fleet</span>
+            </button>
+          </div>
+        </DialogFrame>
       )}
 
-    </div>
+    </>
   );
 };

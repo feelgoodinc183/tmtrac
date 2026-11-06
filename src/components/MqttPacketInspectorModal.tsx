@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { X, Wifi, Terminal, Play, Pause, Trash2, Cpu, Radio, Smartphone, Send } from 'lucide-react';
 import { meshtasticService } from '../services/meshtasticBleMqttService';
 import { deviceTrackerService } from '../services/deviceTrackerService';
+import { DialogFrame } from './ui/Dialog';
 
 interface MqttPacketInspectorModalProps {
   onClose: () => void;
@@ -22,6 +23,7 @@ export interface MqttPacket {
 export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> = ({
   onClose,
 }) => {
+  const titleId = useId();
   const [isPaused, setIsPaused] = useState(false);
   const [packets, setPackets] = useState<MqttPacket[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
@@ -137,188 +139,192 @@ export const MqttPacketInspectorModal: React.FC<MqttPacketInspectorModalProps> =
     connStatus.bleConnected || connStatus.usbConnected || connStatus.mqttConnected || connStatus.phoneGpsActive;
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200">
-      <div className="bg-surface/95 backdrop-blur-md border border-line/80 w-full max-w-4xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink">
-        {/* Header */}
-        <div className="px-5 py-4 landscape:py-2.5 bg-canvas/90 border-b border-line flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-success-ink/15 border border-success-ink/40 flex items-center justify-center text-success-ink shadow-sm shrink-0">
-              <Terminal className="w-5 h-5" />
+    <DialogFrame
+      onClose={onClose}
+      labelledBy={titleId}
+      overlayClassName="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200"
+      className="bg-surface/95 backdrop-blur-md border border-line/80 w-full max-w-4xl max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0 rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink"
+    >
+      {/* Header */}
+      <div className="px-5 py-4 landscape:py-2.5 bg-canvas/90 border-b border-line flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-success-ink/15 border border-success-ink/40 flex items-center justify-center text-success-ink shadow-sm shrink-0">
+            <Terminal className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-base font-bold tracking-tight text-ink flex items-center gap-2 truncate">
+              MQTT & LoRa Mesh Packet Stream
+              <span className={`text-xs px-2 py-0.5 rounded-full  border ${
+                isAnyHardwareConnected
+                  ? 'bg-success-ink/20 text-success-ink border-success-ink/30'
+                  : 'bg-warning-ink/20 text-warning-ink border-warning-ink/30'
+              }`}>
+                {isAnyHardwareConnected ? 'LIVE STREAM' : 'LISTENING'}
+              </span>
+            </h2>
+            <p className="text-xs text-ink-muted truncate">
+              Real-time Protobuf & Telemetry Packet Inspector (BLE / USB / Phone GPS / MQTT)
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleInjectDiagnosticPacket}
+            className="p-1.5 px-2.5 rounded-xl bg-raised hover:bg-raised text-accent transition-all text-xs flex items-center gap-1.5"
+            title="Inject a manual diagnostic packet to verify console rendering"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Test Ping</span>
+          </button>
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className="p-1.5 px-2.5 rounded-xl bg-canvas border border-line text-ink-muted hover:text-ink transition-all text-xs flex items-center gap-1"
+          >
+            {isPaused ? <Play className="w-3.5 h-3.5 text-success-ink" /> : <Pause className="w-3.5 h-3.5 text-warning-ink" />}
+            <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
+          </button>
+          <button
+            onClick={() => setPackets([])}
+            className="p-2 rounded-xl bg-canvas border border-line text-ink-muted hover:text-danger-ink transition-all"
+            title="Clear Console"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Live Hardware Connection Status Bar */}
+      <div className="px-4 py-2 bg-canvas border-b border-line flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-3">
+          <span className="text-ink-muted font-bold">ACTIVE BRIDGES:</span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+            connStatus.bleConnected
+              ? 'bg-success-ink/20 text-success-ink border-success-ink/30 font-bold'
+              : 'bg-raised text-ink-muted border-line'
+          }`}>
+            <Radio className="w-3 h-3" /> Web BLE {connStatus.bleConnected ? 'ONLINE' : 'OFFLINE'}
+          </span>
+
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+            connStatus.usbConnected
+              ? 'bg-accent/20 text-accent border-accent/30 font-bold'
+              : 'bg-raised text-ink-muted border-line'
+          }`}>
+            <Cpu className="w-3 h-3" /> USB Serial {connStatus.usbConnected ? 'ONLINE' : 'OFFLINE'}
+          </span>
+
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+            connStatus.mqttConnected
+              ? 'bg-raised/20 text-ink-muted border-line/30 font-bold'
+              : 'bg-raised text-ink-muted border-line'
+          }`}>
+            <Wifi className="w-3 h-3" /> MQTT WS {connStatus.mqttConnected ? 'CONNECTED' : 'DISCONNECTED'}
+          </span>
+
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+            connStatus.phoneGpsActive
+              ? 'bg-accent/20 text-accent border-accent/30 font-bold'
+              : 'bg-raised text-ink-muted border-line'
+          }`}>
+            <Smartphone className="w-3 h-3" /> Phone GPS {connStatus.phoneGpsActive ? 'BROADCASTING' : 'IDLE'}
+          </span>
+        </div>
+
+        {/* Portnum Filters */}
+        <div className="flex items-center gap-1">
+          {['ALL', 'POS', 'TELEMETRY', 'TEXT'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`px-2 py-0.5 rounded text-xs font-bold  transition-all ${
+                activeFilter === f
+                  ? 'bg-accent text-on-accent'
+                  : 'bg-raised text-ink-muted hover:text-ink'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Console Output */}
+      <div className="flex-1 p-4 overflow-y-auto text-xs bg-canvas space-y-2 custom-scrollbar">
+        {filteredPackets.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-ink-muted space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-surface border border-line flex items-center justify-center text-ink-muted">
+              <Terminal className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-bold tracking-tight text-ink flex items-center gap-2 truncate">
-                MQTT & LoRa Mesh Packet Stream
-                <span className={`text-xs px-2 py-0.5 rounded-full  border ${
-                  isAnyHardwareConnected
-                    ? 'bg-success-ink/20 text-success-ink border-success-ink/30'
-                    : 'bg-warning-ink/20 text-warning-ink border-warning-ink/30'
-                }`}>
-                  {isAnyHardwareConnected ? 'LIVE STREAM' : 'LISTENING'}
-                </span>
-              </h2>
-              <p className="text-xs text-ink-muted truncate">
-                Real-time Protobuf & Telemetry Packet Inspector (BLE / USB / Phone GPS / MQTT)
+            <div className="max-w-md space-y-1">
+              <div className="text-ink font-bold text-sm">No Packets Received Yet</div>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                This console stream displays <strong className="text-ink">genuine live packets</strong> arriving from connected LoRa hardware (LoRa Device via BLE or USB), live Phone GPS broadcasts, or your MQTT Broker topic.
+              </p>
+              <p className="text-xs text-ink-muted pt-2">
+                To test reception immediately, you can click <strong className="text-accent">"Test Ping"</strong> above or turn on <strong className="text-accent">"Enable Live GPS"</strong> in the tracker drawer.
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleInjectDiagnosticPacket}
-              className="p-1.5 px-2.5 rounded-xl bg-raised hover:bg-raised text-accent transition-all text-xs flex items-center gap-1.5"
-              title="Inject a manual diagnostic packet to verify console rendering"
+        ) : (
+          filteredPackets.map((pkt) => (
+            <div
+              key={pkt.id}
+              className="p-2.5 rounded bg-canvas border border-line hover:border-accent/40 transition-all flex flex-col gap-1"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Test Ping</span>
-            </button>
-            <button
-              onClick={() => setIsPaused(!isPaused)}
-              className="p-1.5 px-2.5 rounded-xl bg-canvas border border-line text-ink-muted hover:text-ink transition-all text-xs flex items-center gap-1"
-            >
-              {isPaused ? <Play className="w-3.5 h-3.5 text-success-ink" /> : <Pause className="w-3.5 h-3.5 text-warning-ink" />}
-              <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
-            </button>
-            <button
-              onClick={() => setPackets([])}
-              className="p-2 rounded-xl bg-canvas border border-line text-ink-muted hover:text-danger-ink transition-all"
-              title="Clear Console"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-all"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Live Hardware Connection Status Bar */}
-        <div className="px-4 py-2 bg-canvas border-b border-line flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-3">
-            <span className="text-ink-muted font-bold">ACTIVE BRIDGES:</span>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
-              connStatus.bleConnected
-                ? 'bg-success-ink/20 text-success-ink border-success-ink/30 font-bold'
-                : 'bg-raised text-ink-muted border-line'
-            }`}>
-              <Radio className="w-3 h-3" /> Web BLE {connStatus.bleConnected ? 'ONLINE' : 'OFFLINE'}
-            </span>
-
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
-              connStatus.usbConnected
-                ? 'bg-accent/20 text-accent border-accent/30 font-bold'
-                : 'bg-raised text-ink-muted border-line'
-            }`}>
-              <Cpu className="w-3 h-3" /> USB Serial {connStatus.usbConnected ? 'ONLINE' : 'OFFLINE'}
-            </span>
-
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
-              connStatus.mqttConnected
-                ? 'bg-raised/20 text-ink-muted border-line/30 font-bold'
-                : 'bg-raised text-ink-muted border-line'
-            }`}>
-              <Wifi className="w-3 h-3" /> MQTT WS {connStatus.mqttConnected ? 'CONNECTED' : 'DISCONNECTED'}
-            </span>
-
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
-              connStatus.phoneGpsActive
-                ? 'bg-accent/20 text-accent border-accent/30 font-bold'
-                : 'bg-raised text-ink-muted border-line'
-            }`}>
-              <Smartphone className="w-3 h-3" /> Phone GPS {connStatus.phoneGpsActive ? 'BROADCASTING' : 'IDLE'}
-            </span>
-          </div>
-
-          {/* Portnum Filters */}
-          <div className="flex items-center gap-1">
-            {['ALL', 'POS', 'TELEMETRY', 'TEXT'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`px-2 py-0.5 rounded text-xs font-bold  transition-all ${
-                  activeFilter === f
-                    ? 'bg-accent text-on-accent'
-                    : 'bg-raised text-ink-muted hover:text-ink'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Console Output */}
-        <div className="flex-1 p-4 overflow-y-auto text-xs bg-canvas space-y-2 custom-scrollbar">
-          {filteredPackets.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-ink-muted space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-surface border border-line flex items-center justify-center text-ink-muted">
-                <Terminal className="w-6 h-6" />
+              <div className="flex items-center justify-between text-xs text-ink-muted">
+                <div className="flex items-center gap-2">
+                  <span className="text-accent font-bold">{pkt.timestamp}</span>
+                  {pkt.source && (
+                    <span className={`px-1.5 py-0.2 rounded text-xs font-bold border ${
+                      pkt.source === 'BLE_RADIO'
+                        ? 'bg-success-ink/10 text-success-ink border-success-ink/30'
+                        : pkt.source === 'PHONE_GPS'
+                        ? 'bg-accent/10 text-accent border-accent/30'
+                        : pkt.source === 'USB_SERIAL'
+                        ? 'bg-accent/10 text-accent border-accent/30'
+                        : pkt.source === 'DIAGNOSTIC_TEST'
+                        ? 'bg-warning-ink/10 text-warning-ink border-warning-ink/30'
+                        : 'bg-raised/10 text-ink-muted border-line/30'
+                    }`}>
+                      {pkt.source}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-ink">FROM: <strong className="text-success-ink">{pkt.fromNode}</strong></span>
+                  <span>TO: {pkt.toNode}</span>
+                  <span className={pkt.snr === undefined ? 'text-ink-muted' : pkt.snr > 0 ? 'text-success-ink' : 'text-danger-ink'}>
+                    SNR: {pkt.snr ?? '—'} dB ({pkt.rssi ?? '—'} dBm)
+                  </span>
+                </div>
               </div>
-              <div className="max-w-md space-y-1">
-                <div className="text-ink font-bold text-sm">No Packets Received Yet</div>
-                <p className="text-xs text-ink-muted leading-relaxed">
-                  This console stream displays <strong className="text-ink">genuine live packets</strong> arriving from connected LoRa hardware (LoRa Device via BLE or USB), live Phone GPS broadcasts, or your MQTT Broker topic.
-                </p>
-                <p className="text-xs text-ink-muted pt-2">
-                  To test reception immediately, you can click <strong className="text-accent">"Test Ping"</strong> above or turn on <strong className="text-accent">"Enable Live GPS"</strong> in the tracker drawer.
-                </p>
+
+              <div className="flex items-start gap-2 pt-0.5">
+                <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                  pkt.portnum === 'POSITION_APP' || pkt.portnum === 'DEVICE_GPS'
+                    ? 'bg-surface text-accent border border-accent/60'
+                    : pkt.portnum === 'TELEMETRY_APP'
+                    ? 'bg-surface text-success-ink border border-success-ink/60'
+                    : 'bg-raised text-warning-ink'
+                }`}>
+                  {pkt.portnum}
+                </span>
+                <span className="text-xs text-ink break-all">
+                  {pkt.payload}
+                </span>
               </div>
             </div>
-          ) : (
-            filteredPackets.map((pkt) => (
-              <div
-                key={pkt.id}
-                className="p-2.5 rounded bg-canvas border border-line hover:border-accent/40 transition-all flex flex-col gap-1"
-              >
-                <div className="flex items-center justify-between text-xs text-ink-muted">
-                  <div className="flex items-center gap-2">
-                    <span className="text-accent font-bold">{pkt.timestamp}</span>
-                    {pkt.source && (
-                      <span className={`px-1.5 py-0.2 rounded text-xs font-bold border ${
-                        pkt.source === 'BLE_RADIO'
-                          ? 'bg-success-ink/10 text-success-ink border-success-ink/30'
-                          : pkt.source === 'PHONE_GPS'
-                          ? 'bg-accent/10 text-accent border-accent/30'
-                          : pkt.source === 'USB_SERIAL'
-                          ? 'bg-accent/10 text-accent border-accent/30'
-                          : pkt.source === 'DIAGNOSTIC_TEST'
-                          ? 'bg-warning-ink/10 text-warning-ink border-warning-ink/30'
-                          : 'bg-raised/10 text-ink-muted border-line/30'
-                      }`}>
-                        {pkt.source}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-ink">FROM: <strong className="text-success-ink">{pkt.fromNode}</strong></span>
-                    <span>TO: {pkt.toNode}</span>
-                    <span className={pkt.snr === undefined ? 'text-ink-muted' : pkt.snr > 0 ? 'text-success-ink' : 'text-danger-ink'}>
-                      SNR: {pkt.snr ?? '—'} dB ({pkt.rssi ?? '—'} dBm)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2 pt-0.5">
-                  <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                    pkt.portnum === 'POSITION_APP' || pkt.portnum === 'DEVICE_GPS'
-                      ? 'bg-surface text-accent border border-accent/60'
-                      : pkt.portnum === 'TELEMETRY_APP'
-                      ? 'bg-surface text-success-ink border border-success-ink/60'
-                      : 'bg-raised text-warning-ink'
-                  }`}>
-                    {pkt.portnum}
-                  </span>
-                  <span className="text-xs text-ink break-all">
-                    {pkt.payload}
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+          ))
+        )}
       </div>
-    </div>
+    </DialogFrame>
   );
 };

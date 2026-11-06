@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useId } from 'react';
 import {
   X,
   QrCode,
@@ -14,6 +14,7 @@ import {
 import QRCode from 'qrcode';
 import { Boat } from '../types/regatta';
 import { roomService } from '../services/roomService';
+import { DialogFrame } from './ui/Dialog';
 
 interface BoatCheckInQrModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const BoatCheckInQrModal: React.FC<BoatCheckInQrModalProps> = ({
   onOpenCheckInForBoat,
   isAdmin = false,
 }) => {
+  const titleId = useId();
   const [showBoundBoats, setShowBoundBoats] = useState<boolean>(isAdmin);
 
   // For non-admin users: hide fleet boats that are already bound so they don't accidentally re-bind!
@@ -145,188 +147,188 @@ export const BoatCheckInQrModal: React.FC<BoatCheckInQrModalProps> = ({
   };
 
   return (
-    <div
-      id="boat-checkin-qr-backdrop"
-      className="fixed inset-0 z-[120] bg-canvas/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+    <DialogFrame
+      onClose={onClose}
+      labelledBy={titleId}
+      overlayClassName="fixed inset-0 z-[120] bg-canvas/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+      overlayId="boat-checkin-qr-backdrop"
+      id="boat-checkin-qr-card"
+      className="bg-surface border border-line rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
     >
-      <div
-        id="boat-checkin-qr-card"
-        className="bg-surface border border-line rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-line bg-surface/70">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-accent/20 text-accent border border-accent/40 flex items-center justify-center shrink-0 shadow-md">
-              <QrCode className="w-5 h-5" />
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 sm:p-5 border-b border-line bg-surface/70">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-accent/20 text-accent border border-accent/40 flex items-center justify-center shrink-0 shadow-md">
+            <QrCode className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 id={titleId} className="text-base sm:text-lg font-black text-ink flex items-center gap-2">
+              Smart Boat QR Code
+            </h2>
+            <p className="text-xs text-ink-muted">
+              Zero-Configuration 1-Scan Auto-Binding for Skippers
+            </p>
+          </div>
+        </div>
+        <button
+          aria-label="Close"
+          onClick={onClose}
+          className="p-2 text-ink-muted hover:text-ink rounded-xl hover:bg-raised/80 transition-colors"
+          title="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-4">
+        {/* Boat Selector */}
+        {displayBoats.length > 1 && (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-ink">
+                Select Fleet Boat:
+              </label>
+              {isAdmin && boats.some((b) => b.nodeId) && (
+                <button
+                  type="button"
+                  onClick={() => setShowBoundBoats((prev) => !prev)}
+                  className="text-xs text-accent hover:underline cursor-pointer"
+                >
+                  {showBoundBoats ? 'Showing All (Toggle Unbound Only)' : `Show All (${boats.length} boats)`}
+                </button>
+              )}
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-ink flex items-center gap-2">
-                Smart Boat QR Code
-              </h2>
-              <p className="text-xs text-ink-muted">
-                Zero-Configuration 1-Scan Auto-Binding for Skippers
-              </p>
+            <div className="relative">
+              <select
+                value={selectedBoatId}
+                onChange={(e) => setSelectedBoatId(e.target.value)}
+                className="w-full appearance-none bg-raised border border-accent rounded-2xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent pr-10"
+              >
+                {displayBoats.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.sailNumber} - {b.name} ({b.class}) {b.nodeId ? `• [Bound: ${b.nodeId}]` : '• [Available]'}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-ink-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-ink-muted hover:text-ink rounded-xl hover:bg-raised/80 transition-colors"
-            title="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        )}
 
-        {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-4">
-          {/* Boat Selector */}
-          {displayBoats.length > 1 && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-ink">
-                  Select Fleet Boat:
-                </label>
-                {isAdmin && boats.some((b) => b.nodeId) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowBoundBoats((prev) => !prev)}
-                    className="text-xs text-accent hover:underline cursor-pointer"
-                  >
-                    {showBoundBoats ? 'Showing All (Toggle Unbound Only)' : `Show All (${boats.length} boats)`}
-                  </button>
+        {boats.length === 0 ? (
+          <div className="p-6 text-center text-ink-muted text-sm bg-surface/50 rounded-2xl border border-line">
+            <AlertTriangle className="w-8 h-8 text-warning-ink mx-auto mb-2 opacity-80" />
+            No boats registered in this fleet yet. Add boats to generate individual skipper check-in QR codes.
+          </div>
+        ) : !isAdmin && displayBoats.length === 0 ? (
+          <div className="p-6 text-center text-ink text-xs bg-surface/60 rounded-2xl border border-warning-ink/30 space-y-2">
+            <CheckCircle2 className="w-8 h-8 text-accent mx-auto opacity-90" />
+            <p className="font-bold text-ink text-sm">All Fleet Vessels Are Already Bound</p>
+            <p className="text-ink-muted max-w-sm mx-auto leading-relaxed">
+              All {boats.length} registered boats are actively linked to trackers. Bound vessels are hidden to prevent accidental re-binding. If you need to reassign or unbind a vessel, contact the Race Committee Admin.
+            </p>
+          </div>
+        ) : selectedBoat ? (
+          <>
+            {/* QR Card Container */}
+            <div className="flex flex-col items-center bg-gradient-to-b from-surface to-surface border border-line rounded-3xl p-5 text-center shadow-lg">
+              {/* Boat Header Info */}
+              <div className="flex items-center gap-2 mb-3">
+                <span
+                  className="w-3.5 h-3.5 rounded-full inline-block shrink-0 shadow-sm"
+                  style={{ backgroundColor: selectedBoat.color || '#00D4FF' }}
+                />
+                <span className="text-base font-black text-ink">
+                  {selectedBoat.name}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-accent/10 text-accent border border-accent/30 text-xs font-bold">
+                  {selectedBoat.sailNumber}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-4 text-xs text-ink-muted">
+                <span className="px-2 py-0.5 rounded bg-raised text-ink">
+                  Class: {selectedBoat.class}
+                </span>
+                {selectedBoat.skipper && (
+                  <span className="px-2 py-0.5 rounded bg-raised text-ink">
+                    Skipper: {selectedBoat.skipper}
+                  </span>
+                )}
+                {selectedBoat.nodeId ? (
+                  <span className="px-2 py-0.5 rounded bg-success-ink/20 text-success-ink border border-success-ink/40 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Bound: {selectedBoat.nodeId}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded bg-warning-ink/10 text-warning-ink border border-warning-ink/30 flex items-center gap-1">
+                    <Link2 className="w-3 h-3" /> Ready to Bind
+                  </span>
                 )}
               </div>
-              <div className="relative">
-                <select
-                  value={selectedBoatId}
-                  onChange={(e) => setSelectedBoatId(e.target.value)}
-                  className="w-full appearance-none bg-raised border border-accent rounded-2xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent pr-10"
-                >
-                  {displayBoats.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.sailNumber} - {b.name} ({b.class}) {b.nodeId ? `• [Bound: ${b.nodeId}]` : '• [Available]'}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-ink-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-          )}
 
-          {boats.length === 0 ? (
-            <div className="p-6 text-center text-ink-muted text-sm bg-surface/50 rounded-2xl border border-line">
-              <AlertTriangle className="w-8 h-8 text-warning-ink mx-auto mb-2 opacity-80" />
-              No boats registered in this fleet yet. Add boats to generate individual skipper check-in QR codes.
-            </div>
-          ) : !isAdmin && displayBoats.length === 0 ? (
-            <div className="p-6 text-center text-ink text-xs bg-surface/60 rounded-2xl border border-warning-ink/30 space-y-2">
-              <CheckCircle2 className="w-8 h-8 text-accent mx-auto opacity-90" />
-              <p className="font-bold text-ink text-sm">All Fleet Vessels Are Already Bound</p>
-              <p className="text-ink-muted max-w-sm mx-auto leading-relaxed">
-                All {boats.length} registered boats are actively linked to trackers. Bound vessels are hidden to prevent accidental re-binding. If you need to reassign or unbind a vessel, contact the Race Committee Admin.
+              {/* Printable QR Code Display */}
+              <div className="p-4 bg-ink rounded-3xl shadow-2xl border-4 border-accent/40 mb-3 relative group">
+                {isGenerating || !qrDataUrl ? (
+                  <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center text-ink-muted text-xs">
+                    Generating QR...
+                  </div>
+                ) : (
+                  <img
+                    src={qrDataUrl}
+                    alt={`Check-in QR for ${selectedBoat.name}`}
+                    className="w-48 h-48 sm:w-56 sm:h-56 object-contain block"
+                  />
+                )}
+              </div>
+
+              <p className="text-xs text-ink-muted max-w-sm leading-relaxed mt-1">
+                Skipper scans with their phone's native camera. Opens directly to boat check-in with <strong className="text-ink">1-tap live GPS tracking</strong>.
               </p>
             </div>
-          ) : selectedBoat ? (
-            <>
-              {/* QR Card Container */}
-              <div className="flex flex-col items-center bg-gradient-to-b from-surface to-surface border border-line rounded-3xl p-5 text-center shadow-lg">
-                {/* Boat Header Info */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span
-                    className="w-3.5 h-3.5 rounded-full inline-block shrink-0 shadow-sm"
-                    style={{ backgroundColor: selectedBoat.color || '#00D4FF' }}
-                  />
-                  <span className="text-base font-black text-ink">
-                    {selectedBoat.name}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-accent/10 text-accent border border-accent/30 text-xs font-bold">
-                    {selectedBoat.sailNumber}
-                  </span>
-                </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-2 mb-4 text-xs text-ink-muted">
-                  <span className="px-2 py-0.5 rounded bg-raised text-ink">
-                    Class: {selectedBoat.class}
-                  </span>
-                  {selectedBoat.skipper && (
-                    <span className="px-2 py-0.5 rounded bg-raised text-ink">
-                      Skipper: {selectedBoat.skipper}
-                    </span>
-                  )}
-                  {selectedBoat.nodeId ? (
-                    <span className="px-2 py-0.5 rounded bg-success-ink/20 text-success-ink border border-success-ink/40 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Bound: {selectedBoat.nodeId}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded bg-warning-ink/10 text-warning-ink border border-warning-ink/30 flex items-center gap-1">
-                      <Link2 className="w-3 h-3" /> Ready to Bind
-                    </span>
-                  )}
-                </div>
+            {/* Direct URL Box */}
+            <div className="bg-canvas border border-line rounded-2xl p-3 flex items-center justify-between text-xs gap-2">
+              <span className="text-ink-muted truncate select-all">{directLink}</span>
+              <button
+                onClick={handleCopyLink}
+                className="px-3 py-1.5 rounded-xl bg-accent/20 hover:bg-accent/30 text-accent font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                title="Copy direct join link"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-success-ink" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+              </button>
+            </div>
 
-                {/* Printable QR Code Display */}
-                <div className="p-4 bg-ink rounded-3xl shadow-2xl border-4 border-accent/40 mb-3 relative group">
-                  {isGenerating || !qrDataUrl ? (
-                    <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center text-ink-muted text-xs">
-                      Generating QR...
-                    </div>
-                  ) : (
-                    <img
-                      src={qrDataUrl}
-                      alt={`Check-in QR for ${selectedBoat.name}`}
-                      className="w-48 h-48 sm:w-56 sm:h-56 object-contain block"
-                    />
-                  )}
-                </div>
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                id="btn-print-skipper-card"
+                onClick={handlePrint}
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-raised/90 to-raised/70 hover:from-raised hover:to-raised/90 active:scale-[0.98] text-ink hover:text-ink font-bold text-xs flex items-center justify-center gap-2 border border-line hover:border-accent/40 shadow-sm transition-all cursor-pointer group"
+                title="Print waterproof Skipper Check-In QR card or save as PDF"
+              >
+                <Printer className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                <span>Print Card</span>
+              </button>
 
-                <p className="text-xs text-ink-muted max-w-sm leading-relaxed mt-1">
-                  Skipper scans with their phone's native camera. Opens directly to boat check-in with <strong className="text-ink">1-tap live GPS tracking</strong>.
-                </p>
-              </div>
-
-              {/* Direct URL Box */}
-              <div className="bg-canvas border border-line rounded-2xl p-3 flex items-center justify-between text-xs gap-2">
-                <span className="text-ink-muted truncate select-all">{directLink}</span>
+              {onOpenCheckInForBoat && (
                 <button
-                  onClick={handleCopyLink}
-                  className="px-3 py-1.5 rounded-xl bg-accent/20 hover:bg-accent/30 text-accent font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
-                  title="Copy direct join link"
+                  onClick={() => {
+                    onClose();
+                    onOpenCheckInForBoat(selectedBoat.id);
+                  }}
+                  className="py-2.5 px-3 rounded-2xl bg-accent/20 hover:bg-accent/30 text-accent font-bold text-xs flex items-center justify-center gap-2 border border-accent/40 transition-all"
+                  title="Test or trigger check-in flow directly"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-success-ink" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                  <Smartphone className="w-4 h-4" />
+                  <span>Test Check-In</span>
                 </button>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <button
-                  id="btn-print-skipper-card"
-                  onClick={handlePrint}
-                  className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-raised/90 to-raised/70 hover:from-raised hover:to-raised/90 active:scale-[0.98] text-ink hover:text-ink font-bold text-xs flex items-center justify-center gap-2 border border-line hover:border-accent/40 shadow-sm transition-all cursor-pointer group"
-                  title="Print waterproof Skipper Check-In QR card or save as PDF"
-                >
-                  <Printer className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
-                  <span>Print Card</span>
-                </button>
-
-                {onOpenCheckInForBoat && (
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenCheckInForBoat(selectedBoat.id);
-                    }}
-                    className="py-2.5 px-3 rounded-2xl bg-accent/20 hover:bg-accent/30 text-accent font-bold text-xs flex items-center justify-center gap-2 border border-accent/40 transition-all"
-                    title="Test or trigger check-in flow directly"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>Test Check-In</span>
-                  </button>
-                )}
-              </div>
-            </>
-          ) : null}
-        </div>
+              )}
+            </div>
+          </>
+        ) : null}
       </div>
-    </div>
+    </DialogFrame>
   );
 };

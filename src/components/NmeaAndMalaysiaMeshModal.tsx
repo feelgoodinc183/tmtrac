@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import {
   HardwareConnection,
   MeshtasticNode,
@@ -15,6 +15,7 @@ import {
   Building2,
   Check,
 } from 'lucide-react';
+import { DialogFrame } from './ui/Dialog';
 
 interface NmeaAndMalaysiaMeshModalProps {
   hardwareConn: HardwareConnection;
@@ -33,6 +34,7 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
   nodes,
   onClose,
 }) => {
+  const titleId = useId();
 
 
 
@@ -112,229 +114,233 @@ export const NmeaAndMalaysiaMeshModal: React.FC<NmeaAndMalaysiaMeshModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 landscape:p-1.5">
-      <div className="bg-raised border border-line w-full max-w-3xl h-[85vh] max-h-[750px] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-[300px] sm:min-h-[520px] rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink">
-        {/* Header */}
-        <div className="p-4 landscape:py-2.5 bg-raised border-b border-line flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-on-accent shadow-sm">
-              <Globe className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-ink flex items-center gap-2">
-                Regatta locations
-              </h2>
-              <p className="text-xs text-ink-muted">
-                Where the map centres for this event. Trackers are added with Connect device.
-              </p>
-            </div>
+    <DialogFrame
+      onClose={onClose}
+      labelledBy={titleId}
+      overlayClassName="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 landscape:p-1.5"
+      className="bg-raised border border-line w-full max-w-3xl h-[85vh] max-h-[750px] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-[300px] sm:min-h-[520px] rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink"
+    >
+      {/* Header */}
+      <div className="p-4 landscape:py-2.5 bg-raised border-b border-line flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-on-accent shadow-sm">
+            <Globe className="w-5 h-5" />
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-ink-muted hover:text-ink hover:bg-raised transition-all"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <h2 id={titleId} className="text-sm sm:text-base font-bold text-ink flex items-center gap-2">
+              Regatta locations
+            </h2>
+            <p className="text-xs text-ink-muted">
+              Where the map centres for this event. Trackers are added with Connect device.
+            </p>
+          </div>
         </div>
+        <button
+          aria-label="Close"
+          onClick={onClose}
+          className="p-1.5 rounded-full text-ink-muted hover:text-ink hover:bg-raised transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Modal Body */}
-        <div className="p-5 flex-1 overflow-y-auto space-y-5 custom-scrollbar">
-            <div className="space-y-4">
-              {/* Dynamic Regatta & Maritime Event Manager */}
-              <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-xs text-ink-muted block">
-                      Select Active Regatta & Maritime Event
-                    </label>
-                    <p className="text-xs text-accent mt-0.5">
-                      Current Event: <strong>{selectedLocation.name}</strong> ({selectedLocation.organizer || 'Official Organiser'})
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent hover:brightness-110 text-on-accent text-xs font-bold transition-all shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{showAddForm ? 'Close Form' : 'Add Event'}</span>
-                  </button>
+      {/* Modal Body */}
+      <div className="p-5 flex-1 overflow-y-auto space-y-5 custom-scrollbar">
+          <div className="space-y-4">
+            {/* Dynamic Regatta & Maritime Event Manager */}
+            <div className="p-4 bg-raised rounded-2xl border border-line space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-xs text-ink-muted block">
+                    Select Active Regatta & Maritime Event
+                  </label>
+                  <p className="text-xs text-accent mt-0.5">
+                    Current Event: <strong>{selectedLocation.name}</strong> ({selectedLocation.organizer || 'Official Organiser'})
+                  </p>
                 </div>
 
-                {/* Inline Add Custom Regatta Form */}
-                {showAddForm && (
-                  <div className="p-3.5 bg-raised rounded-xl border border-accent/60 space-y-3 animate-fadeIn">
-                    <h5 className="text-xs font-bold text-ink flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-accent" />
-                      Add Custom Regatta / Yacht Club Event
-                    </h5>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="text-xs text-ink-muted block mb-1">
-                          Regatta / Event Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Raja Muda Selangor Regatta 2026"
-                          value={newRegattaName}
-                          onChange={(e) => setNewRegattaName(e.target.value)}
-                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-ink-muted block mb-1">
-                          Organizing Body / Yacht Club
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Royal Selangor Yacht Club (RSYC)"
-                          value={newOrganizer}
-                          onChange={(e) => setNewOrganizer(e.target.value)}
-                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-ink-muted block mb-1">
-                          Region / Maritime Waters
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Port Klang / Selat Klang Waters"
-                          value={newRegion}
-                          onChange={(e) => setNewRegion(e.target.value)}
-                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-ink-muted block mb-1">
-                          MQTT Stream Topic
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="msh/MY_919/2/e/RSYC_Custom/#"
-                          value={newTopic}
-                          onChange={(e) => setNewTopic(e.target.value)}
-                          className="w-full bg-raised border border-line text-accent rounded-lg p-2 text-xs outline-none focus:border-accent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-ink-muted block mb-1">
-                          Center Latitude
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="3.001"
-                          value={newLat}
-                          onChange={(e) => setNewLat(e.target.value)}
-                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-ink-muted block mb-1">
-                          Center Longitude
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="101.378"
-                          value={newLng}
-                          onChange={(e) => setNewLng(e.target.value)}
-                          className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-1">
-                      <button
-                        onClick={() => setShowAddForm(false)}
-                        className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleAddCustomRegatta}
-                        disabled={!newRegattaName.trim()}
-                        className="px-4 py-1.5 rounded-lg bg-success-ink hover:brightness-110 disabled:opacity-50 text-canvas text-xs font-bold"
-                      >
-                        Save & Activate Regatta
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Regatta Cards List */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
-                  {regattaList.map((loc) => {
-                    const isSelected = selectedLocation.id === loc.id;
-                    const isCustom = loc.id.startsWith('CUSTOM_REGATTA_');
-
-                    return (
-                      <div
-                        key={loc.id}
-                        onClick={() => {
-                          onSelectLocation(loc);
-                        }}
-                        className={`p-3 rounded-xl border text-left text-xs  transition-all flex flex-col gap-1.5 cursor-pointer relative ${
-                          isSelected
-                            ? 'bg-accent/20 border-accent text-ink shadow-sm ring-1 ring-accent'
-                            : 'bg-raised border-line text-ink-muted hover:text-ink hover:border-line'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-1">
-                          <span className="font-bold text-ink flex items-center gap-1.5 text-xs leading-tight">
-                            <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-accent' : 'text-ink-muted'}`} />
-                            {loc.name}
-                          </span>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isCustom && (
-                              <button
-                                onClick={(e) => handleDeleteCustomRegatta(loc.id, e)}
-                                className="p-1 hover:bg-danger/20 text-danger-ink rounded transition-colors"
-                                title="Delete Custom Event"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            {isSelected && (
-                              <Check className="w-4 h-4 text-success-ink shrink-0" />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs text-ink-muted">
-                          <span className="text-accent font-semibold">{loc.organizer || 'RSYC Organised'}</span>
-                          <span>{loc.region}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent hover:brightness-110 text-on-accent text-xs font-bold transition-all shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{showAddForm ? 'Close Form' : 'Add Event'}</span>
+                </button>
               </div>
 
-            </div>
-        </div>
+              {/* Inline Add Custom Regatta Form */}
+              {showAddForm && (
+                <div className="p-3.5 bg-raised rounded-xl border border-accent/60 space-y-3 animate-fadeIn">
+                  <h5 className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-accent" />
+                    Add Custom Regatta / Yacht Club Event
+                  </h5>
 
-        {/* Modal Footer */}
-        <div className="p-4 bg-raised border-t border-line flex items-center justify-between">
-          <span className="text-xs text-success-ink flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Regatta list is saved on this device
-          </span>
-          <button
-            onClick={handleDone}
-            className="px-6 py-2 rounded-full bg-accent text-on-accent font-bold text-xs shadow-md hover:brightness-110 transition-all flex items-center gap-1.5"
-          >
-            <Check className="w-3.5 h-3.5" />
-            Done
-          </button>
-        </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Regatta / Event Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Raja Muda Selangor Regatta 2026"
+                        value={newRegattaName}
+                        onChange={(e) => setNewRegattaName(e.target.value)}
+                        className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Organizing Body / Yacht Club
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Royal Selangor Yacht Club (RSYC)"
+                        value={newOrganizer}
+                        onChange={(e) => setNewOrganizer(e.target.value)}
+                        className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Region / Maritime Waters
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Port Klang / Selat Klang Waters"
+                        value={newRegion}
+                        onChange={(e) => setNewRegion(e.target.value)}
+                        className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        MQTT Stream Topic
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="msh/MY_919/2/e/RSYC_Custom/#"
+                        value={newTopic}
+                        onChange={(e) => setNewTopic(e.target.value)}
+                        className="w-full bg-raised border border-line text-accent rounded-lg p-2 text-xs outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Center Latitude
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="3.001"
+                        value={newLat}
+                        onChange={(e) => setNewLat(e.target.value)}
+                        className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-ink-muted block mb-1">
+                        Center Longitude
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="101.378"
+                        value={newLng}
+                        onChange={(e) => setNewLng(e.target.value)}
+                        className="w-full bg-raised border border-line text-ink rounded-lg p-2 text-xs outline-none focus:border-accent"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => setShowAddForm(false)}
+                      className="px-3 py-1.5 rounded-lg bg-raised hover:bg-raised text-ink text-xs"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddCustomRegatta}
+                      disabled={!newRegattaName.trim()}
+                      className="px-4 py-1.5 rounded-lg bg-success-ink hover:brightness-110 disabled:opacity-50 text-canvas text-xs font-bold"
+                    >
+                      Save & Activate Regatta
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Regatta Cards List */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
+                {regattaList.map((loc) => {
+                  const isSelected = selectedLocation.id === loc.id;
+                  const isCustom = loc.id.startsWith('CUSTOM_REGATTA_');
+
+                  return (
+                    <div
+                      key={loc.id}
+                      onClick={() => {
+                        onSelectLocation(loc);
+                      }}
+                      className={`p-3 rounded-xl border text-left text-xs  transition-all flex flex-col gap-1.5 cursor-pointer relative ${
+                        isSelected
+                          ? 'bg-accent/20 border-accent text-ink shadow-sm ring-1 ring-accent'
+                          : 'bg-raised border-line text-ink-muted hover:text-ink hover:border-line'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="font-bold text-ink flex items-center gap-1.5 text-xs leading-tight">
+                          <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-accent' : 'text-ink-muted'}`} />
+                          {loc.name}
+                        </span>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isCustom && (
+                            <button
+                              onClick={(e) => handleDeleteCustomRegatta(loc.id, e)}
+                              className="p-1 hover:bg-danger/20 text-danger-ink rounded transition-colors"
+                              title="Delete Custom Event"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-success-ink shrink-0" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-ink-muted">
+                        <span className="text-accent font-semibold">{loc.organizer || 'RSYC Organised'}</span>
+                        <span>{loc.region}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
       </div>
-    </div>
+
+      {/* Modal Footer */}
+      <div className="p-4 bg-raised border-t border-line flex items-center justify-between">
+        <span className="text-xs text-success-ink flex items-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Regatta list is saved on this device
+        </span>
+        <button
+          onClick={handleDone}
+          className="px-6 py-2 rounded-full bg-accent text-on-accent font-bold text-xs shadow-md hover:brightness-110 transition-all flex items-center gap-1.5"
+        >
+          <Check className="w-3.5 h-3.5" />
+          Done
+        </button>
+      </div>
+    </DialogFrame>
   );
 };
