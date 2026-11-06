@@ -113,8 +113,8 @@ DSQ, OCS), `endRace`, `scoreSeries`.
 One React + TypeScript codebase, used two ways:
 
 - **As a website** for spectators, and for race officers on a laptop.
-- **As an installed app** (Android first, iOS later), packaged with **Capacitor**, for race
-  officers and skippers on the water.
+- **As an installed Android app**, packaged with **Capacitor**, for race officers and skippers on
+  the water. iOS comes after the first real races.
 
 Why an installed app rather than only a website:
 
@@ -191,10 +191,10 @@ Made:
 2. **Hosting:** cPanel with Node 22.
 3. **App:** a new phone app is part of the rebuild (see "The phone app").
 4. **Scope:** the five version 1 items and the out-of-scope list, as above.
+5. **App:** Capacitor.
+6. **Platforms:** Android only for version 1; iOS after the first real races.
 
 Still open:
 
-5. **Capacitor** for the app (recommended above), or another approach.
-6. **Android only for version 1**, with iOS after the first real races?
 7. **Google Play developer account and a privacy policy** for location data: needed before
    store testing in phase 4.
