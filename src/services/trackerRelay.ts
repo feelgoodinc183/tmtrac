@@ -20,6 +20,15 @@ const NONE: TrackerRelayDecision = { boundBoatId: null, relay: false, applyFix: 
 export const MAX_FIX_AGE_MS = 15 * 60_000;
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
+/** When a node's current position was taken: its fix time, else when it was heard */
+export const nodeFixTime = (node: Pick<MeshtasticNode, 'positionTime' | 'lastPingTime'>): number | undefined =>
+  node.positionTime ?? node.lastPingTime;
+
+/** True when a fix taken at `time` may move a boat: known, and no older than `maxAgeMs` */
+export function isFixFresh(time: number | null | undefined, now: number = Date.now(), maxAgeMs: number = MAX_FIX_AGE_MS): boolean {
+  return isNum(time) && time > 0 && now - time <= maxAgeMs;
+}
+
 /**
  * Decides, for each update from a LoRa tracker, whether to share it with the room and whether to
  * apply it to the bound boat.
@@ -47,8 +56,7 @@ export function createTrackerRelayGate(opts: { relayIntervalMs?: number; maxFixA
       if (!boat) return NONE;
 
       const t = now();
-      const fixTime = node.positionTime ?? node.lastPingTime;
-      if (!isNum(fixTime) || t - fixTime > maxFixAgeMs) return NONE;
+      if (!isFixFresh(nodeFixTime(node), t, maxFixAgeMs)) return NONE;
 
       const id = canonicalNodeId(node.id);
       const fixKey = `${node.lat},${node.lng},${isNum(node.speedKt) ? node.speedKt : ''}`;
