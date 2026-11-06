@@ -87,6 +87,11 @@ test('replay: nodes the radio learned through an MQTT gateway are marked MQTT', 
   const viaMqtt = [...nodes.values()].filter((n) => n.connectionType === 'MQTT');
   assert.ok(viaMqtt.length > 0, 'the recording has viaMqtt NodeDB entries');
   assert.ok(!viaMqtt.some((n) => n.id === RM1 || n.id === RM2));
+  // Their positions came through the internet, not over the air: never relayed or used to move a boat
+  const placed = viaMqtt.filter((n) => typeof n.lat === 'number');
+  assert.ok(placed.length > 0, 'some have positions');
+  for (const n of placed) assert.equal(n.positionSource, 'MQTT', n.id);
+  assert.equal(nodes.get(RM2)!.positionSource, 'BLE', 'heard over LoRa by this radio');
 });
 
 // The gate's clock set to just after RM2's fix, as if replayed live

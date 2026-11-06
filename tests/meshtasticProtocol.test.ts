@@ -213,13 +213,16 @@ test('port numbers and hardware model numbers match the official enums', () => {
   assert.equal(PortNum.ROUTING_APP, Portnums.PortNum.ROUTING_APP);
   assert.equal(PortNum.TELEMETRY_APP, Portnums.PortNum.TELEMETRY_APP);
   const expected: Record<string, number> = {
-    TLORA_V2_1_1P6: 3, TBEAM: 4, T_ECHO: 7, RAK4631: 9, STATION_G2: 31, HELTEC_V3: 43,
-    HELTEC_WIRELESS_TRACKER: 48, T_DECK: 50, TRACKER_T1000_E: 71, HELTEC_V4: 110,
+    TLORA_V2_1_1P6: 3, TBEAM: 4, T_ECHO: 7, RAK4631: 9, STATION_G2: 31, T_ECHO_PLUS: 33, HELTEC_V3: 43,
+    HELTEC_WSL_V3: 44, HELTEC_WIRELESS_TRACKER: 48, T_DECK: 50, TRACKER_T1000_E: 71, SEEED_XIAO_S3: 81,
+    SEEED_WIO_TRACKER_L1: 99, HELTEC_V4: 110,
   };
   for (const [name, num] of Object.entries(expected)) {
     assert.equal((Mesh.HardwareModel as any)[name], num, name);
     assert.ok(HARDWARE_MODEL_NAMES[num], `name for ${name}`);
   }
+  // Every name in the table is for a number checked above, so none can sit on the wrong model
+  assert.deepEqual(Object.keys(HARDWARE_MODEL_NAMES).map(Number).sort((a, b) => a - b), Object.values(expected).sort((a, b) => a - b));
 });
 
 test('hops taken: a missing hop_limit (proto3 zero) means every hop was used', async () => {

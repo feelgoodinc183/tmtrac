@@ -39,6 +39,7 @@ import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
 import { MAX_RACE_CLASSES, StoredRaceClass, parseStoredRaceClasses, sanitizeRaceClasses } from './src/server/raceClasses';
 import { SKIPPER_BIND_MESSAGES, decideSkipperBinding } from './src/server/skipperBinding';
+import { applyGpsBatch } from './src/server/gpsBatch';
 import mqtt from 'mqtt';
 import { canonicalNodeId, nodeNumFromId, sameNodeId } from './src/utils/nodeId';
 import {
@@ -517,10 +518,18 @@ async function startServer() {
     const owner = relayOwners.get(key);
     if (owner && owner !== ws && owner.readyState === WebSocket.OPEN) return null;
     relayOwners.set(key, ws);
+    // Which device relays on this socket, so its HTTP fallback is recognised as the same relay
+    if (typeof payload.relayedBy === 'string') (ws as any).relayerId = payload.relayedBy;
     const owned: Set<string> = ((ws as any).relayedKeys ||= new Set<string>());
     owned.add(key);
     payload.deviceId = deviceId;
     return boat.id;
+  }
+
+  /** Another device is relaying this tracker on a live socket right now (HTTP must not take over) */
+  function relayHeldByOther(room: ActiveRoomState, deviceId: string, relayedBy: unknown): boolean {
+    const owner = relayOwners.get(`${room.code}|${canonicalNodeId(deviceId)}`);
+    return !!owner && owner.readyState === WebSocket.OPEN && (owner as any).relayerId !== relayedBy;
   }
 
   /**
@@ -715,6 +724,9 @@ async function startServer() {
                 const boundBoatId = acceptRelay(ws, currentRoom, payload);
                 if (!boundBoatId) return;
                 payload.boundBoatId = boundBoatId;
+                // A backlog the radio delivers after a reconnect can arrive behind a newer fix
+                const prevFix = currentRoom.trackers.get(payload.deviceId)?.fixTime;
+                if (typeof payload.fixTime === 'number' && typeof prevFix === 'number' && payload.fixTime < prevFix) return;
               } else {
                 (ws as any).deviceId = payload.deviceId;
                 // The boat comes from the room's binding; a claimed boundBoatId is ignored
@@ -758,44 +770,13 @@ async function startServer() {
                 payload.boundBoatId = boundBoatIdFor(currentRoom, payload.deviceId);
               }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
-              const existingTrail = existing.trail || [];
-              const newCoords = payload.points.map((p: any) => ({ lat: p.lat, lng: p.lng }));
-              const mergedTrail = [...existingTrail, ...newCoords].slice(-2000);
-              const lastPoint = payload.points[payload.points.length - 1];
-
-              const updatedTracker = {
-                ...existing,
-                ...payload,
-                lat: lastPoint.lat,
-                lng: lastPoint.lng,
-                speedKt: lastPoint.speedKt ?? existing.speedKt ?? 0,
-                headingDeg: lastPoint.headingDeg ?? existing.headingDeg ?? 0,
-                trail: mergedTrail,
-                lastSeen: lastPoint.timestamp || Date.now(),
-                isOnline: true,
-              };
-              currentRoom.trackers.set(payload.deviceId, updatedTracker);
-
-              // Update bound boat in race fleet
               // Set above from the room's binding; an older binding stored on the tracker doesn't count
               const targetBoatId = payload.boundBoatId;
-              if (targetBoatId && Array.isArray(currentRoom.boats)) {
-                currentRoom.boats = currentRoom.boats.map((b: any) => {
-                  // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
-                  if (b.id === targetBoatId) {
-                    const oldBoatTrail = b.trail || [];
-                    return {
-                      ...b,
-                      lat: lastPoint.lat,
-                      lng: lastPoint.lng,
-                      sog: lastPoint.speedKt ?? b.sog,
-                      cog: lastPoint.headingDeg ?? b.cog,
-                      heading: lastPoint.headingDeg ?? b.heading,
-                      trail: [...oldBoatTrail, ...newCoords].slice(-2000),
-                    };
-                  }
-                  return b;
-                });
+              const batch = applyGpsBatch(existing, currentRoom.boats, targetBoatId, payload, Date.now());
+              const updatedTracker = batch.tracker;
+              currentRoom.trackers.set(payload.deviceId, updatedTracker);
+              if (batch.boatChanged) {
+                currentRoom.boats = batch.boats;
                 broadcastToRoom(currentRoom.code, 'BOATS_UPDATED', currentRoom.boats, ws);
                 persistRoom(currentRoom);
               }
@@ -2236,6 +2217,10 @@ async function startServer() {
           return res.status(403).json({ error: 'This tracker is not bound to a boat in this room.', reason: 'NOT_RELAYABLE' });
         }
         payload.deviceId = canonicalNodeId(payload.deviceId);
+        // As on the WebSocket, one device relays a tracker at a time
+        if (relayHeldByOther(room, payload.deviceId, payload.relayedBy)) {
+          return res.status(409).json({ error: 'Another device is relaying this tracker right now.', reason: 'RELAYED_BY_ANOTHER_DEVICE' });
+        }
       }
       payload.boundBoatId = boundBoatIdFor(room, payload.deviceId);
       if (payload.relayedBy && !payload.boundBoatId) {
@@ -2243,42 +2228,12 @@ async function startServer() {
       }
 
       const existing = room.trackers.get(payload.deviceId) || {};
-      const existingTrail = existing.trail || [];
-      const newCoords = payload.points.map((p: any) => ({ lat: p.lat, lng: p.lng }));
-      const mergedTrail = [...existingTrail, ...newCoords].slice(-2000);
-      const lastPoint = payload.points[payload.points.length - 1];
-
-      const updatedTracker = {
-        ...existing,
-        ...payload,
-        lat: lastPoint.lat,
-        lng: lastPoint.lng,
-        speedKt: lastPoint.speedKt ?? existing.speedKt ?? 0,
-        headingDeg: lastPoint.headingDeg ?? existing.headingDeg ?? 0,
-        trail: mergedTrail,
-        lastSeen: lastPoint.timestamp || Date.now(),
-        isOnline: true,
-      };
-      room.trackers.set(payload.deviceId, updatedTracker);
-
       const targetBoatId = payload.boundBoatId;
-      if (targetBoatId && Array.isArray(room.boats)) {
-        room.boats = room.boats.map((b: any) => {
-          // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
-          if (b.id === targetBoatId) {
-            const oldBoatTrail = b.trail || [];
-            return {
-              ...b,
-              lat: lastPoint.lat,
-              lng: lastPoint.lng,
-              sog: lastPoint.speedKt ?? b.sog,
-              cog: lastPoint.headingDeg ?? b.cog,
-              heading: lastPoint.headingDeg ?? b.heading,
-              trail: [...oldBoatTrail, ...newCoords].slice(-2000),
-            };
-          }
-          return b;
-        });
+      const batch = applyGpsBatch(existing, room.boats, targetBoatId, payload, Date.now());
+      const updatedTracker = batch.tracker;
+      room.trackers.set(payload.deviceId, updatedTracker);
+      if (batch.boatChanged) {
+        room.boats = batch.boats;
         broadcastAllInRoom(room.code, 'BOATS_UPDATED', room.boats);
         persistRoom(room);
       }

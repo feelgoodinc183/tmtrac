@@ -273,8 +273,16 @@ test('HTTP batch: relaying an unbound tracker is refused with NOT_RELAYABLE', as
   assert.equal(latOf(await boatsNow(), 'b2'), 1);
 });
 
+test('HTTP batch: another device cannot relay a tracker a phone is relaying live', async () => {
+  const r = await postBatch({ deviceId: TRACKER, relayedBy: 'phone-X', points: points(60) });
+  assert.equal(r.status, 409);
+  assert.equal((await r.json()).reason, 'RELAYED_BY_ANOTHER_DEVICE');
+  assert.notEqual(latOf(await boatsNow(), 'b1'), 60);
+});
+
 test('HTTP batch: a relayed bound tracker moves its own boat, not the claimed one', async () => {
-  const r = await postBatch({ deviceId: TRACKER, relayedBy: 'phone-X', boundBoatId: 'b2', points: points(52) });
+  // phone-B relays the tracker live; its HTTP fallback is the same relay
+  const r = await postBatch({ deviceId: TRACKER, relayedBy: 'phone-B', boundBoatId: 'b2', points: points(52) });
   assert.equal(r.status, 200);
   const boats = await boatsNow();
   assert.equal(latOf(boats, 'b1'), 52);
@@ -303,4 +311,21 @@ test('WebSocket: an unbound phone\'s own backfill claiming a boat is acked, but 
   const live = since(admin, na, 'TRACKER_POSITION_UPDATE').map((m) => m.payload);
   assert.equal(live.length, 1);
   assert.equal(live[0].boundBoatId, null, 'a live position\'s claimed boat is replaced by the binding (none)');
+});
+
+test('a backlog older than the last fix does not pull the boat back', async () => {
+  // Over HTTP: a batch whose newest point is older than the fix the room has
+  const before = latOf(await boatsNow(), 'b1');
+  const r = await postBatch({ deviceId: TRACKER, relayedBy: 'phone-B', points: [{ lat: 61, lng: 2, timestamp: Date.now() - 600_000 }] });
+  assert.equal(r.status, 200);
+  assert.equal(latOf(await boatsNow(), 'b1'), before, 'older batch: boat stays');
+
+  // Live: a relayed position carrying an older fix time is dropped; a newer one goes through
+  const n = admin.msgs.length;
+  send(phoneB, 'GPS_BROADCAST', relayMsg(TRACKER, 'phone-B', { lat: 62, fixTime: Date.now() - 600_000 }));
+  await settle();
+  assert.deepEqual(since(admin, n, 'TRACKER_POSITION_UPDATE').map((m) => m.payload.lat), []);
+  send(phoneB, 'GPS_BROADCAST', relayMsg(TRACKER, 'phone-B', { lat: 63, fixTime: Date.now() }));
+  await settle();
+  assert.deepEqual(since(admin, n, 'TRACKER_POSITION_UPDATE').map((m) => m.payload.lat), [63]);
 });

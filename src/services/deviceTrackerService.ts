@@ -1120,7 +1120,7 @@ class HybridDeviceTrackerService {
       ? 'CUSTOM_MQTT'
       : 'LORA_TECHO';
 
-    const payload: HybridFleetMember & { relayedBy: string } = {
+    const payload: HybridFleetMember & { relayedBy: string; fixTime?: number } = {
       deviceId: canonicalNodeId(node.id),
       deviceName: node.longName || node.shortName || node.id,
       deviceType: devType,
@@ -1134,6 +1134,9 @@ class HybridDeviceTrackerService {
       altitudeMeters: node.altitudeMeters,
       battery: node.battery,
       timestamp: node.lastPingTime || Date.now(),
+      // When the tracker took this fix (its GPS time when it sends one): a backlog delivered after a
+      // Bluetooth reconnect carries its real times, so the server keeps the newest position
+      fixTime: node.positionTime,
       isLocalUser: false,
       trail: node.trail || [{ lat: node.lat, lng: node.lng }],
       relayedBy: this.profile.deviceId,

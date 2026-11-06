@@ -1086,7 +1086,9 @@ export class MeshtasticBleMqttService {
       hops: isLocal ? 0 : ni.hopsAway,
       connectionType: isLocal ? 'BLE' : (ni.viaMqtt ? 'MQTT' : 'LORA_MESH'),
       lastPingTime,
-    }, isLocal);
+      // Heard through an internet gateway, not over the air: like the server's MQTT bridge, it isn't
+      // relayed to the room or used to move a boat
+    }, isLocal, ni.viaMqtt && !isLocal ? 'MQTT' : 'BLE');
 
     this.emitPacketLog({
       id: `pkt-nodedb-${id}-${Date.now()}`,
@@ -1207,7 +1209,8 @@ export class MeshtasticBleMqttService {
       console.warn(`[BLE] Could not decode port ${portnum} payload from ${senderId}:`, err);
     }
 
-    const senderNode = this.upsertDiscoveredNode(senderId, updates, isLocal);
+    // A packet that reached the mesh from an internet gateway is not this radio's own reception
+    const senderNode = this.upsertDiscoveredNode(senderId, updates, isLocal, p.viaMqtt && !isLocal ? 'MQTT' : 'BLE');
 
     this.emitPacketLog({
       id: `pkt-${p.id ?? Date.now()}-${senderId}`,
