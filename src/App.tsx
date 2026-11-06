@@ -1416,6 +1416,7 @@ export default function App() {
           startSequenceActive: targetCs.startSequenceActive,
           targetStartTime: targetCs.targetStartTime,
           startTime: targetCs.startTime,
+          postponed: targetCs.postponed,
           updatedAt: now,
         };
         deviceTrackerService.broadcastRaceState(next);
@@ -1423,7 +1424,12 @@ export default function App() {
       }
 
       // If updating status/countdown/sequence on currently active class
-      if (partial.status !== undefined || partial.countdownSeconds !== undefined || partial.startSequenceActive !== undefined) {
+      if (
+        partial.status !== undefined ||
+        partial.countdownSeconds !== undefined ||
+        partial.startSequenceActive !== undefined ||
+        partial.postponed !== undefined
+      ) {
         const cur = updatedClassStates[newActiveClass];
         const nextSequenceActive = partial.startSequenceActive ?? cur.startSequenceActive;
         const nextCountdown = partial.countdownSeconds ?? cur.countdownSeconds;
@@ -1484,6 +1490,8 @@ export default function App() {
           startSequenceActive: nextSequenceActive,
           targetStartTime,
           startTime,
+          // AP only holds a class that hasn't started; a running sequence or a start clears it.
+          postponed: nextStatus === 'PRE_START' && !nextSequenceActive ? (partial.postponed ?? cur.postponed ?? false) : false,
           updatedAt: now,
         };
       }
@@ -1498,6 +1506,7 @@ export default function App() {
         startSequenceActive: activeCs.startSequenceActive,
         targetStartTime: activeCs.targetStartTime,
         startTime: activeCs.startTime,
+        postponed: activeCs.postponed,
         updatedAt: now,
       };
       deviceTrackerService.broadcastRaceState(next);
@@ -1550,6 +1559,7 @@ export default function App() {
           startSequenceActive: nextSequenceActive,
           status: nextStatus,
           targetStartTime,
+          ...(nextSequenceActive ? { postponed: false } : {}),
           updatedAt: now,
         },
       };

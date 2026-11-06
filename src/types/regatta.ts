@@ -384,6 +384,8 @@ export interface ClassRaceStatus {
   targetStartTime?: number; // Target epoch millisecond timestamp when gun fires (0:00)
   startTime?: number;       // Epoch millisecond timestamp when race officially started
   updatedAt?: number;
+  /** AP flag is up (RRS 27.3): the start sequence is held until AP comes down. Only meaningful before the start. */
+  postponed?: boolean;
 }
 
 export interface RaceState {
@@ -395,6 +397,8 @@ export interface RaceState {
   startSequenceActive: boolean;
   targetStartTime?: number; // Target epoch millisecond timestamp when gun fires (0:00)
   classStates?: Record<string, ClassRaceStatus>;
+  /** Mirror of classStates[activeClass].postponed */
+  postponed?: boolean;
   telemetryRate: TelemetryRate;
   mqttBridgeMode: MqttBridgeMode;
   mqttConnected: boolean;
