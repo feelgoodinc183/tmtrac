@@ -18,6 +18,7 @@ import {
 import { PricingPackage, UserAccount } from '../types/regatta';
 import { APP_VERSION } from '../appVersion';
 import { DialogFrame } from './ui/Dialog';
+import { formatPrice } from '../utils/pricing';
 
 interface FrontLandingPageProps {
   onLoginClick: () => void;
@@ -104,10 +105,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
 
     // Simulated boats
     const simulatedBoats = [
-      { id: 'b1', name: 'Zuhal MAS 101', color: '#38bdf8', speed: 9.4, x: 220, y: 190, heading: 45, sail: 'MAS 101' },
-      { id: 'b2', name: 'Team Hollywood', color: '#f59e0b', speed: 10.2, x: 200, y: 210, heading: 42, sail: 'AUS 88' },
-      { id: 'b3', name: 'Mata Hari', color: '#10b981', speed: 8.9, x: 250, y: 170, heading: 48, sail: 'MAS 777' },
-      { id: 'b4', name: 'Uranus MAS 8', color: '#ec4899', speed: 9.1, x: 180, y: 230, heading: 44, sail: 'MAS 8' },
+      // Made-up boats for the demo: no real names or sail numbers
+      { id: 'b1', color: '#38bdf8', speed: 9.4, heading: 45, sail: 'Boat A' },
+      { id: 'b2', color: '#f59e0b', speed: 10.2, heading: 42, sail: 'Boat B' },
+      { id: 'b3', color: '#10b981', speed: 8.9, heading: 48, sail: 'Boat C' },
+      { id: 'b4', color: '#ec4899', speed: 9.1, heading: 44, sail: 'Boat D' },
     ];
 
     const resize = () => {
@@ -374,7 +376,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span>Next-Gen Satellite, LoRa & Cellular Sailing Telemetry</span>
+            <span>Sailing telemetry over LoRa radio and mobile data</span>
           </div>
 
           {/* Main Headline */}
@@ -387,7 +389,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
 
           {/* Subtitle with Minimalist Tags */}
           <p className="text-base sm:text-lg text-slate-600 font-normal max-w-2xl mx-auto mb-10 leading-relaxed">
-            The multi-tenant sailing command platform. Live GNSS boat tracking, automated IRC handicap scoring, and spectator broadcast for yacht clubs and championship regattas worldwide.
+            The multi-tenant sailing command platform. Live GNSS boat tracking, IRC, ORC and Portsmouth scoring, and spectator broadcast for yacht clubs and championship regattas.
           </p>
 
           {/* CORE USER CHOICES (View Race & Login) */}
@@ -428,14 +430,14 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <span>Mesh Network</span>
                 <Radio className="w-3.5 h-3.5 text-sky-600" />
               </div>
-              <div className="text-xs text-slate-500 font-medium">Dual LoRa + 5G Mobile</div>
+              <div className="text-xs text-slate-500 font-medium">LoRa radio + mobile data</div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
               <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
                 <span>Auto-Rank</span>
                 <Trophy className="w-3.5 h-3.5 text-amber-600" />
               </div>
-              <div className="text-xs text-slate-500 font-medium">IRC / PHRF Corrected Time</div>
+              <div className="text-xs text-slate-500 font-medium">IRC, ORC & Portsmouth</div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
               <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
@@ -454,15 +456,14 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           {/* Radar Header Bar */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50 text-xs">
             <div className="flex items-center space-x-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-slate-800">Interactive Telemetry Radar Simulator</span>
-              <span className="text-slate-500 font-mono">| Kuah Bay Regatta Course (RLIR)</span>
+              <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-bold uppercase tracking-wide">Demo</span>
+              <span className="font-semibold text-slate-800">Simulated boats on a Windward-Leeward course</span>
             </div>
             <button
               onClick={() => onViewRaceClick()}
               className="text-xs text-cyan-600 hover:text-cyan-700 font-semibold flex items-center space-x-1"
             >
-              <span>Launch Live Race Console</span>
+              <span>Open the race console</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -475,20 +476,19 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
             <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg text-xs">
               <div className="flex items-center space-x-4">
                 <div>
-                  <span className="text-slate-500 block text-xs uppercase font-semibold">Active Regatta</span>
-                  <span className="text-slate-900 font-bold">Royal Langkawi International (RLIR26)</span>
-                </div>
-                <div className="hidden sm:block border-l border-slate-200 pl-4">
-                  <span className="text-slate-500 block text-xs uppercase font-semibold">Course Layout</span>
-                  <span className="text-slate-800 font-medium">Windward-Leeward (2.4 NM)</span>
+                  <span className="text-slate-500 block text-xs uppercase font-semibold">Demo</span>
+                  <span className="text-slate-900 font-bold">This is a simulation, not a live race</span>
                 </div>
               </div>
               <button
-                onClick={() => onViewRaceClick('RLIR26')}
+                onClick={() => {
+                  setCodeError(null);
+                  setSpectatorModalOpen(true);
+                }}
                 className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors flex items-center space-x-1.5 shadow-sm"
               >
                 <Play className="w-3 h-3 fill-white" />
-                <span>Spectate This Race</span>
+                <span>Watch a real race</span>
               </button>
             </div>
           </div>
@@ -513,13 +513,13 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mb-4">
                 <Radio className="w-5 h-5 text-cyan-600" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Dual-Path LoRa + 5G Mesh</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-2">LoRa Radio + Mobile Data</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Connect long-range Meshtastic LoRa radios over Bluetooth or USB. Boats transmit offshore position fixes over miles of open water without needing cellular towers.
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-cyan-700 font-semibold">
-              868 / 915 MHz Zero-SIM Fallback
+              Meshtastic radios, no SIM needed
             </div>
           </div>
 
@@ -531,7 +531,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">Automated Corrected Scoring</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Instant virtual finish line detection with millisecond precision. Automatically computes corrected times under IRC, ORC, and Portsmouth Yardstick rating rules.
+                Finishes are timed from each class's start: by GPS when a tracker crosses the line, or with one tap from the race officer. Corrected times under IRC, ORC and Portsmouth Yardstick.
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-amber-700 font-semibold">
@@ -567,7 +567,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-emerald-700 font-semibold">
-              Native Android GPS & Deep Links
+              Android app & phone browser tracking
             </div>
           </div>
 
@@ -577,13 +577,13 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center mb-4">
                 <Wind className="w-5 h-5 text-sky-600" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Tactical Laylines & Polar VMG</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-2">VMG, Head-to-Head & Replay</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Live wind vector arrows, current layline cones, mark rounding angle indicators, and Velocity Made Good (VMG) efficiency calculations for strategic race debriefs.
+                Velocity Made Good for every boat on the leaderboard, a head-to-head comparison of any two boats, and a full race replay for debriefs.
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-sky-700 font-semibold">
-              Tactical Race Replay Engine
+              Race replay for debriefs
             </div>
           </div>
 
@@ -647,7 +647,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
 
                     <div className="flex items-baseline space-x-1 mb-6">
                       <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">
-                        {pkg.priceAmount === 0 ? 'Free' : `${pkg.currencySymbol || '$'}${pkg.priceAmount}`}
+                        {formatPrice(pkg.priceAmount, pkg.currencySymbol)}
                       </span>
                       {pkg.priceAmount > 0 && (
                         <span className="text-xs text-slate-500 font-medium">

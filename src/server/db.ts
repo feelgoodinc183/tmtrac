@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY, DEFAULT_CURRENCY_SYMBOL, defaultPackages, migratePackageRow } from './packages';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -418,67 +419,17 @@ function createFallbackDatabase() {
 
     // 4. Default Packages
     if (Object.keys(store.packages).length === 0) {
-      store.packages['pkg-free'] = {
-        id: 'pkg-free',
-        tier_key: 'FREE',
-        display_title: 'Starter Club',
-        badge: 'Free Forever',
-        price_amount: 0,
-        currency: 'USD',
-        currency_symbol: '$',
-        billing_interval: 'month',
-        description: 'Essential regatta tracking for local sailing clubs and trial events.',
-        max_active_rooms: 1,
-        max_boats_per_room: 15,
-        max_admin_seats: 2,
-        lora_priority: 0,
-        custom_branding: 0,
-        features_json: JSON.stringify(['1 Active Regatta Room', 'Up to 15 boats', '2 Admin seats']),
-        is_active: 1,
-        sort_order: 1,
-        updated_at: now,
-      };
-      store.packages['pkg-club'] = {
-        id: 'pkg-club',
-        tier_key: 'CLUB',
-        display_title: 'Yacht Club & Fleet',
-        badge: 'Most Popular',
-        price_amount: 49,
-        currency: 'USD',
-        currency_symbol: '$',
-        billing_interval: 'month',
-        description: 'Full-featured race management for clubs running seasonal series.',
-        max_active_rooms: 10,
-        max_boats_per_room: 60,
-        max_admin_seats: 5,
-        lora_priority: 1,
-        custom_branding: 0,
-        features_json: JSON.stringify(['Up to 10 Concurrent Regattas', 'Up to 60 boats', '5 Race Officer seats']),
-        is_active: 1,
-        sort_order: 2,
-        updated_at: now,
-      };
-      store.packages['pkg-event-pro'] = {
-        id: 'pkg-event-pro',
-        tier_key: 'EVENT_PRO',
-        display_title: 'Championship / Event Pro',
-        badge: 'Pro Grade',
-        price_amount: 149,
-        currency: 'USD',
-        currency_symbol: '$',
-        billing_interval: 'event',
-        description: 'Heavy-duty telemetry infrastructure for major regattas.',
-        max_active_rooms: 30,
-        max_boats_per_room: 250,
-        max_admin_seats: 20,
-        lora_priority: 1,
-        custom_branding: 1,
-        features_json: JSON.stringify(['Up to 30 Concurrent Regattas', 'Up to 250 boats', '20 Race Committee seats']),
-        is_active: 1,
-        sort_order: 3,
-        updated_at: now,
-      };
+      for (const pkg of defaultPackages(now)) store.packages[pkg.id] = pkg;
       modified = true;
+    } else {
+      // Stored defaults from before: US dollars to ringgit, features the product doesn't have removed
+      for (const id of Object.keys(store.packages)) {
+        const migrated = migratePackageRow(store.packages[id]);
+        if (migrated) {
+          store.packages[id] = migrated;
+          modified = true;
+        }
+      }
     }
 
     if (modified) {
@@ -1270,8 +1221,8 @@ export function initDatabase() {
       display_title TEXT NOT NULL,
       badge TEXT DEFAULT '',
       price_amount REAL NOT NULL DEFAULT 0,
-      currency TEXT NOT NULL DEFAULT 'USD',
-      currency_symbol TEXT NOT NULL DEFAULT '$',
+      currency TEXT NOT NULL DEFAULT 'MYR',
+      currency_symbol TEXT NOT NULL DEFAULT 'RM',
       billing_interval TEXT NOT NULL DEFAULT 'month',
       description TEXT DEFAULT '',
       max_active_rooms INTEGER NOT NULL DEFAULT 1,
@@ -1323,97 +1274,21 @@ export function initDatabase() {
         max_admin_seats, lora_priority, custom_branding, features_json, is_active, sort_order, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-
-    const now = Date.now();
-    seedPkg.run(
-      'pkg-free',
-      'FREE',
-      'Starter Club',
-      'Free Forever',
-      0,
-      'USD',
-      '$',
-      'month',
-      'Essential regatta tracking for local sailing clubs and trial events.',
-      1,
-      15,
-      2,
-      0,
-      0,
-      JSON.stringify([
-        '1 Active Regatta Room at a time',
-        'Up to 15 boats tracked live simultaneously',
-        '2 Race Officer / Admin seats',
-        'Standard 4G / Web telemetry feed',
-        'Live spectator race view',
-        'Standard finish line & elapsed timing',
-      ]),
-      1,
-      1,
-      now
-    );
-
-    seedPkg.run(
-      'pkg-club',
-      'CLUB',
-      'Yacht Club & Fleet',
-      'Most Popular',
-      49,
-      'USD',
-      '$',
-      'month',
-      'Full-featured race management for clubs running seasonal series and fleets.',
-      10,
-      60,
-      5,
-      1,
-      0,
-      JSON.stringify([
-        'Up to 10 Concurrent Regatta Rooms',
-        'Up to 60 boats tracked per fleet',
-        '5 Race Committee & Officer seats',
-        'Meshtastic LoRa radio mesh priority',
-        'Automated IRC / PHRF corrected scoring',
-        'Club race history & participant audit log',
-        'Live weather & wind layline overlays',
-        'Public event code sharing & spectator links',
-      ]),
-      1,
-      2,
-      now
-    );
-
-    seedPkg.run(
-      'pkg-event-pro',
-      'EVENT_PRO',
-      'Championship / Event Pro',
-      'Pro Grade',
-      149,
-      'USD',
-      '$',
-      'event',
-      'Heavy-duty telemetry infrastructure for major regattas, offshore passages, and national championships.',
-      30,
-      250,
-      20,
-      1,
-      1,
-      JSON.stringify([
-        'Up to 30 Concurrent Regattas & Flights',
-        'Up to 250 boats per race division',
-        '20 Race Committee, Jury & Umpire seats',
-        'Dual-band LoRa mesh + cellular fallback',
-        'Custom club branding & sponsor logos',
-        'Android offline GNSS store-and-forward',
-        'Raw NMEA / AIS integration support',
-        'Dedicated database export & priority support',
-      ]),
-      1,
-      3,
-      now
-    );
-
+    for (const p of defaultPackages(Date.now())) {
+      seedPkg.run(
+        p.id, p.tier_key, p.display_title, p.badge, p.price_amount, p.currency, p.currency_symbol,
+        p.billing_interval, p.description, p.max_active_rooms, p.max_boats_per_room,
+        p.max_admin_seats, p.lora_priority, p.custom_branding, p.features_json, p.is_active, p.sort_order, p.updated_at
+      );
+    }
     console.log('[SQLite DB] Seeded default pricing packages (FREE, CLUB, EVENT_PRO)');
+  } else {
+    // Stored defaults from before: US dollars to ringgit, features the product doesn't have removed
+    const update = db.prepare('UPDATE packages SET currency = ?, currency_symbol = ?, price_amount = ?, features_json = ? WHERE id = ?');
+    for (const row of db.prepare('SELECT * FROM packages').all() as any[]) {
+      const m = migratePackageRow(row);
+      if (m) update.run(m.currency, m.currency_symbol, m.price_amount, m.features_json, m.id);
+    }
   }
 
 
@@ -1681,8 +1556,8 @@ export function getAllPackages(includeInactive = false) {
     displayTitle: r.display_title,
     badge: r.badge || '',
     priceAmount: r.price_amount,
-    currency: r.currency || 'USD',
-    currencySymbol: r.currency_symbol || '$',
+    currency: r.currency || DEFAULT_CURRENCY,
+    currencySymbol: r.currency_symbol || DEFAULT_CURRENCY_SYMBOL,
     billingInterval: r.billing_interval || 'month',
     description: r.description || '',
     maxActiveRooms: r.max_active_rooms,
@@ -1707,8 +1582,8 @@ export function getPackageById(id: string) {
     displayTitle: r.display_title,
     badge: r.badge || '',
     priceAmount: r.price_amount,
-    currency: r.currency || 'USD',
-    currencySymbol: r.currency_symbol || '$',
+    currency: r.currency || DEFAULT_CURRENCY,
+    currencySymbol: r.currency_symbol || DEFAULT_CURRENCY_SYMBOL,
     billingInterval: r.billing_interval || 'month',
     description: r.description || '',
     maxActiveRooms: r.max_active_rooms,
@@ -1776,8 +1651,8 @@ export function createPackage(data: any) {
     data.displayTitle || 'Custom Package',
     data.badge || '',
     Number(rawPrice) || 0,
-    data.currency || 'USD',
-    data.currencySymbol || '$',
+    data.currency || DEFAULT_CURRENCY,
+    data.currencySymbol || DEFAULT_CURRENCY_SYMBOL,
     data.billingInterval || 'month',
     data.description || '',
     Number(data.maxActiveRooms) || 1,

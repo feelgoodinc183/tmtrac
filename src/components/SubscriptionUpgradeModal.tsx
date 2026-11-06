@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY_SYMBOL, EVENT_PASS_PRICE, formatPrice } from '../utils/pricing';
 import React, { useState, useEffect, useId } from 'react';
 import {
   X,
@@ -125,6 +126,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       subtitle: 'For independent race officers & local clubs',
       monthlyPrice: 0,
       annualPrice: 0,
+      currencySymbol: DEFAULT_CURRENCY_SYMBOL,
       period: 'Forever free',
       color: 'slate',
       accent: 'border-line bg-surface/60',
@@ -147,8 +149,9 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       packageId: 'pkg-club',
       name: 'Yacht Club & Fleet',
       subtitle: 'For active sailing clubs & national associations',
-      monthlyPrice: 49,
-      annualPrice: 39,
+      monthlyPrice: 199,
+      annualPrice: 159,
+      currencySymbol: DEFAULT_CURRENCY_SYMBOL,
       period: 'per month',
       badge: 'Most Popular',
       color: 'cyan',
@@ -158,22 +161,20 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
         'Up to 60 boats tracked per fleet',
         '5 Race Committee & Officer seats',
         'Meshtastic LoRa radio mesh priority',
-        'Automated IRC / PHRF corrected scoring',
+        'Automated IRC, ORC & Portsmouth corrected scoring',
         'Club race history & participant audit log',
-        'Live weather & wind layline overlays',
         'Public event code sharing & spectator links',
       ],
-      notIncluded: [
-        'Custom domain & club white-labeling',
-      ],
+      notIncluded: [],
     },
     {
       id: 'EVENT_PRO' as PlanTier,
       packageId: 'pkg-event-pro',
       name: 'Championship / Event Pro',
       subtitle: 'For major grand prix regattas & offshore passages',
-      monthlyPrice: 149,
-      annualPrice: 119,
+      monthlyPrice: 599,
+      annualPrice: 479,
+      currencySymbol: DEFAULT_CURRENCY_SYMBOL,
       period: 'per month',
       badge: 'Pro Grade',
       color: 'amber',
@@ -182,10 +183,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
         'Up to 30 Concurrent Regattas & Flights',
         'Up to 250 boats per race division',
         '20 Race Committee, Jury & Umpire seats',
-        'Dual-band LoRa mesh + cellular fallback',
-        'Custom club branding & sponsor logos',
         'Android offline GNSS store-and-forward',
-        'Raw NMEA / AIS integration support',
         'Dedicated database export & priority support',
       ],
       notIncluded: [],
@@ -205,6 +203,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       name: livePkg.displayTitle || defaultPlan.name,
       subtitle: livePkg.description || defaultPlan.subtitle,
       monthlyPrice: livePkg.priceAmount,
+      currencySymbol: livePkg.currencySymbol || DEFAULT_CURRENCY_SYMBOL,
       annualPrice: Math.round(livePkg.priceAmount * 0.8), // 20% discount on annual
       badge: livePkg.badge || defaultPlan.badge,
       features: livePkg.features && livePkg.features.length > 0 ? livePkg.features : defaultPlan.features,
@@ -420,7 +419,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
             {plans.map((p) => {
               const isCurrent = currentOrgTier === p.id;
               const price = billingInterval === 'year' ? p.annualPrice : p.monthlyPrice;
-              const formattedPrice = price === 0 ? 'Free' : `$${price}`;
+              const formattedPrice = formatPrice(price, p.currencySymbol);
 
               return (
                 <div
@@ -512,7 +511,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-warning-ink">$29</div>
+                  <div className="text-3xl font-bold text-warning-ink">{formatPrice(EVENT_PASS_PRICE)}</div>
                   <div className="text-xs text-ink-muted">per regatta event</div>
                 </div>
               </div>
@@ -556,7 +555,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
                 className="w-full py-3 px-6 rounded-xl text-sm font-bold bg-warning-ink hover:brightness-110 text-canvas flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
               >
                 <CreditCard className="w-4 h-4" />
-                {loading ? 'Opening Stripe...' : 'Purchase Event Pass with Stripe ($29)'}
+                {loading ? 'Opening Stripe...' : `Purchase Event Pass with Stripe (${formatPrice(EVENT_PASS_PRICE)})`}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
