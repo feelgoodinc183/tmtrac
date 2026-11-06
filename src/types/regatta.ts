@@ -340,7 +340,7 @@ export interface Boat {
   markRoundings: MarkRounding[];
   markSplits?: any[];
   elapsedSeconds: number;  // raw time
-  correctedSeconds: number; // elapsedSeconds * handicapRating
+  correctedSeconds: number; // from elapsedSeconds by the rating system (services/handicap.ts)
   /** When the boat crossed the finish (server clock, ms), from GPS or recorded by the race officer */
   finishTime?: number;
   /** Status before a finish was recorded by hand, so Undo can put it back */

@@ -277,7 +277,16 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
             </label>
             <select
               value={handicapSystem}
-              onChange={(e) => setHandicapSystem(e.target.value as HandicapSystem)}
+              onChange={(e) => {
+                const next = e.target.value as HandicapSystem;
+                // Keep the same rating in the new form: 1.100 ⇄ Portsmouth Number 1100
+                const r = parseFloat(handicapRating);
+                if (Number.isFinite(r) && r > 0) {
+                  if (next === 'PY' && r < 100) setHandicapRating(String(Math.round(r * 1000)));
+                  if (next !== 'PY' && r >= 100) setHandicapRating((r / 1000).toFixed(3));
+                }
+                setHandicapSystem(next);
+              }}
               className="w-full bg-canvas border border-line focus:border-accent rounded-xl px-3 py-2 text-xs text-ink outline-none transition-all"
             >
               <option value="IRC">IRC (Time-on-Time TCC)</option>
@@ -288,26 +297,28 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs text-ink-muted block">
-                Handicap Rating / TCC
+              <label htmlFor="boat-rating" className="text-xs text-ink-muted block">
+                {handicapSystem === 'PY' ? 'Portsmouth Number' : 'Handicap Rating / TCC'}
               </label>
               <button
                 type="button"
-                onClick={() => setHandicapRating('1.000')}
+                onClick={() => setHandicapRating(handicapSystem === 'PY' ? '1000' : '1.000')}
                 className="text-xs text-accent hover:underline"
-                title="Reset to 1.000 default"
+                title={handicapSystem === 'PY' ? 'Reset to 1000' : 'Reset to 1.000 default'}
               >
-                Default (1.000)
+                {handicapSystem === 'PY' ? 'Default (1000)' : 'Default (1.000)'}
               </button>
             </div>
+            {/* PY is a Portsmouth Number (e.g. 1100: corrected = elapsed × 1000 ÷ PN); IRC and ORC a TCC */}
             <input
+              id="boat-rating"
               type="number"
-              step="0.001"
-              min="0.500"
-              max="2.000"
+              step={handicapSystem === 'PY' ? '1' : '0.001'}
+              min={handicapSystem === 'PY' ? '500' : '0.500'}
+              max={handicapSystem === 'PY' ? '2000' : '2.000'}
               value={handicapRating}
               onChange={(e) => setHandicapRating(e.target.value)}
-              placeholder="1.000"
+              placeholder={handicapSystem === 'PY' ? '1100' : '1.000'}
               className="w-full bg-canvas border border-line focus:border-accent rounded-xl px-3 py-2 text-xs font-bold text-success-ink outline-none transition-all"
             />
           </div>

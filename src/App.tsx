@@ -79,6 +79,7 @@ import { deviceTrackerService, getDefaultDeviceProfile } from './services/device
 import { roomService } from './services/roomService';
 import { ocsCandidates, recordFinish, sailList, undoFinish } from './services/recallAndFinish';
 import { serverNow } from './services/serverClock';
+import { correctedSeconds } from './services/handicap';
 import { getClassRaceState } from './services/classRaceState';
 import { computeLiveBoatStatus, createTrackerFixApplier, TrackerFix } from './services/trackerFix';
 import { createTrackerRelayGate, isFixFresh, nodeFixTime } from './services/trackerRelay';
@@ -1267,7 +1268,7 @@ export default function App() {
             : isClassActiveRacing
             ? boat.elapsedSeconds + dtSec
             : boat.elapsedSeconds;
-          const newCorrected = newElapsed * (boat.handicapRating || 1.0);
+          const newCorrected = correctedSeconds(newElapsed, boat.handicapSystem, boat.handicapRating);
 
           // Check if this boat is bound to a live hardware node or phone/tablet GPS tracker
           const isBoundToTracker =
