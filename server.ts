@@ -39,6 +39,7 @@ import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
 import { MAX_RACE_CLASSES, StoredRaceClass, parseStoredRaceClasses, sanitizeRaceClasses } from './src/server/raceClasses';
 import mqtt from 'mqtt';
+import { canonicalNodeId, nodeNumFromId, sameNodeId } from './src/utils/nodeId';
 import {
   DEFAULT_ROOM_MQTT_CONFIG,
   MeshtasticMqttBridge,
@@ -497,6 +498,43 @@ async function startServer() {
     mqttBridge.setRoomActive(roomCode, openClientCount(roomCode) > 0);
   }
 
+  // LoRa trackers relayed by a phone: which socket is relaying each one ("room|nodeId"), so the
+  // tracker goes offline when that socket closes and another socket can't take it over meanwhile.
+  const relayOwners = new Map<string, WebSocket>();
+
+  /**
+   * Checks a relayed tracker position. Only a Meshtastic node already bound to a boat in the room
+   * can be relayed, and only by one socket at a time; the boat comes from the room's binding, not
+   * from the payload. Returns the bound boat id, or null to drop the message.
+   */
+  function acceptRelay(ws: WebSocket, room: ActiveRoomState, payload: any): string | null {
+    if (nodeNumFromId(payload.deviceId) === null) return null;
+    const deviceId = canonicalNodeId(payload.deviceId);
+    const boat = Array.isArray(room.boats) ? room.boats.find((b: any) => sameNodeId(b.nodeId, deviceId)) : undefined;
+    if (!boat) return null;
+    const key = `${room.code}|${deviceId}`;
+    const owner = relayOwners.get(key);
+    if (owner && owner !== ws && owner.readyState === WebSocket.OPEN) return null;
+    relayOwners.set(key, ws);
+    const owned: Set<string> = ((ws as any).relayedKeys ||= new Set<string>());
+    owned.add(key);
+    payload.deviceId = deviceId;
+    return boat.id;
+  }
+
+  /**
+   * The boat in this room bound to a device sending its own positions, from the room's bindings
+   * (never from the payload). A phone is bound under "!DEV-" + the last 4 letters/digits of its
+   * deviceId (deviceTrackerService.getLocalNode); a LoRa tracker under its node id.
+   */
+  function boundBoatIdFor(room: ActiveRoomState, deviceId: unknown): string | null {
+    if (typeof deviceId !== 'string' || !deviceId || !Array.isArray(room.boats)) return null;
+    const phoneAlias = `!DEV-${deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
+    const boat = room.boats.find((b: any) =>
+      typeof b?.nodeId === 'string' && (b.nodeId === deviceId || b.nodeId === phoneAlias || sameNodeId(b.nodeId, deviceId)));
+    return boat ? boat.id : null;
+  }
+
   // Register Stripe Payment & Subscription Routes
   registerStripeRoutes(app, { broadcastGlobal });
 
@@ -672,8 +710,14 @@ async function startServer() {
               // A phone relaying a LoRa tracker it's connected to sends `relayedBy`. That position
               // belongs to the tracker, not to this socket, so it must not take over the socket's
               // identity (which is what gets marked offline when the socket closes).
-              if (!payload.relayedBy) {
+              if (payload.relayedBy) {
+                const boundBoatId = acceptRelay(ws, currentRoom, payload);
+                if (!boundBoatId) return;
+                payload.boundBoatId = boundBoatId;
+              } else {
                 (ws as any).deviceId = payload.deviceId;
+                // The boat comes from the room's binding; a claimed boundBoatId is ignored
+                payload.boundBoatId = boundBoatIdFor(currentRoom, payload.deviceId);
               }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const updatedTracker = {
@@ -699,8 +743,18 @@ async function startServer() {
               }
 
               // As for GPS_BROADCAST: a relayed tracker's history doesn't take over this socket's identity
-              if (!payload.relayedBy) {
+              if (payload.relayedBy) {
+                const boundBoatId = acceptRelay(ws, currentRoom, payload);
+                if (!boundBoatId) {
+                  if (payload.batchId) {
+                    ws.send(JSON.stringify({ type: 'GPS_BATCH_REJECTED', payload: { batchId: payload.batchId, roomCode: currentRoom.code, reason: 'NOT_RELAYABLE' } }));
+                  }
+                  return;
+                }
+                payload.boundBoatId = boundBoatId;
+              } else {
                 (ws as any).deviceId = payload.deviceId;
+                payload.boundBoatId = boundBoatIdFor(currentRoom, payload.deviceId);
               }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const existingTrail = existing.trail || [];
@@ -722,10 +776,12 @@ async function startServer() {
               currentRoom.trackers.set(payload.deviceId, updatedTracker);
 
               // Update bound boat in race fleet
-              const targetBoatId = payload.boundBoatId || existing.boundBoatId;
+              // Set above from the room's binding; an older binding stored on the tracker doesn't count
+              const targetBoatId = payload.boundBoatId;
               if (targetBoatId && Array.isArray(currentRoom.boats)) {
                 currentRoom.boats = currentRoom.boats.map((b: any) => {
-                  if (b.id === targetBoatId || b.nodeId === payload.deviceId) {
+                  // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
+                  if (b.id === targetBoatId) {
                     const oldBoatTrail = b.trail || [];
                     return {
                       ...b,
@@ -941,14 +997,25 @@ async function startServer() {
     ws.on('close', () => {
       const devId = (ws as any).deviceId;
       const roomCode = (ws as any).roomCode || 'RLIR26';
-      const room = activeRooms.get(roomCode);
-      if (devId && room && room.trackers.has(devId)) {
-        const tracker = room.trackers.get(devId);
-        if (tracker) {
+      const markOffline = (code: string, id: string) => {
+        const r = activeRooms.get(code);
+        const tracker = r?.trackers.get(id);
+        if (r && tracker) {
           tracker.isOnline = false;
           tracker.lastSeen = Date.now();
-          room.trackers.set(devId, tracker);
-          broadcastAllInRoom(roomCode, 'TRACKER_POSITION_UPDATE', tracker);
+          r.trackers.set(id, tracker);
+          broadcastAllInRoom(code, 'TRACKER_POSITION_UPDATE', tracker);
+        }
+      };
+      if (devId) markOffline(roomCode, devId);
+      // Trackers this socket was relaying go offline with it
+      const relayedKeys: Set<string> | undefined = (ws as any).relayedKeys;
+      if (relayedKeys) {
+        for (const key of relayedKeys) {
+          if (relayOwners.get(key) !== ws) continue;
+          relayOwners.delete(key);
+          const sep = key.indexOf('|');
+          markOffline(key.slice(0, sep), key.slice(sep + 1));
         }
       }
       broadcastAllInRoom(roomCode, 'PEER_COUNT_UPDATE', { count: getRoomClientCount(roomCode) });
@@ -2130,6 +2197,19 @@ async function startServer() {
     const platform = extractPlatform(req);
 
     if (payload && payload.deviceId && Array.isArray(payload.points) && payload.points.length > 0) {
+      // As on the WebSocket: the boat comes from the room's binding, never from the request.
+      // A relayed LoRa tracker must be a Meshtastic node bound to a boat in this room.
+      if (payload.relayedBy) {
+        if (nodeNumFromId(payload.deviceId) === null) {
+          return res.status(403).json({ error: 'This tracker is not bound to a boat in this room.', reason: 'NOT_RELAYABLE' });
+        }
+        payload.deviceId = canonicalNodeId(payload.deviceId);
+      }
+      payload.boundBoatId = boundBoatIdFor(room, payload.deviceId);
+      if (payload.relayedBy && !payload.boundBoatId) {
+        return res.status(403).json({ error: 'This tracker is not bound to a boat in this room.', reason: 'NOT_RELAYABLE' });
+      }
+
       const existing = room.trackers.get(payload.deviceId) || {};
       const existingTrail = existing.trail || [];
       const newCoords = payload.points.map((p: any) => ({ lat: p.lat, lng: p.lng }));
@@ -2149,10 +2229,11 @@ async function startServer() {
       };
       room.trackers.set(payload.deviceId, updatedTracker);
 
-      const targetBoatId = payload.boundBoatId || existing.boundBoatId;
+      const targetBoatId = payload.boundBoatId;
       if (targetBoatId && Array.isArray(room.boats)) {
         room.boats = room.boats.map((b: any) => {
-          if (b.id === targetBoatId || b.nodeId === payload.deviceId) {
+          // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
+          if (b.id === targetBoatId) {
             const oldBoatTrail = b.trail || [];
             return {
               ...b,

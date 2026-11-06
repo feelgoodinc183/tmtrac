@@ -926,7 +926,7 @@ class HybridDeviceTrackerService {
   // this is not the sending device's own position, so it doesn't take over this socket's identity.
   public broadcastHardwareNode(node: MeshtasticNode) {
     if (!node || !node.boundBoatId) return;
-    if (typeof node.lat !== 'number' || typeof node.lng !== 'number' || node.lat === 0 || node.lng === 0) return;
+    if (!Number.isFinite(node.lat) || !Number.isFinite(node.lng) || (node.lat === 0 && node.lng === 0)) return;
     const modelStr = (node.hardwareModel || '').toLowerCase();
     const devType: TrackerDeviceType = modelStr.includes('heltec')
       ? 'LORA_HELTEC'

@@ -300,6 +300,8 @@ export class MeshtasticMqttBridge {
   private maxConnections: number;
   private maxPayloadBytes: number;
   private maxUpdatesPerSecond: number;
+  /** Set when a broker connection closes, so rooms waiting for a free slot can retry */
+  private slotFreed = false;
 
   constructor(private deps: BridgeDeps) {
     this.now = deps.now || Date.now;
@@ -334,6 +336,7 @@ export class MeshtasticMqttBridge {
     if (!room) return;
     if (room.connKey) this.detach(roomCode, room);
     this.rooms.delete(roomCode);
+    this.retryBlockedRooms();
   }
 
   /** Whether anyone currently has the room open */
@@ -431,6 +434,17 @@ export class MeshtasticMqttBridge {
     this.deps.onStatus(roomCode, this.getStatus(roomCode));
     // Rooms that are closed and have MQTT off need no state
     if (!room.active && !room.config.enabled && !room.connKey) this.rooms.delete(roomCode);
+    this.retryBlockedRooms();
+  }
+
+  /** Gives rooms held back by the connection limit another try once a connection has closed */
+  private retryBlockedRooms() {
+    if (!this.slotFreed) return;
+    this.slotFreed = false;
+    for (const [code, r] of this.rooms) {
+      if (this.conns.size >= this.maxConnections) break;
+      if (r.blockedReason && !r.connKey && r.active && r.config.enabled) this.reconcile(code, false);
+    }
   }
 
   private attach(roomCode: string, room: RoomState, broker: { key: string; url: string; username: string; password: string }, topics: string[]) {
@@ -522,6 +536,7 @@ export class MeshtasticMqttBridge {
         conn.client.end(true);
       } catch {}
       this.conns.delete(conn.key);
+      this.slotFreed = true;
     }
   }
 
@@ -544,6 +559,9 @@ export class MeshtasticMqttBridge {
         : decodeEnvelope(payload, room.keys, now, { requireEncryption: room.privateChannels });
       if (!result.ok) continue;
       const u = result.update;
+      // The envelope's channel name is set by whoever published it; it must match the topic the
+      // room subscribed to, or a plaintext packet could pass as one from a private channel
+      if (u.channel !== parsed.channel) continue;
       // Text on a public channel is unmoderated chat from strangers; it doesn't belong in the race view
       if (!isPrivate && u.textMessage !== undefined) delete u.textMessage;
 
@@ -558,8 +576,8 @@ export class MeshtasticMqttBridge {
         const dedupeKey = `${u.id}:${u.packetId}`;
         const seen = room.recentPackets.get(dedupeKey);
         if (seen !== undefined && now - seen < DEDUPE_WINDOW_MS) continue;
-        if (room.recentPackets.size >= 20_000) continue;
-        room.recentPackets.set(dedupeKey, now);
+        // When the table is full, forward without remembering rather than dropping real packets
+        if (room.recentPackets.size < 20_000) room.recentPackets.set(dedupeKey, now);
       }
 
       if (now - room.rateWindowStart >= 1000) {

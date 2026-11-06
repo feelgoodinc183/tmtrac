@@ -67,6 +67,32 @@ test('moving a tracker to another boat is relayed at once', () => {
   assert.equal(d.relay, true);
 });
 
+test('a fix from the radio\'s NodeDB hours ago is not relayed or scored', () => {
+  const c = clock();
+  const gate = createTrackerRelayGate({ now: c.now });
+  const boats = [boat('b1', '!a1b2c3d4')];
+  const hoursAgo = c.now() - 13 * 60 * 60_000;
+  assert.deepEqual(gate.decide(node({ positionTime: hoursAgo, lastPingTime: hoursAgo }), boats), { boundBoatId: null, relay: false, applyFix: false });
+  // Heard just now (telemetry) but the position itself is old: still not shared
+  assert.deepEqual(gate.decide(node({ positionTime: hoursAgo, lastPingTime: c.now() }), boats), { boundBoatId: null, relay: false, applyFix: false });
+  // A position with no known time
+  assert.deepEqual(gate.decide(node({ positionTime: 0 }), boats), { boundBoatId: null, relay: false, applyFix: false });
+});
+
+test('a fix within 15 min is relayed; the old fix rejected earlier still counts as new', () => {
+  const c = clock();
+  const gate = createTrackerRelayGate({ now: c.now });
+  const boats = [boat('b1', '!a1b2c3d4')];
+  gate.decide(node({ positionTime: c.now() - 60 * 60_000 }), boats);
+  assert.deepEqual(gate.decide(node({ positionTime: c.now() - 14 * 60_000 }), boats), { boundBoatId: 'b1', relay: true, applyFix: true });
+});
+
+test('the node\'s binding wins over another boat still naming it (stale nodeId)', () => {
+  const gate = createTrackerRelayGate();
+  const d = gate.decide(node({ boundBoatId: 'b2' }), [boat('b1', '!a1b2c3d4'), boat('b2', '!a1b2c3d4')]);
+  assert.equal(d.boundBoatId, 'b2');
+});
+
 test('forget() makes the next report count as new (used on bind, unbind and delete)', () => {
   const gate = createTrackerRelayGate();
   const boats = [boat('b1', '!a1b2c3d4')];
