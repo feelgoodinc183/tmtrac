@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { X, Database, Download, CheckCircle2, HardDrive, RefreshCw, Trash2, MapPin } from 'lucide-react';
+import { DialogFrame } from './ui/Dialog';
 
 interface OfflineCacheModalProps {
   onClose: () => void;
@@ -57,6 +58,7 @@ const DEFAULT_SEA_REGIONS: ChartRegion[] = [
 export const OfflineCacheModal: React.FC<OfflineCacheModalProps> = ({
   onClose,
 }) => {
+  const titleId = useId();
   const [regions, setRegions] = useState<ChartRegion[]>(() => {
     try {
       const saved = localStorage.getItem('tmtrac_offline_chart_regions');
@@ -125,138 +127,142 @@ export const OfflineCacheModal: React.FC<OfflineCacheModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200">
-      <div className="bg-surface/95 backdrop-blur-md border border-line/80 w-full max-w-xl rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0">
-        {/* Header */}
-        <div className="px-5 py-4 landscape:py-2.5 bg-canvas/90 border-b border-line flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-warning-ink/15 border border-warning-ink/40 flex items-center justify-center text-warning-ink shrink-0 shadow-sm">
-              <Database className="w-5 h-5" />
+    <DialogFrame
+      onClose={onClose}
+      labelledBy={titleId}
+      overlayClassName="fixed inset-0 z-50 bg-canvas/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 landscape:p-1.5 animate-in fade-in duration-200"
+      className="bg-surface/95 backdrop-blur-md border border-line/80 w-full max-w-xl rounded-3xl landscape:rounded-2xl shadow-2xl overflow-hidden flex flex-col text-ink max-h-[calc(100vh-120px)] sm:max-h-[85vh] landscape:max-h-[98dvh] landscape:h-[98dvh] min-h-0"
+    >
+      {/* Header */}
+      <div className="px-5 py-4 landscape:py-2.5 bg-canvas/90 border-b border-line flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-warning-ink/15 border border-warning-ink/40 flex items-center justify-center text-warning-ink shrink-0 shadow-sm">
+            <Database className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-base font-bold tracking-tight text-ink flex items-center gap-2 truncate">
+              Offline Nautical Maps & SQLite Sync
+            </h2>
+            <p className="text-xs text-ink-muted truncate">
+              South East Asia OpenSeaMap & Vector Tile Caching for Remote Regattas
+            </p>
+          </div>
+        </div>
+        <button
+          aria-label="Close"
+          onClick={onClose}
+          className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-all cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Modal Body */}
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto custom-scrollbar overscroll-contain min-h-0">
+        {/* Local SQLite Buffer Card */}
+        <div className="bg-canvas/80 p-4 sm:p-5 rounded-2xl border border-line space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-accent flex items-center gap-2">
+              <HardDrive className="w-4 h-4 text-accent" />
+              Local State Database (Lismore.db)
+            </span>
+            <button
+              onClick={handleSyncSqliteNow}
+              disabled={isSyncingSqlite}
+              className="text-xs font-bold bg-accent/20 hover:bg-accent/30 text-accent px-3 py-1.5 rounded-xl border border-accent/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSqlite ? 'animate-spin' : ''}`} />
+              {isSyncingSqlite ? 'Syncing...' : 'Force Sync to Cloud'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5 text-xs">
+            <div className="bg-surface p-3 rounded-xl border border-line">
+              <span className="text-ink-muted block mb-0.5">Local Pings</span>
+              <span className="text-ink font-bold text-sm">1,482</span>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-bold tracking-tight text-ink flex items-center gap-2 truncate">
-                Offline Nautical Maps & SQLite Sync
-              </h2>
-              <p className="text-xs text-ink-muted truncate">
-                South East Asia OpenSeaMap & Vector Tile Caching for Remote Regattas
-              </p>
+            <div className="bg-surface p-3 rounded-xl border border-line">
+              <span className="text-ink-muted block mb-0.5">Cached Tiles</span>
+              <span className="text-accent font-bold text-sm">
+                {totalCachedTilesMb > 0 ? `${totalCachedTilesMb.toFixed(1)} MB` : '0 MB'}
+              </span>
+            </div>
+            <div className="bg-surface p-3 rounded-xl border border-line">
+              <span className="text-ink-muted block mb-0.5">Cloud Status</span>
+              <span className="text-success-ink font-bold text-sm">SYNCED</span>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-raised/80 transition-all cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto custom-scrollbar overscroll-contain min-h-0">
-          {/* Local SQLite Buffer Card */}
-          <div className="bg-canvas/80 p-4 sm:p-5 rounded-2xl border border-line space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-accent flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-accent" />
-                Local State Database (Lismore.db)
-              </span>
-              <button
-                onClick={handleSyncSqliteNow}
-                disabled={isSyncingSqlite}
-                className="text-xs font-bold bg-accent/20 hover:bg-accent/30 text-accent px-3 py-1.5 rounded-xl border border-accent/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSqlite ? 'animate-spin' : ''}`} />
-                {isSyncingSqlite ? 'Syncing...' : 'Force Sync to Cloud'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2.5 text-xs">
-              <div className="bg-surface p-3 rounded-xl border border-line">
-                <span className="text-ink-muted block mb-0.5">Local Pings</span>
-                <span className="text-ink font-bold text-sm">1,482</span>
-              </div>
-              <div className="bg-surface p-3 rounded-xl border border-line">
-                <span className="text-ink-muted block mb-0.5">Cached Tiles</span>
-                <span className="text-accent font-bold text-sm">
-                  {totalCachedTilesMb > 0 ? `${totalCachedTilesMb.toFixed(1)} MB` : '0 MB'}
-                </span>
-              </div>
-              <div className="bg-surface p-3 rounded-xl border border-line">
-                <span className="text-ink-muted block mb-0.5">Cloud Status</span>
-                <span className="text-success-ink font-bold text-sm">SYNCED</span>
-              </div>
-            </div>
+        {/* Offline Map Tile Download Regions */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-ink-muted font-bold">
+              South East Asia Nautical Chart Tile Regions
+            </label>
+            <span className="text-xs text-ink-muted">
+              {regions.filter((r) => r.status === 'CACHED').length}/{regions.length} Cached
+            </span>
           </div>
 
-          {/* Offline Map Tile Download Regions */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs text-ink-muted font-bold">
-                South East Asia Nautical Chart Tile Regions
-              </label>
-              <span className="text-xs text-ink-muted">
-                {regions.filter((r) => r.status === 'CACHED').length}/{regions.length} Cached
-              </span>
-            </div>
-
-            <div className="space-y-2.5">
-              {regions.map((reg) => (
-                <div
-                  key={reg.id}
-                  className="p-3.5 rounded-2xl bg-canvas/80 border border-line hover:border-line/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h4 className="text-xs font-bold text-ink tracking-tight">{reg.name}</h4>
-                    </div>
-                    <p className="text-xs text-accent/90 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-accent shrink-0" />
-                      <span>{reg.location}</span>
-                    </p>
-                    <p className="text-xs text-ink-muted mt-0.5 leading-tight">
-                      {reg.coverage}
-                    </p>
-                    <p className="text-xs text-ink-muted mt-1">
-                      {reg.tilesCount.toLocaleString()} tiles • {reg.sizeMb} MB
-                    </p>
+          <div className="space-y-2.5">
+            {regions.map((reg) => (
+              <div
+                key={reg.id}
+                className="p-3.5 rounded-2xl bg-canvas/80 border border-line hover:border-line/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="text-xs font-bold text-ink tracking-tight">{reg.name}</h4>
                   </div>
-
-                  <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
-                    {reg.status === 'CACHED' ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-success-ink bg-success-ink/10 px-2.5 py-1.5 rounded-lg border border-success-ink/30 flex items-center gap-1 font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-success-ink" />
-                          CACHED
-                        </span>
-                        <button
-                          onClick={() => handleRemoveRegion(reg.id)}
-                          className="text-xs bg-danger/10 hover:bg-danger/20 text-danger-ink hover:text-ink border border-danger-ink/30 hover:border-danger-ink/50 px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 font-semibold cursor-pointer active:scale-95 shadow-xs"
-                          title={`Remove cached tiles for ${reg.name} to free storage`}
-                        >
-                          <Trash2 className="w-3 h-3 text-danger-ink" />
-                          <span>Remove</span>
-                        </button>
-                      </div>
-                    ) : reg.status === 'DOWNLOADING' ? (
-                      <span className="text-xs text-warning-ink bg-warning-ink/10 px-3 py-1.5 rounded-lg border border-warning-ink/30 flex items-center gap-1.5 font-bold">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-warning-ink" />
-                        <span>DOWNLOADING ({downloadProgress[reg.id] || 45}%)</span>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleDownloadRegion(reg.id)}
-                        className="text-xs bg-accent hover:brightness-110 text-on-accent font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download Tiles</span>
-                      </button>
-                    )}
-                  </div>
+                  <p className="text-xs text-accent/90 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-accent shrink-0" />
+                    <span>{reg.location}</span>
+                  </p>
+                  <p className="text-xs text-ink-muted mt-0.5 leading-tight">
+                    {reg.coverage}
+                  </p>
+                  <p className="text-xs text-ink-muted mt-1">
+                    {reg.tilesCount.toLocaleString()} tiles • {reg.sizeMb} MB
+                  </p>
                 </div>
-              ))}
-            </div>
+
+                <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
+                  {reg.status === 'CACHED' ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-success-ink bg-success-ink/10 px-2.5 py-1.5 rounded-lg border border-success-ink/30 flex items-center gap-1 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-success-ink" />
+                        CACHED
+                      </span>
+                      <button
+                        onClick={() => handleRemoveRegion(reg.id)}
+                        className="text-xs bg-danger/10 hover:bg-danger/20 text-danger-ink hover:text-ink border border-danger-ink/30 hover:border-danger-ink/50 px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 font-semibold cursor-pointer active:scale-95 shadow-xs"
+                        title={`Remove cached tiles for ${reg.name} to free storage`}
+                      >
+                        <Trash2 className="w-3 h-3 text-danger-ink" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  ) : reg.status === 'DOWNLOADING' ? (
+                    <span className="text-xs text-warning-ink bg-warning-ink/10 px-3 py-1.5 rounded-lg border border-warning-ink/30 flex items-center gap-1.5 font-bold">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-warning-ink" />
+                      <span>DOWNLOADING ({downloadProgress[reg.id] || 45}%)</span>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleDownloadRegion(reg.id)}
+                      className="text-xs bg-accent hover:brightness-110 text-on-accent font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Tiles</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+    </DialogFrame>
   );
 };
