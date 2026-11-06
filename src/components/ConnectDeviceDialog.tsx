@@ -16,6 +16,12 @@ interface ConnectDeviceDialogProps {
   onBindNodeToBoat: (nodeId: string, boatId: string) => void;
   /** Creates a boat and binds the tracker to it */
   onCreateBoatForTracker: (nodeId: string, name: string, sailNumber: string) => void;
+  /** Unbinds a tracker from its boat. Without it, the boat step offers no unbind. */
+  onUnbindNode?: (nodeId: string) => void;
+  /** Opened from a boat card: that boat is already chosen at the boat step */
+  initialBoatId?: string;
+  /** Opened from a tracker already heard: skip straight to the boat step */
+  initialNodeId?: string;
   onClose: () => void;
 }
 
@@ -48,17 +54,27 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
   boats,
   onBindNodeToBoat,
   onCreateBoatForTracker,
+  onUnbindNode,
+  initialBoatId,
+  initialNodeId,
   onClose,
 }) => {
-  const [step, setStep] = useState<Step>('method');
-  const [nodeId, setNodeId] = useState<string | null>(null);
+  // The boat this dialog was opened for. Cleared by "Connect another".
+  const [targetBoatId, setTargetBoatId] = useState<string | undefined>(() =>
+    initialBoatId && boats.some((b) => b.id === initialBoatId) ? initialBoatId : undefined
+  );
+  const startNode = initialNodeId ? nodes.find((n) => sameNodeId(n.id, initialNodeId)) : undefined;
+  const [step, setStep] = useState<Step>(startNode ? 'boat' : 'method');
+  const [nodeId, setNodeId] = useState<string | null>(startNode?.id ?? null);
   const [ble, setBle] = useState<BleStatus>(() => meshtasticService.getBleStatus());
   const [connecting, setConnecting] = useState(false);
   const [waitingForId, setWaitingForId] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const [boatChoice, setBoatChoice] = useState<string>('');
+  const [boatChoice, setBoatChoice] = useState<string>(() =>
+    startNode ? targetBoatId || boats.find((b) => sameNodeId(b.nodeId, startNode.id))?.id || '' : ''
+  );
   const [newBoatName, setNewBoatName] = useState('');
   const [newSailNumber, setNewSailNumber] = useState('');
   const [doneText, setDoneText] = useState('');
@@ -84,7 +100,8 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
   const node = nodeId ? nodes.find((n) => sameNodeId(n.id, nodeId)) : undefined;
 
   // Boats without a working tracker. A boat whose tracker hasn't been heard is listed too, but
-  // marked, and choosing it asks to replace that tracker.
+  // marked, and choosing it asks to replace that tracker. The boat this dialog was opened for is
+  // always listed, so "Change tracker" on a boat card can replace a tracker that still reports.
   const boatOptions = useMemo(
     () =>
       boats
@@ -93,10 +110,13 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
           const currentNode = current ? nodes.find((n) => sameNodeId(n.id, current)) : undefined;
           return { boat: b, replaces: current, replacesHeard: !!currentNode };
         })
-        .filter((o) => !o.replacesHeard),
-    [boats, nodes, nodeId]
+        .filter((o) => !o.replacesHeard || o.boat.id === targetBoatId),
+    [boats, nodes, nodeId, targetBoatId]
   );
   const chosenOption = boatOptions.find((o) => o.boat.id === boatChoice);
+  const targetBoat = targetBoatId ? boats.find((b) => b.id === targetBoatId) : undefined;
+  // The boat this tracker is on now, if any
+  const currentBoat = nodeId ? boats.find((b) => sameNodeId(b.nodeId, nodeId)) : undefined;
 
   // Trackers heard over the internet: this event's unbound ones and recent ones first
   const internetNodes = useMemo(() => {
@@ -111,7 +131,7 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
   const goToBoat = (id: string) => {
     setNodeId(id);
     const already = boats.find((b) => sameNodeId(b.nodeId, id));
-    setBoatChoice(already?.id || '');
+    setBoatChoice(targetBoatId || already?.id || '');
     setError(null);
     setStep('boat');
   };
@@ -172,6 +192,14 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
     setStep('done');
   };
 
+  const handleUnbind = () => {
+    if (!nodeId || !currentBoat || !onUnbindNode) return;
+    onUnbindNode(nodeId);
+    setDoneText(`${node?.longName || nodeId} no longer tracks ${currentBoat.name}.`);
+    setError(null);
+    setStep('done');
+  };
+
   const back = (to: Step) => (
     <Button variant="ghost" icon={<ArrowLeft />} onClick={() => { setError(null); setStep(to); }}>
       Back
@@ -186,7 +214,7 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
 
   switch (step) {
     case 'method':
-      title = 'Connect a tracker';
+      title = targetBoat ? `Add a tracker to ${targetBoat.name}` : 'Connect a tracker';
       body = (
         <div className="space-y-2">
           <p className="text-sm text-ink-muted">How is the tracker connected?</p>
@@ -335,7 +363,12 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
                 <span className="text-sm text-ink">
                   <strong>{b.name}</strong>
                   <span className="text-ink-muted">{b.sailNumber ? ` · ${b.sailNumber}` : ''} · {b.class}</span>
-                  {replaces && <span className="block text-xs text-warning-ink">Has tracker {replaces} (not heard)</span>}
+                  {replaces && (
+                    <span className="block text-xs text-warning-ink">
+                      Has tracker {replaces}
+                      {nodes.some((n) => sameNodeId(n.id, replaces)) ? '' : ' (not heard)'}
+                    </span>
+                  )}
                 </span>
               </label>
             ))}
@@ -351,6 +384,11 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
           {chosenOption?.replaces && (
             <p className="text-sm text-warning-ink" role="note">
               {chosenOption.boat.name} is linked to tracker {chosenOption.replaces}. Binding replaces it.
+            </p>
+          )}
+          {currentBoat && boatChoice && boatChoice !== currentBoat.id && (
+            <p className="text-sm text-warning-ink" role="note">
+              This tracker is on {currentBoat.name} now. Binding moves it{boatChoice === '__new__' ? ' to the new boat' : chosenOption ? ` to ${chosenOption.boat.name}` : ''}.
             </p>
           )}
           {boatChoice === '__new__' && (
@@ -375,7 +413,11 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
       );
       footer = (
         <>
-          <Button variant="ghost" onClick={() => handleBind('')}>Skip for now</Button>
+          {currentBoat && onUnbindNode ? (
+            <Button variant="ghost" onClick={handleUnbind}>{`Unbind from ${currentBoat.name}`}</Button>
+          ) : (
+            <Button variant="ghost" onClick={() => handleBind('')}>Skip for now</Button>
+          )}
           <Button variant="primary" onClick={() => handleBind()} disabled={!boatChoice}>
             {boatChoice === '__new__' ? 'Create boat and bind' : chosenOption?.replaces ? 'Replace tracker' : 'Bind tracker'}
           </Button>
@@ -394,7 +436,7 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
       );
       footer = (
         <>
-          <Button onClick={() => { setNodeId(null); setBoatChoice(''); setNewBoatName(''); setNewSailNumber(''); setSearch(''); setStep('method'); }}>
+          <Button onClick={() => { setTargetBoatId(undefined); setNodeId(null); setBoatChoice(''); setNewBoatName(''); setNewSailNumber(''); setSearch(''); setStep('method'); }}>
             Connect another
           </Button>
           <Button variant="primary" onClick={onClose} data-autofocus>Done</Button>

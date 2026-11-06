@@ -36,7 +36,8 @@ interface LeaderboardSidebarProps {
   raceState: RaceState;
   selectedBoatId: string | null;
   onSelectBoat: (boatId: string) => void;
-  onOpenNodeBinding?: (nodeId?: string, boatId?: string) => void;
+  /** Opens the Connect device flow for one boat (Add/Change tracker) or one heard tracker (Bind/Rebind) */
+  onConnectTracker?: (nodeId?: string, boatId?: string) => void;
   /** Opens the Connect device flow */
   onOpenConnectDevice?: () => void;
   onOpenHybridTrackers?: () => void;
@@ -66,7 +67,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   raceState,
   selectedBoatId,
   onSelectBoat,
-  onOpenNodeBinding,
+  onConnectTracker,
   onOpenConnectDevice,
   onOpenHybridTrackers,
   followedTargetId,
@@ -568,11 +569,11 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     ) : (
                       <>
                         <span className="text-ink-muted">No tracker, position not live</span>
-                        {canManage && onOpenNodeBinding && (
+                        {canManage && onConnectTracker && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onOpenNodeBinding(undefined, boat.id);
+                              onConnectTracker(undefined, boat.id);
                             }}
                             className="ml-auto shrink-0 font-semibold text-accent hover:underline"
                           >
@@ -599,8 +600,8 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                       {canManage && onOpenBoatQr && (isAdmin || !boat.nodeId) && (
                         <Button icon={<QrCode />} aria-label={`QR code for ${boat.name}`} title="QR code" onClick={() => onOpenBoatQr(boat.id)} />
                       )}
-                      {canManage && boundNode && onOpenNodeBinding && (
-                        <Button icon={<Link2 />} aria-label={`Change tracker for ${boat.name}`} title="Change tracker" onClick={() => onOpenNodeBinding(undefined, boat.id)} />
+                      {canManage && boundNode && onConnectTracker && (
+                        <Button icon={<Link2 />} aria-label={`Change tracker for ${boat.name}`} title="Change tracker" onClick={() => onConnectTracker(undefined, boat.id)} />
                       )}
                       {canManage && onEditBoat && (
                         <Button icon={<Edit2 />} aria-label={`Edit ${boat.name}`} title="Edit" onClick={() => onEditBoat(boat)} />
@@ -1014,9 +1015,9 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-line/60 flex-wrap">
-                    {viewMode !== 'SPECTATOR' && onOpenNodeBinding && (
+                    {viewMode !== 'SPECTATOR' && onConnectTracker && (
                       <button
-                        onClick={() => onOpenNodeBinding(node.id, boundBoat?.id)}
+                        onClick={() => onConnectTracker(node.id, boundBoat?.id)}
                         className={`py-1 px-2 rounded text-xs font-bold flex items-center gap-1 transition-all ${
                           boundBoat
                             ? 'bg-accent/10 text-accent hover:bg-accent/25 border border-accent/30'
