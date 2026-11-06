@@ -9,6 +9,8 @@ import {
   Eye,
   CheckCircle2,
   Wind,
+  X,
+  AlertTriangle,
   CloudOff,
   Play,
   Map,
@@ -37,6 +39,9 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
   onLogoutClick,
 }) => {
   const spectatorTitleId = useId();
+  const codeInputId = useId();
+  const codeErrorId = useId();
+  const publicListId = useId();
   const [packages, setPackages] = useState<PricingPackage[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [activeEvents, setActiveEvents] = useState<Array<{ code: string; title: string; locationName: string; boatCount: number; status: string }>>([]);
@@ -92,88 +97,82 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
     };
   }, []);
 
-  // Canvas Regatta Radar Simulation (Apple/Google aesthetic interactive radar)
+  // Demo radar: simulated boats beating up a Windward-Leeward course. Drawn at the screen's pixel
+  // density, still for people who ask for reduced motion, and only animated while on screen.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animationId: number;
-    let t = 0;
-
-    // Simulated boats
-    const simulatedBoats = [
-      // Made-up boats for the demo: no real names or sail numbers
-      { id: 'b1', color: '#38bdf8', speed: 9.4, heading: 45, sail: 'Boat A' },
-      { id: 'b2', color: '#f59e0b', speed: 10.2, heading: 42, sail: 'Boat B' },
-      { id: 'b3', color: '#10b981', speed: 8.9, heading: 48, sail: 'Boat C' },
-      { id: 'b4', color: '#ec4899', speed: 9.1, heading: 44, sail: 'Boat D' },
+    // Made-up boats for the demo: no real names or sail numbers. Heading in degrees.
+    const boats = [
+      { color: '#0284c7', speed: 9.4, heading: 45, sail: 'Boat A' },
+      { color: '#d97706', speed: 10.2, heading: 42, sail: 'Boat B' },
+      { color: '#059669', speed: 8.9, heading: 48, sail: 'Boat C' },
+      { color: '#db2777', speed: 9.1, heading: 44, sail: 'Boat D' },
     ];
+    const font = '600 11px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
+    let w = 0;
+    let h = 0;
     const resize = () => {
-      if (canvas.parentElement) {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight || 340;
-      }
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = parent.clientWidth;
+      h = parent.clientHeight || 340;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    resize();
-    window.addEventListener('resize', resize);
 
-    const render = () => {
-      t += 0.015;
-      const w = canvas.width;
-      const h = canvas.height;
-
-      // Clean marine chart backdrop
+    const draw = (t: number) => {
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 0, w, h);
 
-      // Fine coordinate lines
       ctx.strokeStyle = 'rgba(203, 213, 225, 0.55)';
       ctx.lineWidth = 1;
-      const gridSize = 40;
-      for (let x = 0; x < w; x += gridSize) {
+      for (let x = 0; x < w; x += 40) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, h);
         ctx.stroke();
       }
-      for (let y = 0; y < h; y += gridSize) {
+      for (let y = 0; y < h; y += 40) {
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
+        ctx.moveTo(0, y + 0.5);
+        ctx.lineTo(w, y + 0.5);
         ctx.stroke();
       }
 
-      // Windward / Leeward Course Marks
-      const centerX = w * 0.52;
-      const centerY = h * 0.5;
+      // On a narrow screen the course is tighter, so labels stay inside the drawing
+      const scale = Math.min(1, w / 560);
+      const cx = w * 0.5;
+      const cy = h * 0.42;
+      const markTop = { x: cx + 110 * scale, y: cy - 90 * scale, label: 'Windward mark' };
+      const markBottom = { x: cx - 120 * scale, y: cy + 90 * scale, label: 'Leeward gate' };
+      const pin = { x: cx - 140 * scale, y: cy + 50 * scale };
+      const rc = { x: cx - 100 * scale, y: cy + 70 * scale };
 
-      const markTop = { x: centerX + 110, y: centerY - 90, label: 'Windward Mark (W1)' };
-      const markBottom = { x: centerX - 120, y: centerY + 90, label: 'Leeward Gate (L1)' };
-      const pinStart = { x: centerX - 140, y: centerY + 50, label: 'Start Pin' };
-      const committeeBoat = { x: centerX - 100, y: centerY + 70, label: 'RC Signal' };
-
-      // Layline corridor
-      ctx.strokeStyle = 'rgba(2, 132, 199, 0.25)';
+      ctx.strokeStyle = 'rgba(2, 132, 199, 0.3)';
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(markTop.x, markTop.y);
-      ctx.lineTo(markBottom.y ? markBottom.x : centerX, markBottom.y);
+      ctx.lineTo(markBottom.x, markBottom.y);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Start line
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.moveTo(pinStart.x, pinStart.y);
-      ctx.lineTo(committeeBoat.x, committeeBoat.y);
+      ctx.moveTo(pin.x, pin.y);
+      ctx.lineTo(rc.x, rc.y);
       ctx.stroke();
 
-      // Draw marks
-      [markTop, markBottom].forEach((m) => {
+      ctx.font = font;
+      for (const m of [markTop, markBottom]) {
         ctx.fillStyle = '#ea580c';
         ctx.beginPath();
         ctx.arc(m.x, m.y, 6.5, 0, Math.PI * 2);
@@ -181,35 +180,30 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
-
         ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 10px Inter, sans-serif';
-        ctx.fillText(m.label, m.x + 9, m.y + 3);
-      });
+        ctx.fillText(m.label, m.x + 10, m.y + 4);
+      }
 
-      // Animated Boats
-      simulatedBoats.forEach((b, i) => {
-        const offset = i * 0.6;
-        const progress = (t + offset) % 6;
-        const ratio = progress / 6;
+      boats.forEach((b, i) => {
+        // Spread along the beat so labels don't sit on top of each other
+        const ratio = ((t + i * 1.5) % 6) / 6;
+        const bx = markBottom.x + (markTop.x - markBottom.x) * ratio + Math.sin(t * 2 + i) * 15 * scale;
+        const by = markBottom.y + (markTop.y - markBottom.y) * ratio + Math.cos(t * 2 + i) * 10 * scale;
+        // Bearing (0 = north, clockwise) to screen direction; the wake trails behind the boat
+        const rad = (b.heading * Math.PI) / 180;
+        const dx = Math.sin(rad);
+        const dy = -Math.cos(rad);
 
-        // Waypoint interpolation from bottom to top mark
-        const bx = markBottom.x + (markTop.x - markBottom.x) * ratio + Math.sin(t * 2 + i) * 15;
-        const by = markBottom.y + (markTop.y - markBottom.y) * ratio + Math.cos(t * 2 + i) * 10;
-
-        // Wake trail
-        ctx.strokeStyle = b.color + '44';
+        ctx.strokeStyle = b.color + '55';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(bx - Math.cos(b.heading) * 35, by - Math.sin(b.heading) * 35);
+        ctx.moveTo(bx - dx * 30, by - dy * 30);
         ctx.lineTo(bx, by);
         ctx.stroke();
 
-        // Boat icon (triangle hull)
         ctx.save();
         ctx.translate(bx, by);
-        ctx.rotate(0.6 + Math.sin(t + i) * 0.1);
-
+        ctx.rotate(rad);
         ctx.fillStyle = b.color;
         ctx.beginPath();
         ctx.moveTo(0, -9);
@@ -220,39 +214,70 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.stroke();
-
         ctx.restore();
 
-        // Label
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 10px Inter, sans-serif';
-        ctx.fillText(`${b.sail} • ${b.speed.toFixed(1)}kt`, bx + 10, by - 4);
+        ctx.fillText(`${b.sail} · ${b.speed.toFixed(1)} kt`, bx + 10, by - 4);
       });
 
-      // Wind Vector Indicator in Top-Right
-      const windBoxX = w - 130;
-      const windBoxY = 24;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+      // Wind, top left, away from the boats' path
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       ctx.strokeStyle = 'rgba(203, 213, 225, 0.9)';
       ctx.lineWidth = 1;
-      ctx.roundRect(windBoxX, windBoxY, 110, 46, 8);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(12, 12, 116, 44, 8);
+      else ctx.rect(12, 12, 116, 44);
       ctx.fill();
       ctx.stroke();
-
-      ctx.fillStyle = '#0284c7';
-      ctx.font = 'bold 10px Inter, sans-serif';
-      ctx.fillText('WIND: 13.8 kt', windBoxX + 12, windBoxY + 18);
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('DIR: 215° SSW', windBoxX + 12, windBoxY + 34);
-
-      animationId = requestAnimationFrame(render);
+      ctx.fillStyle = '#0369a1';
+      ctx.fillText('Wind 13.8 kt', 24, 30);
+      ctx.fillStyle = '#475569';
+      ctx.fillText('From 215° SSW', 24, 47);
     };
 
-    render();
+    let animationId = 0;
+    let running = false;
+    let visible = true;
+    let t = 1.2;
+    const loop = () => {
+      t += 0.015;
+      draw(t);
+      animationId = requestAnimationFrame(loop);
+    };
+    const start = () => {
+      if (running || reduceMotion || !visible || document.hidden) return;
+      running = true;
+      animationId = requestAnimationFrame(loop);
+    };
+    const stop = () => {
+      running = false;
+      cancelAnimationFrame(animationId);
+    };
+
+    resize();
+    draw(t);
+    const onResize = () => {
+      resize();
+      draw(t);
+    };
+    window.addEventListener('resize', onResize);
+    const observer = typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver(([entry]) => {
+          visible = entry.isIntersecting;
+          if (visible) start();
+          else stop();
+        });
+    observer?.observe(canvas);
+    const onVisibility = () => (document.hidden ? stop() : start());
+    document.addEventListener('visibilitychange', onVisibility);
+    start();
 
     return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
+      stop();
+      observer?.disconnect();
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
@@ -297,30 +322,30 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/90 border-b border-slate-200/90 px-4 sm:px-8 py-3.5 transition-all shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Brand */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <button type="button" aria-label="TMTRAC, back to top" className="flex items-center space-x-3 min-h-11" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-sky-500 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20 ring-1 ring-black/5">
-              <Compass className="w-5 h-5 text-white animate-spin-slow" />
+              <Compass className="w-5 h-5 text-white motion-safe:animate-spin-slow" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold tracking-tight text-lg text-slate-950">TMTRAC</span>
               </div>
             </div>
-          </div>
+          </button>
 
           {/* Center Links (Minimal) */}
-          <nav className="hidden md:flex items-center space-x-7 text-xs font-semibold text-slate-600">
-            <a href="#features" className="hover:text-cyan-600 transition-colors">Features</a>
-            <a href="#radar" className="hover:text-cyan-600 transition-colors">Demo</a>
-            <a href="#pricing" className="hover:text-cyan-600 transition-colors">Plans</a>
+          <nav className="hidden md:flex items-center space-x-5 text-sm font-semibold text-slate-600">
+            <a href="#features" className="inline-flex items-center min-h-11 px-1 hover:text-cyan-800 transition-colors">Features</a>
+            <a href="#radar" className="inline-flex items-center min-h-11 px-1 hover:text-cyan-800 transition-colors">Demo</a>
+            <a href="#pricing" className="inline-flex items-center min-h-11 px-1 hover:text-cyan-800 transition-colors">Plans</a>
             <button
               onClick={() => {
                 setCodeError(null);
                 setSpectatorModalOpen(true);
               }}
-              className="hover:text-cyan-600 transition-colors flex items-center space-x-1"
+              className="min-h-11 px-1 hover:text-cyan-800 transition-colors flex items-center space-x-1"
             >
-              <Eye className="w-3.5 h-3.5 text-cyan-600" />
+              <Eye className="w-3.5 h-3.5 text-cyan-700" />
               <span>Watch a race</span>
             </button>
           </nav>
@@ -341,7 +366,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => onViewRaceClick()}
-                  className="flex items-center space-x-1.5 text-xs font-bold px-3.5 py-1.5 rounded-lg bg-orange-700 hover:bg-orange-800 text-white border border-orange-800 transition-all shadow-sm shadow-orange-900/20"
+                  className="min-h-11 flex items-center space-x-1.5 text-sm font-bold px-3.5 rounded-lg bg-orange-700 hover:bg-orange-800 text-white border border-orange-800 transition-all shadow-sm shadow-orange-900/20"
                 >
                   <Map className="w-3.5 h-3.5 text-white shrink-0" />
                   <span>Open the app</span>
@@ -349,7 +374,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 {onLogoutClick && (
                   <button
                     onClick={onLogoutClick}
-                    className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1.5 transition-colors font-medium"
+                    className="min-h-11 text-sm text-slate-600 hover:text-slate-900 px-2 transition-colors font-medium"
                   >
                     Sign out
                   </button>
@@ -359,7 +384,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={onLoginClick}
-                  className="text-xs font-semibold px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-all shadow-sm shadow-cyan-600/20"
+                  className="min-h-11 text-sm font-semibold px-4 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white transition-all shadow-sm shadow-cyan-600/20"
                 >
                   Sign in
                 </button>
@@ -378,7 +403,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           {/* Live Status Pill */}
           <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-50 border border-slate-200/90 text-xs font-semibold text-slate-700 mb-6 shadow-xs">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <span>Sailing telemetry over LoRa radio and mobile data</span>
@@ -401,7 +426,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto mb-4">
             <button
               onClick={() => onRegisterClick('FREE')}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white shadow-lg shadow-cyan-600/20 transition-all motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]"
             >
               <span>Start free</span>
               <ChevronRight className="w-4 h-4 text-white" />
@@ -411,7 +436,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 setCodeError(null);
                 setSpectatorModalOpen(true);
               }}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-xs transition-all motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]"
             >
               <Eye className="w-4 h-4 text-slate-500" />
               <span>Watch a race</span>
@@ -466,7 +491,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
             </div>
             <button
               onClick={() => onViewRaceClick()}
-              className="text-xs text-cyan-600 hover:text-cyan-700 font-semibold flex items-center space-x-1"
+              className="min-h-11 text-sm text-cyan-700 hover:text-cyan-800 font-semibold flex items-center space-x-1"
             >
               <span>Open the race console</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -474,11 +499,19 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           </div>
 
           {/* Canvas Radar Container */}
-          <div className="relative h-80 sm:h-96 w-full">
-            <canvas ref={canvasRef} className="w-full h-full block" />
+          <div className="relative w-full">
+            <div className="h-72 sm:h-96 w-full">
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full block"
+              role="img"
+              aria-label="Demo: four simulated boats sailing from the leeward gate up to the windward mark, each labelled with its speed."
+            />
+            </div>
 
             {/* Radar Overlay Bottom Ribbon */}
-            <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg text-xs">
+            {/* Under the drawing on phones, over its lower edge on wider screens */}
+            <div className="m-3 sm:m-0 sm:absolute sm:bottom-4 sm:left-4 sm:right-4 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg text-sm">
               <div className="flex items-center space-x-4">
                 <div>
                   <span className="text-slate-500 block text-xs uppercase font-semibold">Demo</span>
@@ -490,7 +523,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   setCodeError(null);
                   setSpectatorModalOpen(true);
                 }}
-                className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors flex items-center space-x-1.5 shadow-sm"
+                className="min-h-11 px-4 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-sm font-semibold transition-colors flex items-center space-x-1.5 shadow-sm"
               >
                 <Play className="w-3 h-3 fill-white" />
                 <span>Watch a real race</span>
@@ -506,7 +539,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
             Engineered for Ocean Racing
           </h2>
-          <p className="text-slate-600 text-sm max-w-xl mx-auto">
+          <p className="text-slate-600 text-base max-w-xl mx-auto">
             Everything your sailing club, jury, race officer, and spectators need in one unified, portable platform.
           </p>
         </div>
@@ -516,14 +549,14 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
             <div>
               <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mb-4">
-                <Radio className="w-5 h-5 text-cyan-600" />
+                <Radio className="w-5 h-5 text-cyan-700" />
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">LoRa Radio + Mobile Data</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Connect long-range Meshtastic LoRa radios over Bluetooth or USB. Boats transmit offshore position fixes over miles of open water without needing cellular towers.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-cyan-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-cyan-700 font-semibold">
               Meshtastic radios, no SIM needed
             </div>
           </div>
@@ -535,11 +568,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <Trophy className="w-5 h-5 text-amber-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">Automated Corrected Scoring</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Finishes are timed from each class's start: by GPS when a tracker crosses the line, or with one tap from the race officer. Corrected times under IRC, ORC and Portsmouth Yardstick.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-amber-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-amber-700 font-semibold">
               Real-Time Leaderboard Publishing
             </div>
           </div>
@@ -551,11 +584,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <ShieldCheck className="w-5 h-5 text-purple-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">Multi-Tenant Club Privacy</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Each yacht club is a fully isolated organization with its own events, members, and custom billing tier. Nothing is cross-shared or leaked between clubs.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-purple-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-purple-700 font-semibold">
               Role Gates (Admin, Skipper, Spectator)
             </div>
           </div>
@@ -567,11 +600,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <Smartphone className="w-5 h-5 text-emerald-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">Android & Mobile Ready</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Architected with store-and-forward telemetry buffers. When skippers sail through cellular blindspots, fixes buffer locally and automatically backfill upon reconnection.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-emerald-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-emerald-700 font-semibold">
               Android app & phone browser tracking
             </div>
           </div>
@@ -583,11 +616,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <Wind className="w-5 h-5 text-sky-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">VMG, Head-to-Head & Replay</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Velocity Made Good for every boat on the leaderboard, a head-to-head comparison of any two boats, and a full race replay for debriefs.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-sky-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-sky-700 font-semibold">
               Race replay for debriefs
             </div>
           </div>
@@ -599,11 +632,11 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                 <Server className="w-5 h-5 text-rose-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">Fast Registration</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Share boat registration QR code and viewer link to participants and viewers. Register and login on-the go with fast and easy boat to tracker binder. 
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-rose-700 font-semibold">
+            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-rose-700 font-semibold">
               Self-Service Registration
             </div>
           </div>
@@ -616,7 +649,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
             Simple and Transparent Plans
           </h2>
-          <p className="text-slate-600 text-sm max-w-xl mx-auto">
+          <p className="text-slate-600 text-base max-w-xl mx-auto">
             Choose the package that fits your yacht club, fleet size, and championship calendar. Upgrade or adjust anytime.
           </p>
         </div>
@@ -653,7 +686,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 mb-2">{pkg.displayTitle}</h3>
 
-                    <p className="text-xs text-slate-600 mb-6 min-h-[36px]">{pkg.description}</p>
+                    <p className="text-sm text-slate-600 mb-6 min-h-[36px]">{pkg.description}</p>
 
                     <div className="flex items-baseline space-x-1 mb-6">
                       <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">
@@ -667,7 +700,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                     </div>
 
                     {/* Limits Badge List */}
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 mb-6 space-y-1.5 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 mb-6 space-y-1.5 text-sm">
                       <div className="flex justify-between text-slate-600">
                         <span className="text-slate-500">Active Regattas:</span>
                         <span className="font-semibold text-slate-900">{pkg.maxActiveRooms} concurrently</span>
@@ -683,10 +716,10 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                     </div>
 
                     {/* Features checklist */}
-                    <ul className="space-y-2.5 mb-8 text-xs text-slate-700">
+                    <ul className="space-y-2.5 mb-8 text-sm text-slate-700">
                       {pkg.features.map((feat, idx) => (
                         <li key={idx} className="flex items-start space-x-2">
-                          <CheckCircle2 className="w-4 h-4 text-cyan-600 shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-4 h-4 text-cyan-700 shrink-0 mt-0.5" />
                           <span>{feat}</span>
                         </li>
                       ))}
@@ -695,9 +728,9 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
 
                   <button
                     onClick={() => onRegisterClick(pkg.tierKey)}
-                    className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    className={`w-full min-h-11 rounded-xl text-sm font-bold transition-all shadow-sm ${
                       isPopular
-                        ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-600/20'
+                        ? 'bg-cyan-700 hover:bg-cyan-800 text-white shadow-cyan-600/20'
                         : 'bg-slate-900 hover:bg-slate-800 text-white'
                     }`}
                   >
@@ -721,48 +754,53 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           <button
             aria-label="Close"
             onClick={() => setSpectatorModalOpen(false)}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-sm"
+            className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100"
           >
-            ✕
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
 
           <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-700">
               <Eye className="w-5 h-5" />
             </div>
             <div>
-              <h3 id={spectatorTitleId} className="text-base font-bold text-slate-900">Watch Regatta (Spectator)</h3>
-              <p className="text-xs text-slate-500">No account required. Instant read-only telemetry.</p>
+              <h3 id={spectatorTitleId} className="text-base font-bold text-slate-900">Watch a race</h3>
+              <p className="text-sm text-slate-600">No account needed. You see the race live; you can't change it.</p>
             </div>
           </div>
 
           <form onSubmit={handleJoinSpectator} className="space-y-4 mb-6">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Enter Regatta Access Code
+              <label htmlFor={codeInputId} className="block text-sm font-medium text-slate-700 mb-1.5">
+                Event code
               </label>
               <div className="flex space-x-2">
                 <input
+                  id={codeInputId}
                   type="text"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  aria-invalid={!!codeError}
+                  aria-describedby={codeError ? codeErrorId : undefined}
                   value={inputCode}
                   onChange={(e) => {
                     setInputCode(e.target.value.toUpperCase());
                     setCodeError(null);
                   }}
                   placeholder="e.g. RLIR26 or LANGKAWI"
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 uppercase placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono tracking-wider"
+                  className="flex-1 min-w-0 min-h-11 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-base text-slate-900 uppercase placeholder-slate-500 focus:border-cyan-600 font-mono tracking-wider"
                 />
                 <button
                   type="submit"
                   disabled={isValidatingCode}
-                  className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs shadow-sm min-w-[70px] flex items-center justify-center"
+                  className="min-h-11 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold text-sm shadow-sm min-w-[70px] flex items-center justify-center"
                 >
-                  {isValidatingCode ? 'Checking...' : 'View'}
+                  {isValidatingCode ? 'Checking…' : 'Watch'}
                 </button>
               </div>
               {codeError && (
-                <div className="mt-2 text-xs text-rose-600 font-medium flex items-start gap-1.5 bg-rose-50 border border-rose-200 rounded-lg p-2 animate-fade-in">
-                  <span className="shrink-0 mt-0.5">⚠️</span>
+                <div id={codeErrorId} role="alert" className="mt-2 text-sm text-rose-700 font-medium flex items-start gap-1.5 bg-rose-50 border border-rose-200 rounded-lg p-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{codeError}</span>
                 </div>
               )}
@@ -770,53 +808,55 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           </form>
 
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              Active Public Regattas
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {activeEvents.length === 0 ? (
-                <p className="text-xs text-slate-500">No public races right now. Ask the race office for the event code.</p>
-              ) : (
-                activeEvents.map((ev) => (
-                  <div
-                    key={ev.code}
-                    onClick={() => {
-                      onViewRaceClick(ev.code);
-                      setSpectatorModalOpen(false);
-                    }}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 cursor-pointer transition-colors flex justify-between items-center"
-                  >
-                    <div>
-                      <div className="text-xs font-semibold text-slate-900">{ev.title}</div>
-                      <div className="text-xs text-slate-500">{ev.locationName}</div>
-                    </div>
-                    <span className="text-xs px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold">
-                      {ev.code}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+            <h4 id={publicListId} className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+              Public races
+            </h4>
+            {activeEvents.length === 0 ? (
+              <p className="text-sm text-slate-600">No public races right now. Ask the race office for the event code.</p>
+            ) : (
+              <ul aria-labelledby={publicListId} className="space-y-2 max-h-48 overflow-y-auto">
+                {activeEvents.map((ev) => (
+                  <li key={ev.code}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onViewRaceClick(ev.code);
+                        setSpectatorModalOpen(false);
+                      }}
+                      className="w-full text-left p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-600 hover:bg-cyan-50/40 transition-colors flex justify-between items-center gap-3"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-slate-900">{ev.title}</span>
+                        <span className="block text-sm text-slate-600">{ev.locationName}</span>
+                      </span>
+                      <span className="shrink-0 text-xs px-2 py-0.5 rounded bg-cyan-50 text-cyan-800 border border-cyan-200 font-mono font-semibold">
+                        {ev.code}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </DialogFrame>
       )}
 
       {/* Minimal Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-slate-50 py-8 px-4 sm:px-8 text-xs text-slate-500">
+      <footer className="mt-auto border-t border-slate-200 bg-slate-50 py-8 px-4 sm:px-8 text-sm text-slate-600">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
-            <Compass className="w-4 h-4 text-cyan-600" />
+            <Compass className="w-4 h-4 text-cyan-700" />
             <span className="font-semibold text-slate-700">TMTRAC by tmtecq.com </span>
             <span>• v{APP_VERSION}</span>
           </div>
 
-          <div className="flex items-center space-x-6 text-slate-600">
-            <button onClick={() => setSpectatorModalOpen(true)} className="hover:text-cyan-600 transition-colors">Watch a race</button>
+          <div className="flex items-center gap-4 text-sm text-slate-600">
+            <button onClick={() => setSpectatorModalOpen(true)} className="min-h-11 px-1 hover:text-cyan-800 transition-colors">Watch a race</button>
             {!currentUser && (
-              <button onClick={onLoginClick} className="hover:text-cyan-600 transition-colors">Sign in</button>
+              <button onClick={onLoginClick} className="min-h-11 px-1 hover:text-cyan-800 transition-colors">Sign in</button>
             )}
             {currentUser?.isSuperAdmin && (
-              <button onClick={onSuperAdminClick} className="text-purple-600 font-semibold hover:text-purple-700 transition-colors">
+              <button onClick={onSuperAdminClick} className="min-h-11 px-1 text-purple-700 font-semibold hover:text-purple-800 transition-colors">
                 Super Admin Panel
               </button>
             )}
