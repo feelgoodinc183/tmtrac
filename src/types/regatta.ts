@@ -420,6 +420,8 @@ export interface RaceState {
   elapsedTimeSeconds?: number;
   startTime?: number;
   activeRaceClass?: RaceClass;
+  /** The race office lets skippers bind their own tracker to a boat that has none (off when absent) */
+  skipperConnectEnabled?: boolean;
   updatedAt?: number;
 }
 

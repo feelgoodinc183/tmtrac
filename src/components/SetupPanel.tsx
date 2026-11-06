@@ -137,6 +137,8 @@ export interface SetupPanelProps {
   onOpenRosterImport: () => void;
   onOpenBoatQr: () => void;
   onOpenConnectDevice: (nodeId?: string, boatId?: string) => void;
+  /** Lets skippers connect their own tracker to a boat that has none (raceState.skipperConnectEnabled) */
+  onSetSkipperConnect: (enabled: boolean) => void;
   /** Loads a saved course or a template (App asks first when it replaces marks) */
   onLoadCourse: (choice: CourseChoice) => void;
   /** Saved courses: save the current one, rename, import or export */
@@ -632,9 +634,11 @@ const FleetSection: React.FC<SetupPanelProps> = ({ boats, onOpenBoatEditor, onOp
 
 const HEARD_LIMIT = 8;
 
-const TrackersSection: React.FC<SetupPanelProps> = ({ boats, nodes, deviceGps, onToggleDeviceGps, onOpenConnectDevice }) => {
+const TrackersSection: React.FC<SetupPanelProps> = ({ boats, nodes, deviceGps, onToggleDeviceGps, onOpenConnectDevice, raceState, onSetSkipperConnect }) => {
   const [showMqtt, setShowMqtt] = useState(false);
   const mqttId = useId();
+  const skipperConnectId = useId();
+  const skipperConnect = raceState.skipperConnectEnabled === true;
   const isBound = (n: MeshtasticNode) => boats.some((b) => sameNodeId(b.nodeId, n.id));
   const isPhone = (n: MeshtasticNode) =>
     n.isDeviceGps || ['DEVICE_GPS', 'PHONE', 'TABLET', 'PC'].includes(n.connectionType || '');
@@ -729,6 +733,26 @@ const TrackersSection: React.FC<SetupPanelProps> = ({ boats, nodes, deviceGps, o
         <Button variant={deviceGps.active ? 'danger' : 'secondary'} icon={<Navigation />} onClick={onToggleDeviceGps}>
           {deviceGps.active ? 'Stop sharing' : 'Share GPS'}
         </Button>
+      </div>
+
+      <div className="p-3 rounded-container border border-line bg-canvas/60 flex items-start gap-3">
+        <input
+          id={skipperConnectId}
+          type="checkbox"
+          checked={skipperConnect}
+          onChange={(e) => onSetSkipperConnect(e.target.checked)}
+          className="mt-1 w-5 h-5 shrink-0 cursor-pointer"
+          aria-describedby={`${skipperConnectId}-hint`}
+        />
+        <div className="min-w-0">
+          <label htmlFor={skipperConnectId} className="text-sm font-bold text-ink cursor-pointer">
+            Let skippers connect their own tracker
+          </label>
+          <p id={`${skipperConnectId}-hint`} className="text-xs text-ink-muted">
+            Skippers unlocked with the skipper PIN get Connect device and can put a tracker on a boat that has none.
+            Only you can change or remove a tracker once a boat has one.
+          </p>
+        </div>
       </div>
 
       <div className="rounded-container border border-line">

@@ -197,7 +197,9 @@ export default function App() {
   useEffect(() => {
     if (boatsBroadcastPendingRef.current) {
       boatsBroadcastPendingRef.current = false;
-      deviceTrackerService.broadcastBoats(boats);
+      // Only the race office sends the fleet. A skipper's device that relays its tracker moves the
+      // boat on its own map too, but the server would refuse the fleet (and show "not saved").
+      if (canEditRef.current) deviceTrackerService.broadcastBoats(boats);
     }
     const horn = pendingHornRef.current;
     if (horn) {
@@ -229,6 +231,10 @@ export default function App() {
   // Edit controls follow the server's answer for this room (PIN, own-club role, owner); an
   // Admin or Race Officer account from another club does not get them.
   const isUserAdminOrOfficer = Boolean(isOrganizer || currentUser?.isSuperAdmin || authService.isSuperAdmin());
+  const canEditRef = useRef(isUserAdminOrOfficer);
+  canEditRef.current = isUserAdminOrOfficer;
+  // Unlocked with the skipper PIN in this room (the server's role for this connection)
+  const [isSkipper, setIsSkipper] = useState(() => roomService.isParticipant());
   // Shown when the server refuses an edit, so a change never looks saved when it wasn't
   const [saveRejection, setSaveRejection] = useState<{ action: string; roomCode: string; at: number } | null>(null);
   // Boats that pointed at a tracker id from an older version and need their tracker attached again
@@ -515,6 +521,7 @@ export default function App() {
     const unsubRoom = roomService.onRoomChange((code, isOrg) => {
       setActiveRoomCode(code);
       setIsOrganizer(isOrg);
+      setIsSkipper(roomService.isParticipant());
       if (!isOrg) {
         setViewMode('SPECTATOR');
       }
@@ -533,6 +540,7 @@ export default function App() {
       if (session.roomCode) {
         setActiveRoomCode(session.roomCode);
       }
+      if (typeof session.userRole === 'string') setIsSkipper(session.userRole === 'PARTICIPANT');
       if (typeof session.canEdit === 'boolean') {
         setIsOrganizer(session.canEdit);
       } else if (typeof session.isAdmin === 'boolean') {
@@ -2529,6 +2537,19 @@ export default function App() {
     if (boatId) handleBindNodeToBoat(nodeId, boatId);
   };
 
+  // A skipper's binding goes through the server, which checks it and then sends everyone the
+  // fleet; this device only notes the binding locally once the server has accepted it
+  const handleSkipperBind = async (nodeId: string, boatId: string) => {
+    const res = await deviceTrackerService.requestSkipperBind(canonicalNodeId(nodeId), boatId);
+    if (!('message' in res)) {
+      deviceTrackerService.setNodeBoundBoat(res.nodeId, res.boatId);
+      meshtasticService.setNodeBoundBoatId(res.nodeId, res.boatId);
+      trackerRelay.forget(res.nodeId);
+      setNodes((prev) => prev.map((n) => (sameNodeId(n.id, res.nodeId) ? { ...n, boundBoatId: res.boatId } : n)));
+    }
+    return res;
+  };
+
   // Forget a tracker's binding in both services, so its next packet doesn't bind it again
   const clearTrackerBinding = (nodeId: string) => {
     meshtasticService.setNodeBoundBoatId(nodeId, null);
@@ -2637,6 +2658,8 @@ export default function App() {
 
   // Setup and race control are for people who can run this room's race
   const canRunRace = viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer;
+  // A skipper may connect their own tracker when the race office has turned that on
+  const skipperCanConnect = isSkipper && !isUserAdminOrOfficer && raceState.skipperConnectEnabled === true;
   const setupStatus = getSetupStatus(raceClasses, boats, marks, raceState);
   const setupDoneCount = Object.values(setupStatus).filter((st) => st.done).length;
 
@@ -2824,6 +2847,7 @@ export default function App() {
                   onCollapse={() => setIsSidebarOpen(false)}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
+                  skipperCanConnect={skipperCanConnect}
                 />
               </div>
             </div>
@@ -2961,6 +2985,7 @@ export default function App() {
                   onEndRace={requestEndRace}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
+                  skipperCanConnect={skipperCanConnect}
                 />
               </div>
             </div>
@@ -3180,6 +3205,7 @@ export default function App() {
           onOpenRosterImport={() => setShowRosterImport(true)}
           onOpenBoatQr={() => handleOpenBoatQr()}
           onOpenConnectDevice={openConnectDevice}
+          onSetSkipperConnect={(enabled) => handleUpdateRaceState({ skipperConnectEnabled: enabled })}
           onLoadCourse={handleLoadCourse}
           onManageCourses={() => {
             setCourseProfileCount(getSavedCourseProfiles().length);
@@ -3232,6 +3258,7 @@ export default function App() {
           onBindNodeToBoat={handleBindNodeToBoat}
           onCreateBoatForTracker={handleCreateBoatForTracker}
           onUnbindNode={(nodeId) => handleBindNodeToBoat(nodeId, '')}
+          onSkipperBind={isUserAdminOrOfficer ? undefined : handleSkipperBind}
           initialNodeId={connectTarget.nodeId}
           initialBoatId={connectTarget.boatId}
           onClose={() => setShowConnectDevice(false)}

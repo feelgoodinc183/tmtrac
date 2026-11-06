@@ -120,6 +120,8 @@ export type SessionSyncCallback = (session: {
   isAdmin?: boolean;
   // Whether this connection may edit the room (Race Officer or admin), as decided by the server
   canEdit?: boolean;
+  // This connection's room role as the server sees it: ADMIN, RACE_OFFICER, PARTICIPANT or SPECTATOR
+  userRole?: string;
   raceState?: Partial<RaceState>;
   marks?: CourseMark[];
   boats?: Boat[];
@@ -136,6 +138,7 @@ export type RemoteVhfCallback = (bulletin: VhfBulletin) => void;
 export type RemoteSeriesRacesCallback = (series: CompletedRace[]) => void;
 export type RemoteClassesCallback = (classes: RaceClassDefinition[]) => void;
 export type BatchBackfillCallback = (payload: GpsBatchBackfillPayload) => void;
+export type SkipperBindResult = { ok: true; boatId: string; nodeId: string } | { ok: false; message: string };
 export type EditRejectedCallback = (rejection: { action: string; roomCode: string; role: string; reason: string }) => void;
 
 class HybridDeviceTrackerService {
@@ -160,6 +163,8 @@ class HybridDeviceTrackerService {
   private remoteClassesCallbacks: RemoteClassesCallback[] = [];
   private batchBackfillCallbacks: BatchBackfillCallback[] = [];
   private editRejectedCallbacks: EditRejectedCallback[] = [];
+  // Skipper tracker bindings waiting for the server's answer, by request id
+  private pendingSkipperBinds = new Map<string, { resolve: (r: SkipperBindResult) => void; timer: ReturnType<typeof setTimeout> }>();
 
   // Store-and-Forward Offline FIFO Buffer
   private offlinePointsBuffer: BackfillPoint[] = [];
@@ -710,6 +715,20 @@ class HybridDeviceTrackerService {
                 break;
               }
 
+              case 'SKIPPER_BIND_RESULT': {
+                const pending = payload?.requestId ? this.pendingSkipperBinds.get(payload.requestId) : undefined;
+                if (pending) {
+                  this.pendingSkipperBinds.delete(payload.requestId);
+                  clearTimeout(pending.timer);
+                  pending.resolve(
+                    payload.ok
+                      ? { ok: true, boatId: payload.boatId, nodeId: payload.nodeId }
+                      : { ok: false, message: payload.message || 'The tracker was not connected.' }
+                  );
+                }
+                break;
+              }
+
               case 'UPDATE_REJECTED': {
                 if (payload) {
                   this.editRejectedCallbacks.forEach((cb) => cb(payload));
@@ -982,6 +1001,27 @@ class HybridDeviceTrackerService {
       } catch (e) {}
     }
     if (!sent) this.postSessionUpdate('/api/session/racestate', raceState);
+  }
+
+  /**
+   * A skipper asks the server to bind a tracker to a boat (the race office must allow it). Resolves
+   * with the server's answer; the boats themselves change through the BOATS_UPDATED that follows.
+   * Needs the live connection: there is no offline fallback, so the skipper knows at once.
+   */
+  public requestSkipperBind(nodeId: string, boatId: string, timeoutMs = 10_000): Promise<SkipperBindResult> {
+    const requestId = `skb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingSkipperBinds.delete(requestId);
+        resolve({ ok: false, message: 'No answer from the server. Check the connection and try again.' });
+      }, timeoutMs);
+      this.pendingSkipperBinds.set(requestId, { resolve, timer });
+      if (!this.sendWs('SKIPPER_BIND_TRACKER', { requestId, nodeId, boatId })) {
+        clearTimeout(timer);
+        this.pendingSkipperBinds.delete(requestId);
+        resolve({ ok: false, message: 'Not connected to the server. Check the connection and try again.' });
+      }
+    });
   }
 
   // Synchronize Fleet Boats across all phones

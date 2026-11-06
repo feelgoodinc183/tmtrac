@@ -59,6 +59,8 @@ interface LeaderboardSidebarProps {
   onClose?: () => void;
   isOverlay?: boolean;
   isAdmin?: boolean;
+  /** A skipper in an event whose race office lets skippers connect their own tracker */
+  skipperCanConnect?: boolean;
 }
 
 export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
@@ -88,6 +90,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   onClose,
   isOverlay = false,
   isAdmin = false,
+  skipperCanConnect = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'LEADERBOARD' | 'MESH_NODES'>('LEADERBOARD');
   const [filterClass, setFilterClass] = useState<RaceClass | 'ALL'>('ALL');
@@ -569,7 +572,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     ) : (
                       <>
                         <span className="text-ink-muted">No tracker, position not live</span>
-                        {canManage && onConnectTracker && (
+                        {(canManage || (skipperCanConnect && !boat.nodeId)) && onConnectTracker && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -724,7 +727,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                {viewMode !== 'SPECTATOR' && onOpenConnectDevice && (
+                {(viewMode !== 'SPECTATOR' || skipperCanConnect) && onOpenConnectDevice && (
                   <Button variant="primary" icon={<Plus />} onClick={onOpenConnectDevice}>
                     Connect device
                   </Button>
@@ -839,11 +842,13 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   <h4 className="text-xs font-bold text-ink">No trackers for this event yet</h4>
                   <p className="text-xs text-ink-muted mt-1">
                     {viewMode === 'SPECTATOR'
-                      ? 'Trackers appear here once the race office connects them.'
+                      ? skipperCanConnect
+                        ? 'Connect the tracker on your boat, or wait for the race office to connect it.'
+                        : 'Trackers appear here once the race office connects them.'
                       : 'Connect a LoRa tracker, or have skippers share their phone position with Track in the header.'}
                   </p>
                 </div>
-                {viewMode !== 'SPECTATOR' && onOpenConnectDevice && (
+                {(viewMode !== 'SPECTATOR' || skipperCanConnect) && onOpenConnectDevice && (
                   <Button variant="primary" className="w-full" icon={<Plus />} onClick={onOpenConnectDevice}>
                     Connect device
                   </Button>
