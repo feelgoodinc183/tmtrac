@@ -37,7 +37,6 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { RcCommandConsolePanel } from './components/RcCommandConsolePanel';
 import { MobileBottomBar, MobileTab } from './components/MobileBottomBar';
 import { UnifiedHubModal, HubTab } from './components/UnifiedHubModal';
-import { NodeBindingModal } from './components/NodeBindingModal';
 import { HeadToHeadModal } from './components/HeadToHeadModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
 import { FEATURES } from './config/features';
@@ -740,9 +739,6 @@ export default function App() {
   // Modals state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showReplayBar, setShowReplayBar] = useState(false);
-  const [showNodeBinding, setShowNodeBinding] = useState(false);
-  const [bindingTargetNodeId, setBindingTargetNodeId] = useState<string | undefined>(undefined);
-  const [bindingTargetBoatId, setBindingTargetBoatId] = useState<string | undefined>(undefined);
   const [showHeadToHead, setShowHeadToHead] = useState(false);
   const [headToHeadPair, setHeadToHeadPair] = useState<[string, string] | null>(null);
   const [showGeminiChat, setShowGeminiChat] = useState(false);
@@ -775,6 +771,12 @@ export default function App() {
     return null;
   });
   const [showConnectDevice, setShowConnectDevice] = useState(false);
+  // What the Connect device wizard was opened for: a boat card (boat) or a heard tracker (node)
+  const [connectTarget, setConnectTarget] = useState<{ nodeId?: string; boatId?: string }>({});
+  const openConnectDevice = (nodeId?: string, boatId?: string) => {
+    setConnectTarget({ nodeId, boatId });
+    setShowConnectDevice(true);
+  };
   const [showVhfJuryModal, setShowVhfJuryModal] = useState(false);
   const [showNmeaMalaysiaModal, setShowNmeaMalaysiaModal] = useState(false);
   const [showBoatEditorModal, setShowBoatEditorModal] = useState(false);
@@ -909,12 +911,6 @@ export default function App() {
       countdownSeconds: 300,
       startSequenceActive: false,
     }));
-  };
-
-  const handleOpenNodeBindingWithSelection = (nodeId?: string, boatId?: string) => {
-    setBindingTargetNodeId(nodeId);
-    setBindingTargetBoatId(boatId);
-    setShowNodeBinding(true);
   };
 
   // Sync raceClasses to local storage
@@ -2287,10 +2283,6 @@ export default function App() {
   };
 
 
-  const handleCreateNewBoat = (boatData: Partial<Boat>) => {
-    handleSaveBoat(boatData, false);
-  };
-
   const handleImportCompetitors = (imported: CompetitorImportRecord[]) => {
     setBoats((prev) => {
       const updated = [...prev];
@@ -2691,8 +2683,8 @@ export default function App() {
                   raceState={raceState}
                   selectedBoatId={selectedBoatId}
                   onSelectBoat={(id) => setSelectedBoatId(id)}
-                  onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-                  onOpenConnectDevice={() => setShowConnectDevice(true)}
+                  onConnectTracker={openConnectDevice}
+                  onOpenConnectDevice={() => openConnectDevice()}
                   onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
                   followedTargetId={followedTargetId}
                   onToggleFollow={handleToggleFollow}
@@ -2839,8 +2831,8 @@ export default function App() {
                     setSelectedBoatId(id);
                     setMobileTab('MAP');
                   }}
-                  onOpenNodeBinding={handleOpenNodeBindingWithSelection}
-                  onOpenConnectDevice={() => setShowConnectDevice(true)}
+                  onConnectTracker={openConnectDevice}
+                  onOpenConnectDevice={() => openConnectDevice()}
                   onOpenHybridTrackers={() => setShowHybridTrackerModal(true)}
                   followedTargetId={followedTargetId}
                   onToggleFollow={handleToggleFollow}
@@ -3069,7 +3061,7 @@ export default function App() {
         onToggleDeviceGps={handleToggleDeviceGps}
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
         onOpenBoatQr={() => handleOpenBoatQr()}
-        onOpenConnectDevice={() => setShowConnectDevice(true)}
+        onOpenConnectDevice={() => openConnectDevice()}
         onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
         onSelectBoat={(id) => {
           setSelectedBoatId(id);
@@ -3103,6 +3095,9 @@ export default function App() {
           boats={boats}
           onBindNodeToBoat={handleBindNodeToBoat}
           onCreateBoatForTracker={handleCreateBoatForTracker}
+          onUnbindNode={(nodeId) => handleBindNodeToBoat(nodeId, '')}
+          initialNodeId={connectTarget.nodeId}
+          initialBoatId={connectTarget.boatId}
           onClose={() => setShowConnectDevice(false)}
         />
       )}
@@ -3137,25 +3132,6 @@ export default function App() {
       )}
 
       {/* Standard Modals */}
-      {showNodeBinding && (
-        <NodeBindingModal
-          nodes={nodes}
-          boats={boats}
-          initialNodeId={bindingTargetNodeId}
-          initialBoatId={bindingTargetBoatId}
-          onClose={() => {
-            setShowNodeBinding(false);
-            setBindingTargetNodeId(undefined);
-            setBindingTargetBoatId(undefined);
-          }}
-          onBindNodeToBoat={handleBindNodeToBoat}
-          onUnbindNode={(nodeId) => handleBindNodeToBoat(nodeId, '')}
-          onCreateNewBoat={handleCreateNewBoat}
-          raceClasses={raceClasses}
-          onOpenBoatQr={(boatId) => handleOpenBoatQr(boatId)}
-          isAdmin={isUserAdminOrOfficer}
-        />
-      )}
 
       {showHeadToHead && boat1Obj && boat2Obj && (
         <HeadToHeadModal
