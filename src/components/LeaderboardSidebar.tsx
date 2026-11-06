@@ -230,7 +230,8 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
       className={`flex flex-col text-ink select-none shadow-2xl transition-all ${
         isOverlay
           ? 'w-full max-w-lg max-h-[calc(100vh-130px)] sm:max-h-[82vh] landscape:max-h-[98dvh] landscape:h-[98dvh] h-full rounded-2xl sm:rounded-3xl bg-surface/90 backdrop-blur-md border border-line/80 overflow-hidden min-h-0'
-          : 'w-80 sm:w-88 bg-canvas border-r border-line shrink-0 h-full overflow-hidden'
+          : // Fills the space it is given: the docked column sets its width, the phone tab is full width
+            'w-full bg-canvas border-r border-line shrink-0 h-full overflow-hidden'
       }`}
     >
       {/* Navigation Tabs & Collapse Control */}
