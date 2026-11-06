@@ -88,6 +88,14 @@ import {
   evaluateBoatCourseProgress,
   replayBatchThroughCourseProgress,
 } from './services/courseService';
+import { getMapCenter, fitMapTo } from './services/mapView';
+
+type CoursePresetType = 'WINDWARD_LEEWARD' | 'TRIANGLE' | 'TRAPEZOID';
+const COURSE_PRESET_LABEL: Record<CoursePresetType, string> = {
+  WINDWARD_LEEWARD: 'Windward-Leeward',
+  TRIANGLE: 'Olympic Triangle',
+  TRAPEZOID: 'Trapezoid',
+};
 import { Navigation, Trophy, X } from 'lucide-react';
 import { formatBattery, nodeStatusFromLastPing } from './utils/formatters';
 
@@ -1283,6 +1291,8 @@ export default function App() {
   const handleUpdateMarks = (newMarks: CourseMark[]) => {
     setMarks(newMarks);
     deviceTrackerService.broadcastMarks(newMarks);
+    // Every mark removed: no course is set any more.
+    if (newMarks.length === 0 && raceState.courseName) handleUpdateRaceState({ courseName: '' });
   };
 
   const handleAddMark = (lat: number, lng: number, type?: CourseMark['type'], name?: string) => {
@@ -1362,15 +1372,39 @@ export default function App() {
     handleUpdateMarks(updated);
   };
 
-  const handleApplyCoursePreset = (preset: 'WINDWARD_LEEWARD' | 'TRIANGLE' | 'TRAPEZOID') => {
-    const centerLat = selectedLocation?.centerLat ?? 6.308;
-    const centerLng = selectedLocation?.centerLng ?? 99.845;
-    const updated = generateCoursePreset(preset, centerLat, centerLng, raceState.windDirectionDeg);
+  // Where new marks go: next to the current course, else where the map is looking,
+  // else the regatta location (map not shown yet).
+  const courseAnchor = (): { lat: number; lng: number } => {
+    if (marks.length > 0) return { lat: marks[0].lat, lng: marks[0].lng };
+    return getMapCenter() ?? { lat: selectedLocation?.centerLat ?? 6.308, lng: selectedLocation?.centerLng ?? 99.845 };
+  };
+
+  const applyCoursePreset = (preset: CoursePresetType) => {
+    const { lat, lng } = courseAnchor();
+    const updated = generateCoursePreset(preset, lat, lng, raceState.windDirectionDeg);
     handleUpdateMarks(updated);
+    handleUpdateRaceState({ courseName: COURSE_PRESET_LABEL[preset] });
+    fitMapTo(updated);
+  };
+
+  // A preset replaces the whole course, so ask first when there is one.
+  const [pendingCoursePreset, setPendingCoursePreset] = useState<CoursePresetType | null>(null);
+  const handleApplyCoursePreset = (preset: CoursePresetType) => {
+    if (marks.length > 0) setPendingCoursePreset(preset);
+    else applyCoursePreset(preset);
+  };
+
+  const handleAddCourseMarkNearView = () => {
+    const { lat, lng } = courseAnchor();
+    const updated = addCourseMark(marks, lat + (Math.random() - 0.5) * 0.01, lng + (Math.random() - 0.5) * 0.01, 'WINDWARD');
+    handleUpdateMarks(updated);
+    fitMapTo(updated);
   };
 
   const handleApplyCourseProfile = (newMarks: CourseMark[], profileName: string, profileId?: string) => {
     handleUpdateMarks(newMarks);
+    handleUpdateRaceState({ courseName: profileName });
+    fitMapTo(newMarks);
     if (profileId) {
       setActiveCourseProfileId(profileId);
     }
@@ -2707,6 +2741,8 @@ export default function App() {
               setShowCourseProfilesModal(true);
             }}
             courseProfileCount={courseProfileCount}
+            onApplyCoursePreset={handleApplyCoursePreset}
+            onAddCourseMark={handleAddCourseMarkNearView}
           />
         )}
       </div>
@@ -3054,6 +3090,8 @@ export default function App() {
                     setShowCourseProfilesModal(true);
                   }}
                   courseProfileCount={courseProfileCount}
+                  onApplyCoursePreset={handleApplyCoursePreset}
+                  onAddCourseMark={handleAddCourseMarkNearView}
                 />
               </div>
             </div>
@@ -3400,6 +3438,20 @@ export default function App() {
         isOpen={showCpanelDeployModal}
         onClose={() => setShowCpanelDeployModal(false)}
       />
+
+      {pendingCoursePreset && (
+        <ConfirmDialog
+          title={`Replace ${marks.length} ${marks.length === 1 ? 'mark' : 'marks'} with ${COURSE_PRESET_LABEL[pendingCoursePreset]}?`}
+          body={`The current course${raceState.courseName ? ` (${raceState.courseName})` : ''} is removed and the fleet's course updates. This can't be undone; save it as a course profile first if you want it back.`}
+          confirmLabel="Replace course"
+          onConfirm={() => {
+            const preset = pendingCoursePreset;
+            setPendingCoursePreset(null);
+            applyCoursePreset(preset);
+          }}
+          onCancel={() => setPendingCoursePreset(null)}
+        />
+      )}
 
       {pendingRaceAction && (
         <ConfirmDialog

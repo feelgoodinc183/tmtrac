@@ -13,6 +13,7 @@ import {
   calculateTotalDistanceNm,
   relocateCourseMarksToLocation,
 } from '../services/courseProfileService';
+import { getMapCenter } from '../services/mapView';
 import { safeFixed } from '../utils/formatters';
 import {
   MapPin,
@@ -90,11 +91,12 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
   // Resolve user target coordinates
   const hasLiveGps = Boolean(deviceGps?.active && deviceGps.lat && deviceGps.lng);
-  const userLat = hasLiveGps && deviceGps?.lat ? deviceGps.lat : (currentLocation?.centerLat ?? 6.308);
-  const userLng = hasLiveGps && deviceGps?.lng ? deviceGps.lng : (currentLocation?.centerLng ?? 99.845);
-  const userLocationLabel = hasLiveGps
-    ? 'Live Device GPS'
-    : (currentLocation?.name || 'Current Active Area');
+  // Without live GPS, relocate to where the map is looking (the regatta area if no map has shown yet).
+  const mapCenter = hasLiveGps ? null : getMapCenter();
+  const userLat = hasLiveGps && deviceGps?.lat ? deviceGps.lat : (mapCenter?.lat ?? currentLocation?.centerLat ?? 6.308);
+  const userLng = hasLiveGps && deviceGps?.lng ? deviceGps.lng : (mapCenter?.lng ?? currentLocation?.centerLng ?? 99.845);
+  const areaLabel = currentLocation?.name || 'Current Active Area';
+  const userLocationLabel = hasLiveGps ? 'Live Device GPS' : mapCenter ? 'Map centre' : areaLabel;
 
   // Refresh profile list
   const refreshProfiles = () => {
@@ -141,7 +143,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
 
     const result = saveCourseProfile(newName, currentMarks, {
       description: newDesc,
-      locationName: userLocationLabel,
+      locationName: hasLiveGps ? userLocationLabel : areaLabel,
       windDirectionDeg: currentWindDir,
       windSpeedKt: currentWindSpeed,
     });
@@ -162,7 +164,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
     const result = saveCourseProfile(profile.name, currentMarks, {
       id: profile.id,
       description: profile.description,
-      locationName: userLocationLabel,
+      locationName: hasLiveGps ? userLocationLabel : areaLabel,
       windDirectionDeg: currentWindDir ?? profile.windDirectionDeg,
       windSpeedKt: currentWindSpeed ?? profile.windSpeedKt,
     });
@@ -424,7 +426,7 @@ export const CourseProfileModal: React.FC<CourseProfileModalProps> = ({
               <div className="text-xs font-bold text-ink flex items-center gap-2">
                 <span>Course Placement Location</span>
                 <span className="text-xs px-2 py-0.2 rounded-full bg-success-ink/15 text-success-ink border border-success-ink/30">
-                  {userLocationLabel} ({safeFixed(userLat, 3)}°, ${safeFixed(userLng, 3)}°)
+                  {userLocationLabel} ({safeFixed(userLat, 3)}°, {safeFixed(userLng, 3)}°)
                 </span>
               </div>
               <p className="text-xs text-ink-muted">

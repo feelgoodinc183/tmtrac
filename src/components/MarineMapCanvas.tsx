@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { formatBattery, trackerFreshness } from '../utils/formatters';
 import { sameNodeId } from '../utils/nodeId';
+import { registerMapView, noteMapCenter, takePendingFit } from '../services/mapView';
 
 // Strict Coordinate Validation Helper to prevent Leaflet LatLng NaN crashes
 const isValidCoord = (lat: any, lng: any): boolean => {
@@ -116,6 +117,12 @@ function getInterpolatedTrajectory(
     ghostTrail: ghostPoints,
   };
 }
+
+/** Same framing as the "Fit all" button. */
+const fitMapToPoints = (map: L.Map, points: [number, number][]) => {
+  if (points.length === 0) return;
+  map.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 15 });
+};
 
 interface MarineMapCanvasProps {
   boats: Boat[];
@@ -262,10 +269,35 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
       resizeObserver.observe(mapContainerRef.current);
     }
 
-    // Trigger initial invalidation after mount
+    const container = mapContainerRef.current;
+    const isShown = () => !!container && container.offsetWidth > 0 && container.offsetHeight > 0;
+    const unregisterMapView = registerMapView({
+      isVisible: isShown,
+      getCenter: () => {
+        try {
+          const c = map.getCenter();
+          return { lat: c.lat, lng: c.lng };
+        } catch {
+          return null;
+        }
+      },
+      fitTo: (points) => fitMapToPoints(map, points.map((p) => [p.lat, p.lng] as [number, number])),
+    });
+    const onMoveEnd = () => {
+      if (!isShown()) return;
+      const c = map.getCenter();
+      noteMapCenter({ lat: c.lat, lng: c.lng });
+    };
+    map.on('moveend', onMoveEnd);
+
+    // Trigger initial invalidation after mount, then do any fit asked for while no map was on screen
     const timer = setTimeout(() => {
       try {
         map.invalidateSize();
+        if (isShown()) {
+          const pending = takePendingFit();
+          if (pending) fitMapToPoints(map, pending.map((p) => [p.lat, p.lng] as [number, number]));
+        }
       } catch {
         // ignore
       }
@@ -273,6 +305,8 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
     return () => {
       clearTimeout(timer);
+      map.off('moveend', onMoveEnd);
+      unregisterMapView();
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
@@ -948,10 +982,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
     if (deviceGps?.active && isValidCoord(deviceGps.lat, deviceGps.lng)) {
       validPoints.push([deviceGps.lat!, deviceGps.lng!]);
     }
-    if (validPoints.length > 0) {
-      const bounds = L.latLngBounds(validPoints);
-      mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-    }
+    fitMapToPoints(mapRef.current, validPoints);
   };
 
   const mobileNodes = (nodes || []).filter(
