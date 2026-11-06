@@ -1,7 +1,8 @@
 # TMTRAC rebuild plan
 
 A smaller app built around the server, reusing the parts of today's code that are tested.
-Status: proposal, for review before any code is written.
+Status: scope agreed. Code goes in a new repository, `feelgoodinc183/boat-race-tracker`, hosted on
+cPanel with Node 22, with a phone app for race officers and skippers.
 
 ## Why
 
@@ -80,9 +81,10 @@ has run real races.
 
 ### Protocol
 
-- **Device → server:** `{ type: 'command', id, name, payload }` with a unique `id` per command.
-  Positions stay as today (`GPS_BROADCAST`, `GPS_BATCH_BACKFILL`, `/api/session/gps/batch`) so the
-  Android app keeps working.
+- **Device → server:** `{ type: 'command', id, name, payload }` with a unique `id` per command, and
+  `{ type: 'positions', trackerId, fixes: [{ lat, lng, speedKt, headingDeg, fixTime }] }` for
+  tracking (one fix or a stored batch). There is no existing app to stay compatible with, so the
+  protocol is designed fresh; the HTTP batch route stays as the fallback when the socket is down.
 - **Server → device:** a full snapshot on join, then numbered events. A device that misses a number
   asks for the events since its last one.
 - **Offline:** the device queues commands and resends them on reconnect. The server ignores an `id`
@@ -97,7 +99,7 @@ has run real races.
 `lowerX`, `recordFinish` (boat, optional time), `undoFinish`, `setPenalty` (DNF, RET, DNS, DNC,
 DSQ, OCS), `endRace`, `scoreSeries`.
 
-### Client screens
+### Client screens (one app, three roles)
 
 1. **Setup:** classes, fleet, trackers, course (today's Setup area, simplified).
 2. **Start:** class clock, start/AP/recall/X controls, OCS list.
@@ -105,6 +107,27 @@ DSQ, OCS), `endRace`, `scoreSeries`.
 4. **Results:** race and series, export.
 5. **Tracker:** share this phone's GPS, or relay a Bluetooth T-Echo.
 6. **Spectator:** map, leaderboard, class status.
+
+## The phone app
+
+One React + TypeScript codebase, used two ways:
+
+- **As a website** for spectators, and for race officers on a laptop.
+- **As an installed app** (Android first, iOS later), packaged with **Capacitor**, for race
+  officers and skippers on the water.
+
+Why an installed app rather than only a website:
+
+| Need | Website | Installed app |
+|---|---|---|
+| Bluetooth to a T-Echo | Chrome on Android/desktop only; none on iPhone; stops when the page closes | Native Bluetooth LE on Android and iOS (`@capacitor-community/bluetooth-le`) |
+| A skipper's phone tracking with the screen off | Stops when the browser is in the background | Background location with an Android foreground service |
+| Racing without signal | Only while the page stays open | Kept on the phone and sent when signal returns |
+| Getting it onto phones | A link | Play Store (internal testing first) |
+
+The race officer, skipper and spectator screens are the same components in both. Only the
+Bluetooth and background-location parts use Capacitor plugins, behind one small interface, so the
+website keeps working with Web Bluetooth and foreground GPS.
 
 ## What carries over
 
@@ -132,7 +155,7 @@ Each phase ends with something that can be checked. Sizes are relative (S, M, L)
 | 1 | **Race engine**, no UI | M | Scripted races pass: start, AP, general recall, X flag, finishes, penalties, scoring for IRC/ORC/PY, series with discards. |
 | 2 | **Server, protocol, event log** | M | Two devices always agree; a restart restores the exact state; a duplicated or late command is handled; Android position uploads still accepted. |
 | 3 | **Race officer and spectator screens** | L | A race can be run from a phone with no help; 375 px and sunlight checks pass. |
-| 4 | **Tracking**: Bluetooth relay, phone GPS, binding | M | T-Echo on a desk and two phones move boats; GPS finish suggestions appear. |
+| 4 | **Phone app and tracking**: Capacitor Android build, native Bluetooth relay, background GPS, binding | L | A T-Echo on a desk and two phones (one locked in a pocket) move boats for an hour; GPS finish suggestions appear; the app installs from Play Store internal testing. |
 | 5 | **Shadow a real race** next to the club's usual method | — | Results match paper (or the differences are explained). |
 | 6 | Switch over; bring back what clubs ask for | — | Accounts, billing, MQTT, extra exports, as needed. |
 
@@ -141,25 +164,37 @@ correctness.
 
 ## Hosting
 
-The new server needs a real SQLite. Options, in order of preference:
+**Decided: cPanel (Exabytes) with Node 22**, using Node's built-in `node:sqlite`. No JSON fallback
+store in the new server.
 
-1. **A small VPS** (Node 22, built-in `node:sqlite`): simplest and cheapest to run correctly.
-2. **cPanel with Node 22** if Exabytes offers it.
-3. **cPanel Node 20 with `better-sqlite3`**, if its native module builds there (to be tested).
-
-No JSON fallback store in the new server.
+- `node:sqlite` works without a flag from Node 22.13; on 22.5–22.12 the app must start with
+  `--experimental-sqlite`. Check the exact version in cPanel's Node.js selector.
+- The database file lives outside `public_html` (as today's `DATA_DIR`), with a nightly copy.
+- The current site and the new one can run side by side on separate subdomains until switch-over.
 
 ## Risks
 
 - **LoRa positions are slow** (every 30 s or more), so GPS can only *suggest* OCS and finishes.
   Taps by the race officer are the record; GPS is the check. The test day will measure the rate.
-- **The Android app** must keep its position protocol, or be updated with the server. Who owns it,
-  and can it be changed?
+- **Background tracking on Android.** Phone makers' battery savers stop background apps; tracking
+  needs a foreground service with a visible notification, and testing on the phones skippers
+  actually use.
+- **Store accounts.** Google Play needs a developer account (one-time fee) and a privacy policy for
+  location data; Apple (later) needs a yearly membership and stricter review of background location.
 - **Scope creep.** Anything not in the version 1 list waits until phase 6.
 
-## Decisions needed
+## Decisions
 
-1. **Where the code lives:** a new folder in this repo (`v2/`), or a new repository.
-2. **Hosting:** VPS, or cPanel (and which Node version Exabytes offers).
-3. **The Android app:** who maintains it, and whether its protocol can change.
-4. **Version 1 scope:** confirm the five items and the out-of-scope list above.
+Made:
+
+1. **Code:** new repository `feelgoodinc183/boat-race-tracker`.
+2. **Hosting:** cPanel with Node 22.
+3. **App:** a new phone app is part of the rebuild (see "The phone app").
+4. **Scope:** the five version 1 items and the out-of-scope list, as above.
+
+Still open:
+
+5. **Capacitor** for the app (recommended above), or another approach.
+6. **Android only for version 1**, with iOS after the first real races?
+7. **Google Play developer account and a privacy policy** for location data: needed before
+   store testing in phase 4.
