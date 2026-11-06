@@ -24,8 +24,16 @@ export interface ServerConnectionStatus {
    * refused or not delivered (false), or none was sent yet (null)
    */
   httpSaving: boolean | null;
-  /** Edits that reached neither the live connection nor HTTP since the person last dismissed this */
+  /** Edits the server refused (no Race Officer rights) since the person last dismissed this */
   lostEdits: number;
+  /** Changes kept on this device, waiting for the connection */
+  queuedEdits: number;
+  /** Changes kept because this device may not edit the room right now (sent once it may) */
+  heldEdits: boolean;
+  /** After reconnecting: things another device had changed too, where its version was kept */
+  conflicts: string[];
+  /** After reconnecting: how many kept changes were sent */
+  sentOnReconnect: number;
 }
 
 /** Pings go out every 15 s; this long without any message means the socket is dead */
@@ -39,6 +47,10 @@ export function createServerConnectionMonitor(opts: { now?: () => number; online
     lastHeardAt: 0,
     httpSaving: null,
     lostEdits: 0,
+    queuedEdits: 0,
+    heldEdits: false,
+    conflicts: [],
+    sentOnReconnect: 0,
   };
   let browserOnline = opts.online !== false;
   let socketOpen = false;
@@ -48,7 +60,9 @@ export function createServerConnectionMonitor(opts: { now?: () => number; online
   const set = (patch: Partial<ServerConnectionStatus>) => {
     const next = { ...status, ...patch };
     if (next.state !== status.state) next.since = now();
-    const changed = (Object.keys(next) as (keyof ServerConnectionStatus)[]).some((k) => next[k] !== status[k]);
+    const changed = (Object.keys(next) as (keyof ServerConnectionStatus)[]).some((k) =>
+      Array.isArray(next[k]) ? (next[k] as string[]).join('\u0000') !== ((status[k] as string[]) || []).join('\u0000') : next[k] !== status[k]
+    );
     status = next;
     if (changed) listeners.forEach((cb) => cb(status));
   };
@@ -104,13 +118,28 @@ export function createServerConnectionMonitor(opts: { now?: () => number; online
       if (!socketOpen) set({ state: disconnectedState() });
     },
 
-    /** An edit sent over HTTP because the live connection was down */
+    /** An edit sent over HTTP because the live connection was down: saved, or refused by the server */
     httpEditResult(saved: boolean) {
       set({ httpSaving: saved, lostEdits: saved ? status.lostEdits : status.lostEdits + 1 });
     },
 
+    /** An edit that couldn't be delivered at all and is kept on the device */
+    httpEditQueued() {
+      set({ httpSaving: false });
+    },
+
+    setQueuedEdits(count: number, held = false) {
+      set({ queuedEdits: count, heldEdits: held && count > 0 });
+    },
+
+    /** Kept changes were merged and sent after reconnecting */
+    reconciled(sent: number, conflicts: string[]) {
+      set({ sentOnReconnect: sent, conflicts: conflicts.length ? conflicts : status.conflicts });
+    },
+
+    /** The person has read the "not saved" or "changed on another device" notice */
     clearLostEdits() {
-      set({ lostEdits: 0 });
+      set({ lostEdits: 0, conflicts: [], sentOnReconnect: 0 });
     },
   };
 }

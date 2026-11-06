@@ -108,6 +108,19 @@ import { roomService } from './roomService';
 import { authService } from './authService';
 import { recordRoundTrip, recordServerTimestamp } from './serverClock';
 import { createServerConnectionMonitor, ServerConnectionStatus } from './serverConnection';
+import { createEditSync, EDIT_CHANNELS, EditChannel, SESSION_KEY } from './editSync';
+
+/** localStorage, or null where the browser refuses it (private mode, blocked site data) */
+function safeStorage() {
+  try {
+    const k = '__tmtrac_probe__';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
 
 export type FleetMemberUpdateCallback = (members: HybridFleetMember[]) => void;
 export type DeviceGpsUpdateCallback = (gpsState: DeviceGpsState) => void;
@@ -187,6 +200,8 @@ class HybridDeviceTrackerService {
   private connection = createServerConnectionMonitor({
     online: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
   });
+  // Room edits that couldn't reach the server, kept (also through a reload) until they can
+  private edits = createEditSync({ storage: typeof localStorage === 'undefined' ? null : safeStorage() });
   private connectedPeerCount = 1;
   // Room + PIN last sent to the server, so a PIN unlocked after connecting still reaches the socket
   private joinedRoomCode = '';
@@ -246,6 +261,10 @@ class HybridDeviceTrackerService {
     this.initBroadcastChannel();
     this.initBatteryReporting();
     this.initWebSocketClient();
+
+    this.edits.setRoom(roomService.getActiveRoomCode());
+    this.edits.subscribe(() => this.connection.setQueuedEdits(this.edits.count(), this.connection.get().heldEdits));
+    this.connection.setQueuedEdits(this.edits.count());
 
     // Listen to network online event to flush buffered points on reconnection
     if (typeof window !== 'undefined') {
@@ -351,6 +370,10 @@ class HybridDeviceTrackerService {
 
   public onSessionSync(cb: SessionSyncCallback) {
     this.sessionSyncCallbacks.push(cb);
+    // Reloaded with changes kept from before and no word from the server yet: start from those
+    // changes, so the page doesn't show (and then send) the defaults over them
+    const kept = this.connection.get().lastHeardAt === 0 ? this.edits.pendingSession() : null;
+    if (kept) cb({ sessionId: '', roomCode: roomService.getActiveRoomCode(), ...kept });
     return () => {
       this.sessionSyncCallbacks = this.sessionSyncCallbacks.filter((c) => c !== cb);
     };
@@ -672,6 +695,8 @@ class HybridDeviceTrackerService {
       }
       this.wsConnected = false;
       this.ws = null;
+      // Edits sent after the server last spoke may never have arrived: keep them to send again
+      this.edits.connectionLost(this.connection.get().lastHeardAt);
       this.connection.socketClosed();
       // Batches the server never confirmed go back in the queue for the next connection
       this.requeuePendingBatches();
@@ -763,7 +788,8 @@ class HybridDeviceTrackerService {
                   if (payload.trackers && Array.isArray(payload.trackers)) {
                     payload.trackers.forEach((t: any) => this.handleIncomingFleetPacket(t));
                   }
-                  this.sessionSyncCallbacks.forEach((cb) => cb(payload));
+                  const session = this.reconcileEdits(payload);
+                  this.sessionSyncCallbacks.forEach((cb) => cb(session));
                   // A (re)join may have granted participant rights: retry points the server refused earlier
                   this.flushOfflineBuffer();
                 }
@@ -836,6 +862,7 @@ class HybridDeviceTrackerService {
 
               case 'MARKS_UPDATED': {
                 if (Array.isArray(payload)) {
+                  this.edits.noteServer('marks', payload);
                   this.remoteMarksCallbacks.forEach((cb) => cb(payload));
                 }
                 break;
@@ -843,6 +870,7 @@ class HybridDeviceTrackerService {
 
               case 'RACE_STATE_UPDATED': {
                 if (payload) {
+                  this.edits.noteServer('raceState', payload);
                   this.remoteRaceStateCallbacks.forEach((cb) => cb(payload));
                 }
                 break;
@@ -850,6 +878,7 @@ class HybridDeviceTrackerService {
 
               case 'BOATS_UPDATED': {
                 if (Array.isArray(payload)) {
+                  this.edits.noteServer('boats', payload);
                   this.remoteBoatsCallbacks.forEach((cb) => cb(payload));
                 }
                 break;
@@ -857,6 +886,7 @@ class HybridDeviceTrackerService {
 
               case 'CLASSES_UPDATED': {
                 if (Array.isArray(payload)) {
+                  this.edits.noteServer('classes', payload);
                   this.remoteClassesCallbacks.forEach((cb) => cb(payload));
                 }
                 break;
@@ -864,6 +894,7 @@ class HybridDeviceTrackerService {
 
               case 'SERIES_RACES_UPDATED': {
                 if (Array.isArray(payload)) {
+                  this.edits.noteServer('series', payload);
                   this.remoteSeriesRacesCallbacks.forEach((cb) => cb(payload));
                 }
                 break;
@@ -991,11 +1022,12 @@ class HybridDeviceTrackerService {
     }
     this.joinedRoomCode = roomCode;
     this.joinedRoomPin = effectivePin;
+    this.edits.setRoom(roomCode);
     this.sendWs('JOIN_ROOM', { roomCode, pin: effectivePin });
   }
 
   // HTTP fallback for room edits when the socket is down; carries room, PIN and login like the socket does
-  private postSessionUpdate(endpoint: string, body: unknown) {
+  private postSessionUpdate(endpoint: string, body: unknown, channel?: EditChannel) {
     try {
       const room = roomService.getActiveRoomCode();
       const pin = roomService.getActiveRoomPin();
@@ -1008,12 +1040,69 @@ class HybridDeviceTrackerService {
       })
         .then((res) => {
           if (!res.ok) console.warn(`Room update ${endpoint} rejected by server (HTTP ${res.status})`);
+          if (res.ok && channel) this.edits.noteServer(channel, body);
           this.connection.httpEditResult(res.ok);
         })
-        .catch(() => this.connection.httpEditResult(false));
+        .catch(() => {
+          // Not delivered: keep it on the device and send it when the connection is back
+          if (channel) {
+            this.edits.queue(channel, body);
+            this.connection.httpEditQueued();
+          } else {
+            this.connection.httpEditResult(false);
+          }
+        });
     } catch (e) {
-      this.connection.httpEditResult(false);
+      if (channel) {
+        this.edits.queue(channel, body);
+        this.connection.httpEditQueued();
+      } else {
+        this.connection.httpEditResult(false);
+      }
     }
+  }
+
+  /** Sends one room edit: live connection, else HTTP, else kept on the device */
+  private sendEdit(channel: EditChannel, wsType: string, endpoint: string, payload: unknown) {
+    if (this.sendWs(wsType, payload)) {
+      this.edits.noteSent(channel, payload);
+    } else {
+      this.postSessionUpdate(endpoint, payload, channel);
+    }
+  }
+
+  /**
+   * The server sent the room (connect or rejoin): merge in edits kept on this device and, when
+   * this connection may edit, send them. Returns the state the app should show.
+   */
+  private reconcileEdits(payload: any): any {
+    if (payload.roomCode) this.edits.setRoom(payload.roomCode);
+    const canEdit = payload.canEdit === true || payload.isAdmin === true;
+    for (const c of EDIT_CHANNELS) {
+      if (!this.edits.hasPending(c) && SESSION_KEY[c] in payload) this.edits.noteServer(c, payload[SESSION_KEY[c]]);
+    }
+    if (this.edits.count() === 0) return payload;
+
+    const r = this.edits.reconcile(payload, canEdit);
+    const wsTypes: Record<EditChannel, string> = {
+      boats: 'UPDATE_BOATS', marks: 'UPDATE_MARKS', raceState: 'UPDATE_RACE_STATE', classes: 'UPDATE_CLASSES', series: 'UPDATE_SERIES_RACES',
+    };
+    for (const e of r.toSend) {
+      if (this.sendWs(wsTypes[e.channel], e.payload)) this.edits.noteSent(e.channel, e.payload);
+      else this.edits.queue(e.channel, e.payload);
+    }
+    for (const n of r.notices) {
+      if (this.sendWs('SEND_VHF_NOTICE', n)) this.edits.noteNoticeSent(n);
+      else this.edits.queueNotice(n);
+    }
+    if (canEdit) this.connection.reconciled(r.toSend.length + r.notices.length, r.conflicts);
+    this.connection.setQueuedEdits(this.edits.count(), r.held);
+    // Notices sent now: show them in this device's list too
+    if (r.notices.length) {
+      const have = new Set((r.session.vhfBulletins || []).map((b: any) => b?.id));
+      r.session.vhfBulletins = [...r.notices.filter((n) => !have.has(n.id)), ...(r.session.vhfBulletins || [])];
+    }
+    return r.session;
   }
 
   // Relay a LoRa tracker that is bound to a boat in this room to the room. The caller checks the
@@ -1059,24 +1148,22 @@ class HybridDeviceTrackerService {
 
   // Synchronize Mark Updates across all connected phones & server
   public broadcastMarks(marks: CourseMark[]) {
-    const sent = this.sendWs('UPDATE_MARKS', marks);
+    this.sendEdit('marks', 'UPDATE_MARKS', '/api/session/marks', marks);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'MARKS_UPDATED', payload: marks });
       } catch (e) {}
     }
-    if (!sent) this.postSessionUpdate('/api/session/marks', marks);
   }
 
   // Synchronize Race State & Start Countdown across all phones
   public broadcastRaceState(raceState: Partial<RaceState>) {
-    const sent = this.sendWs('UPDATE_RACE_STATE', raceState);
+    this.sendEdit('raceState', 'UPDATE_RACE_STATE', '/api/session/racestate', raceState);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'RACE_STATE_UPDATED', payload: raceState });
       } catch (e) {}
     }
-    if (!sent) this.postSessionUpdate('/api/session/racestate', raceState);
   }
 
   /**
@@ -1102,36 +1189,35 @@ class HybridDeviceTrackerService {
 
   // Synchronize Fleet Boats across all phones
   public broadcastBoats(boats: Boat[]) {
-    const sent = this.sendWs('UPDATE_BOATS', boats);
+    this.sendEdit('boats', 'UPDATE_BOATS', '/api/session/boats', boats);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'BOATS_UPDATED', payload: boats });
       } catch (e) {}
     }
-    if (!sent) this.postSessionUpdate('/api/session/boats', boats);
   }
 
   // Race classes belong to the room. Not posted on the cross-tab channel: that channel isn't
   // scoped to a room, and the server already sends the update to every tab in this room.
   public broadcastClasses(classes: RaceClassDefinition[]) {
-    const sent = this.sendWs('UPDATE_CLASSES', classes);
-    if (!sent) this.postSessionUpdate('/api/session/classes', classes);
+    this.sendEdit('classes', 'UPDATE_CLASSES', '/api/session/classes', classes);
   }
 
   // Synchronize Official Scoring Series Races across all connected devices in room
   public broadcastSeriesRaces(seriesRaces: CompletedRace[]) {
-    const sent = this.sendWs('UPDATE_SERIES_RACES', seriesRaces);
+    this.sendEdit('series', 'UPDATE_SERIES_RACES', '/api/session/series', seriesRaces);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'SERIES_RACES_UPDATED', payload: seriesRaces });
       } catch (e) {}
     }
-    if (!sent) this.postSessionUpdate('/api/session/series', seriesRaces);
   }
 
   // Synchronize VHF Bulletins across all phones
   public broadcastVhf(bulletin: VhfBulletin) {
-    this.sendWs('SEND_VHF_NOTICE', bulletin);
+    // No HTTP route for notices: kept on the device and sent when the connection is back
+    if (this.sendWs('SEND_VHF_NOTICE', bulletin)) this.edits.noteNoticeSent(bulletin);
+    else this.edits.queueNotice(bulletin);
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({ type: 'VHF_NOTICE_BROADCAST', payload: bulletin });
