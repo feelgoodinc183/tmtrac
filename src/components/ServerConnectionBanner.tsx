@@ -44,6 +44,13 @@ export const ServerConnectionBanner: React.FC<ServerConnectionBannerProps> = ({ 
   const down = status.state !== 'connected';
   const longEnough = down && now - status.since >= BANNER_DELAY_MS;
 
+  // Changes held for lack of rights: say so once the rejoin has had time to grant them
+  useEffect(() => {
+    if (!status.heldEdits || down) return;
+    const t = setTimeout(() => setNow(Date.now()), Math.max(0, status.since + BANNER_DELAY_MS - Date.now()) + 50);
+    return () => clearTimeout(t);
+  }, [status.heldEdits, down, status.since]);
+
   // Re-check once the delay has passed, so the banner appears without waiting for another change
   useEffect(() => {
     if (!down) return;
@@ -74,7 +81,10 @@ export const ServerConnectionBanner: React.FC<ServerConnectionBannerProps> = ({ 
   }, [showReconnected]);
 
   const lost = status.lostEdits;
-  if (!longEnough && !showReconnected && lost === 0) return null;
+  const conflicts = status.conflicts;
+  const held = !down && status.heldEdits && now - status.since >= BANNER_DELAY_MS;
+  const dismissable = !longEnough && (lost > 0 || conflicts.length > 0);
+  if (!longEnough && !showReconnected && !dismissable && !held) return null;
 
   let icon: React.ReactNode;
   let title: string;
@@ -88,22 +98,36 @@ export const ServerConnectionBanner: React.FC<ServerConnectionBannerProps> = ({ 
     title = offline ? 'No internet connection' : status.state === 'connecting' ? 'Can’t reach the server' : 'Reconnecting to the server…';
     if (canEdit) {
       if (status.httpSaving === true) lines.push('Live updates are paused, but your changes are still being saved.');
-      else if (status.httpSaving === false) lines.push('Your changes are not being saved. Wait for the connection before changing the race.');
-      else lines.push('Changes you make now may not be saved. Wait for the connection before changing the race.');
+      else if (status.queuedEdits > 0)
+        lines.push(`Your changes are kept on this device and sent when the connection is back (${status.queuedEdits} waiting). If another device changes the same thing meanwhile, you’ll be told.`);
+      else lines.push('Changes you make now are kept on this device and sent when the connection is back.');
     } else {
       lines.push('Positions and the race clock on this screen may be out of date.');
     }
     if (queuedPoints > 0) lines.push(`${queuedPoints} of this device’s positions are kept here and sent when the connection is back.`);
+  } else if (conflicts.length > 0) {
+    tone = 'warning';
+    icon = <CloudOff className="w-5 h-5" />;
+    title = 'Changed on another device too';
+    const shown = conflicts.slice(0, 5).join(', ') + (conflicts.length > 5 ? ` and ${conflicts.length - 5} more` : '');
+    lines.push(`While this device was offline, another device changed ${shown}. Its version was kept. Check and change again if needed.`);
+    if (status.sentOnReconnect > 0) lines.push('Your other changes were sent.');
   } else if (lost > 0) {
     tone = 'danger';
     icon = <CloudOff className="w-5 h-5" />;
     // No count: one tap can send several updates (switching class sends the race state and more)
     title = 'Some changes were not saved';
-    lines.push('They were made while this device couldn’t reach the server. Check the race and make them again.');
+    lines.push('The server refused them: this device had no Race Officer rights. Unlock with the PIN and make them again.');
+  } else if (held) {
+    tone = 'warning';
+    icon = <CloudOff className="w-5 h-5" />;
+    title = 'Your changes are waiting';
+    lines.push('This device has no Race Officer rights in this room, so its offline changes can’t be sent. Unlock with the Race Officer PIN to send them.');
   } else {
     tone = 'ok';
     icon = <CheckCircle2 className="w-5 h-5" />;
     title = 'Connected again';
+    if (status.sentOnReconnect > 0) lines.push('Changes made while offline were sent.');
   }
 
   const toneClass = {
@@ -115,10 +139,10 @@ export const ServerConnectionBanner: React.FC<ServerConnectionBannerProps> = ({ 
   return (
     <div
       id="server-connection-banner"
-      role={tone === 'danger' && !longEnough ? 'alert' : 'status'}
+      role={dismissable ? 'alert' : 'status'}
       // Only the "not saved" notice has a button; otherwise taps go through to the race controls below
       className={`fixed top-14 sm:top-16 left-1/2 -translate-x-1/2 z-[65] w-[min(92vw,520px)] p-3 rounded-xl bg-surface/95 border shadow-2xl flex items-start gap-3 text-sm ${
-        !longEnough && lost > 0 ? '' : 'pointer-events-none'
+        dismissable ? '' : 'pointer-events-none'
       } ${toneClass}`}
     >
       <span className="shrink-0 mt-0.5" aria-hidden="true">{icon}</span>
@@ -128,7 +152,7 @@ export const ServerConnectionBanner: React.FC<ServerConnectionBannerProps> = ({ 
           <p key={l} className="text-xs text-ink-muted mt-0.5">{l}</p>
         ))}
       </div>
-      {!longEnough && lost > 0 && (
+      {dismissable && (
         <button
           type="button"
           onClick={() => {
