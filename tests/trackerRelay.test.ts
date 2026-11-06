@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTrackerRelayGate } from '../src/services/trackerRelay';
+import { createTrackerRelayGate, isFixFresh, nodeFixTime, MAX_FIX_AGE_MS } from '../src/services/trackerRelay';
 import { Boat, MeshtasticNode } from '../src/types/regatta';
 
 const node = (o: Partial<MeshtasticNode> = {}): MeshtasticNode => ({
@@ -91,6 +91,27 @@ test('the node\'s binding wins over another boat still naming it (stale nodeId)'
   const gate = createTrackerRelayGate();
   const d = gate.decide(node({ boundBoatId: 'b2' }), [boat('b1', '!a1b2c3d4'), boat('b2', '!a1b2c3d4')]);
   assert.equal(d.boundBoatId, 'b2');
+});
+
+test('isFixFresh: within 15 min only; an unknown or zero time is not fresh', () => {
+  const now = 1_793_943_947_000;
+  assert.equal(isFixFresh(now - 60_000, now), true);
+  assert.equal(isFixFresh(now - MAX_FIX_AGE_MS, now), true);
+  assert.equal(isFixFresh(now - MAX_FIX_AGE_MS - 1, now), false);
+  // A tracker that rebooted re-sends its last saved fix: here one from ~70 days earlier (seen live on RM2)
+  assert.equal(isFixFresh(1_787_904_155_000, now), false);
+  assert.equal(isFixFresh(0, now), false);
+  assert.equal(isFixFresh(undefined, now), false);
+  assert.equal(isFixFresh(null, now), false);
+  assert.equal(isFixFresh(Number.NaN, now), false);
+});
+
+test('nodeFixTime: the fix time wins over when the node was heard', () => {
+  assert.equal(nodeFixTime({ positionTime: 1000, lastPingTime: 9000 }), 1000);
+  assert.equal(nodeFixTime({ positionTime: undefined, lastPingTime: 9000 }), 9000);
+  // Heard just now (telemetry) but the fix itself is old: not fresh
+  const now = Date.now();
+  assert.equal(isFixFresh(nodeFixTime({ positionTime: now - 70 * 24 * 3600_000, lastPingTime: now })), false);
 });
 
 test('forget() makes the next report count as new (used on bind, unbind and delete)', () => {

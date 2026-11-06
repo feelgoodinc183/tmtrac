@@ -76,7 +76,7 @@ import { roomService } from './services/roomService';
 import { serverNow } from './services/serverClock';
 import { getClassRaceState } from './services/classRaceState';
 import { computeLiveBoatStatus, createTrackerFixApplier, TrackerFix } from './services/trackerFix';
-import { createTrackerRelayGate } from './services/trackerRelay';
+import { createTrackerRelayGate, isFixFresh, nodeFixTime } from './services/trackerRelay';
 import { canonicalNodeId, clearLegacyTrackerIds, sameNodeId } from './utils/nodeId';
 import {
   addCourseMark,
@@ -2011,9 +2011,12 @@ export default function App() {
       }
     }
 
-    // 2. Check nodes state
+    // 2. Check nodes state. Only a fresh fix: a radio's NodeDB can hold positions from hours or
+    // weeks ago (a tracker re-sends its last saved fix when it powers up), and binding or saving a
+    // boat must not move it there. Without a fresh fix the boat stays put until one arrives.
     const foundNode = nodes.find((n) => sameNodeId(n.id, nodeId));
-    if (foundNode && isValidNumber(foundNode.lat) && isValidNumber(foundNode.lng) && foundNode.lat !== 0 && foundNode.lng !== 0) {
+    if (foundNode && isValidNumber(foundNode.lat) && isValidNumber(foundNode.lng) && foundNode.lat !== 0 && foundNode.lng !== 0
+      && isFixFresh(nodeFixTime(foundNode))) {
       return {
         lat: foundNode.lat!,
         lng: foundNode.lng!,
@@ -2029,7 +2032,8 @@ export default function App() {
         nodeId.includes(m.deviceId.slice(-4)) ||
         `!DEV-${m.deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}` === nodeId
     );
-    if (foundMember && isValidNumber(foundMember.lat) && isValidNumber(foundMember.lng) && foundMember.lat !== 0 && foundMember.lng !== 0) {
+    if (foundMember && isValidNumber(foundMember.lat) && isValidNumber(foundMember.lng) && foundMember.lat !== 0 && foundMember.lng !== 0
+      && isFixFresh(foundMember.timestamp)) {
       return {
         lat: foundMember.lat,
         lng: foundMember.lng,

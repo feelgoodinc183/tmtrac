@@ -17,7 +17,7 @@ const store: Record<string, string> = {};
 
 const { MeshtasticBleMqttService } = await import('../src/services/meshtasticBleMqttService');
 const { decodeFromRadio } = await import('../src/services/meshtastic/protocol');
-const { createTrackerRelayGate } = await import('../src/services/trackerRelay');
+const { createTrackerRelayGate, isFixFresh, nodeFixTime } = await import('../src/services/trackerRelay');
 
 const RM1 = '!dd69e9a8'; // the T-Echo on USB
 const RM2 = '!a12264da'; // the other T-Echo, heard over LoRa
@@ -105,6 +105,14 @@ test('replay → relay gate: RM2\'s hours-old NodeDB fix is not relayed on conne
   const boats = [boat('b1', RM2)];
   const relayed = [...nodes.values()].filter((n) => gate.decide(n, boats).relay).map((n) => n.id);
   assert.deepEqual(relayed, []);
+});
+
+test('replay: binding RM2 to a boat must not take its NodeDB fix (the check resolveTrackerPosition uses)', () => {
+  const { nodes } = replay();
+  const rm2 = nodes.get(RM2)!;
+  assert.ok(Number.isFinite(rm2.lat), 'RM2 has a position in the NodeDB');
+  assert.equal(isFixFresh(nodeFixTime(rm2)), false, 'but it is hours old, so the boat stays put');
+  assert.equal(isFixFresh(nodeFixTime(rm2), rm2.positionTime! + 60_000), true, 'the same fix a minute after it was taken would be used');
 });
 
 test('replay → relay gate: only the bound tracker is relayed; strangers and unbound RM2 are not', () => {
