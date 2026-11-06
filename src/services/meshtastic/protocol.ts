@@ -36,10 +36,14 @@ export const HARDWARE_MODEL_NAMES: Record<number, string> = {
   7: 'LilyGO T-Echo',
   9: 'RAK WisBlock 4631',
   31: 'Station G2',
+  33: 'LilyGO T-Echo Plus',
   43: 'Heltec V3',
+  44: 'Heltec Wireless Stick Lite V3',
   48: 'Heltec Wireless Tracker',
   50: 'LilyGO T-Deck',
   71: 'Seeed T1000-E',
+  81: 'Seeed XIAO ESP32-S3',
+  99: 'Seeed Wio Tracker L1',
   110: 'Heltec V4',
 };
 
