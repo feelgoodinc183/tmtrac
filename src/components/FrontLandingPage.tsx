@@ -7,13 +7,12 @@ import {
   Smartphone,
   ChevronRight,
   Eye,
-  LogIn,
   CheckCircle2,
   Wind,
+  CloudOff,
   Play,
   Map,
   Server,
-  Zap,
 } from 'lucide-react';
 import { PricingPackage, UserAccount } from '../types/regatta';
 import { APP_VERSION } from '../appVersion';
@@ -286,6 +285,12 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
     }
   };
 
+  // The free plan's limits, from the live plan so the hero never promises more than it gives
+  const freePkg = packages.find((p) => p.priceAmount === 0 && p.isActive !== false);
+  const freeLine = freePkg
+    ? `Free for ${freePkg.maxActiveRooms === 1 ? 'one regatta' : `${freePkg.maxActiveRooms} regattas`} and up to ${freePkg.maxBoatsPerRoom} boats.`
+    : 'Free to start.';
+
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-cyan-500 selection:text-white antialiased">
       {/* Top Floating Glass Navigation Header */}
@@ -305,9 +310,9 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
 
           {/* Center Links (Minimal) */}
           <nav className="hidden md:flex items-center space-x-7 text-xs font-semibold text-slate-600">
-            <a href="#features" className="hover:text-cyan-600 transition-colors">Platform</a>
-            <a href="#radar" className="hover:text-cyan-600 transition-colors">Live Radar</a>
-            <a href="#pricing" className="hover:text-cyan-600 transition-colors">Pricing & Plans</a>
+            <a href="#features" className="hover:text-cyan-600 transition-colors">Features</a>
+            <a href="#radar" className="hover:text-cyan-600 transition-colors">Demo</a>
+            <a href="#pricing" className="hover:text-cyan-600 transition-colors">Plans</a>
             <button
               onClick={() => {
                 setCodeError(null);
@@ -316,7 +321,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
               className="hover:text-cyan-600 transition-colors flex items-center space-x-1"
             >
               <Eye className="w-3.5 h-3.5 text-cyan-600" />
-              <span>Watch Live</span>
+              <span>Watch a race</span>
             </button>
           </nav>
 
@@ -339,14 +344,14 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   className="flex items-center space-x-1.5 text-xs font-bold px-3.5 py-1.5 rounded-lg bg-orange-700 hover:bg-orange-800 text-white border border-orange-800 transition-all shadow-sm shadow-orange-900/20"
                 >
                   <Map className="w-3.5 h-3.5 text-white shrink-0" />
-                  <span>ENTER</span>
+                  <span>Open the app</span>
                 </button>
                 {onLogoutClick && (
                   <button
                     onClick={onLogoutClick}
                     className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1.5 transition-colors font-medium"
                   >
-                    Logout
+                    Sign out
                   </button>
                 )}
               </div>
@@ -356,7 +361,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   onClick={onLoginClick}
                   className="text-xs font-semibold px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-all shadow-sm shadow-cyan-600/20"
                 >
-                  Sign In
+                  Sign in
                 </button>
               </div>
             )}
@@ -380,73 +385,73 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-950 mb-6 leading-[1.12]">
-            Precision Sailboat Tracker. <br />
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-950 mb-6 leading-[1.12] text-balance">
+            Run your regatta <br className="hidden sm:block" />
             <span className="bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700 bg-clip-text text-transparent">
-              Offshore & Inshore.
+              from one screen.
             </span>
           </h1>
 
           {/* Subtitle with Minimalist Tags */}
           <p className="text-base sm:text-lg text-slate-600 font-normal max-w-2xl mx-auto mb-10 leading-relaxed">
-            The multi-tenant sailing command platform. Live GNSS boat tracking, IRC, ORC and Portsmouth scoring, and spectator broadcast for yacht clubs and championship regattas.
+            Track every boat over LoRa radio or a phone, run starts, recalls and finishes, and score IRC, ORC and Portsmouth. Families and sponsors follow the race live.
           </p>
 
-          {/* CORE USER CHOICES (View Race & Login) */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto mb-12">
-            {/* View Race (Spectator) */}
+          {/* Clubs start here; spectators have their own way in */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto mb-4">
+            <button
+              onClick={() => onRegisterClick('FREE')}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span>Start free</span>
+              <ChevronRight className="w-4 h-4 text-white" />
+            </button>
             <button
               onClick={() => {
                 setCodeError(null);
                 setSpectatorModalOpen(true);
               }}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Eye className="w-4 h-4 text-white" />
-              <span>View Race (Spectator)</span>
-            </button>
-
-            {/* Login */}
-            <button
-              onClick={onLoginClick}
               className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-semibold px-7 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              <LogIn className="w-4 h-4 text-slate-500" />
-              <span>Login</span>
+              <Eye className="w-4 h-4 text-slate-500" />
+              <span>Watch a race</span>
             </button>
           </div>
+          <p className="text-sm text-slate-600 mb-12">
+            {freeLine} Already have an account?{' '}
+            <button onClick={onLoginClick} className="font-semibold text-cyan-700 hover:underline">
+              Sign in
+            </button>
+          </p>
 
-          {/* Quick Stats Banner */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto pt-6 border-t border-slate-200 text-left">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
-              <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
-                <span>Smart Race Control</span>
-                <Zap className="w-3.5 h-3.5 text-cyan-600" />
-              </div>
-              <div className="text-xs text-slate-500 font-medium">Virtual Boundary Sensor </div>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
-              <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
-                <span>Mesh Network</span>
-                <Radio className="w-3.5 h-3.5 text-sky-600" />
-              </div>
-              <div className="text-xs text-slate-500 font-medium">LoRa radio + mobile data</div>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
-              <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
-                <span>Auto-Rank</span>
-                <Trophy className="w-3.5 h-3.5 text-amber-600" />
-              </div>
-              <div className="text-xs text-slate-500 font-medium">IRC, ORC & Portsmouth</div>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
-              <div className="text-lg font-bold text-slate-950 flex items-center space-x-1.5">
-                <span>Share Live Race</span>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-              <div className="text-xs text-slate-500 font-medium">Live Data Telemetry</div>
-            </div>
-          </div>
+          {/* What sets it apart, in the race office's own terms */}
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto pt-6 border-t border-slate-200 text-left">
+            {[
+              {
+                icon: <Radio className="w-4 h-4 text-cyan-700" />,
+                title: 'Tracks without phone signal',
+                body: 'Meshtastic LoRa radios carry positions across open water. Any phone can be a tracker too.',
+              },
+              {
+                icon: <Trophy className="w-4 h-4 text-amber-600" />,
+                title: 'Starts, recalls and finishes',
+                body: 'Start sequence with AP, X flag and general recall. Finishes by GPS or one tap, timed from each class start.',
+              },
+              {
+                icon: <CloudOff className="w-4 h-4 text-emerald-600" />,
+                title: 'Keeps working when signal drops',
+                body: 'Changes made offline are kept on the device and sent when the connection is back.',
+              },
+            ].map((d) => (
+              <li key={d.title} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="flex items-center gap-2 font-bold text-slate-950">
+                  {d.icon}
+                  <span>{d.title}</span>
+                </div>
+                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{d.body}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -617,7 +622,15 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
         </div>
 
         {loadingPackages ? (
-          <div className="text-center py-12 text-slate-500 text-xs">Loading live package tiers...</div>
+          <div className="text-center py-12 text-slate-500 text-sm">Loading plans…</div>
+        ) : packages.length === 0 ? (
+          <div className="text-center py-12 text-slate-600 text-sm">
+            Plans couldn't be loaded. Refresh the page, or{' '}
+            <button onClick={() => onRegisterClick('FREE')} className="font-semibold text-cyan-700 hover:underline">
+              start free
+            </button>{' '}
+            and see them after signing up.
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {packages.map((pkg) => {
@@ -638,10 +651,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                   )}
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-bold text-slate-900">{pkg.displayTitle}</h3>
-                      <span className="text-xs text-slate-400 font-mono uppercase">{pkg.tierKey}</span>
-                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">{pkg.displayTitle}</h3>
 
                     <p className="text-xs text-slate-600 mb-6 min-h-[36px]">{pkg.description}</p>
 
@@ -691,7 +701,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
                         : 'bg-slate-900 hover:bg-slate-800 text-white'
                     }`}
                   >
-                    {pkg.priceAmount === 0 ? 'Start Free' : `Choose ${pkg.displayTitle}`}
+                    {pkg.priceAmount === 0 ? 'Start free' : `Choose ${pkg.displayTitle}`}
                   </button>
                 </div>
               );
@@ -765,19 +775,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {activeEvents.length === 0 ? (
-                <div
-                  onClick={() => {
-                    onViewRaceClick('RLIR26');
-                    setSpectatorModalOpen(false);
-                  }}
-                  className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 cursor-pointer transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-xs text-slate-900">Royal Langkawi Regatta (RLIR26)</span>
-                    <span className="text-xs text-cyan-700 font-mono font-medium">DEFAULT</span>
-                  </div>
-                  <div className="text-xs text-slate-500">Kuah Bay, Langkawi (RLYC)</div>
-                </div>
+                <p className="text-xs text-slate-500">No public races right now. Ask the race office for the event code.</p>
               ) : (
                 activeEvents.map((ev) => (
                   <div
@@ -813,15 +811,13 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
           </div>
 
           <div className="flex items-center space-x-6 text-slate-600">
-            <button onClick={() => setSpectatorModalOpen(true)} className="hover:text-cyan-600 transition-colors">Spectator View</button>
-            <button onClick={onLoginClick} className="hover:text-cyan-600 transition-colors">Club Admin</button>
-            {currentUser?.isSuperAdmin ? (
+            <button onClick={() => setSpectatorModalOpen(true)} className="hover:text-cyan-600 transition-colors">Watch a race</button>
+            {!currentUser && (
+              <button onClick={onLoginClick} className="hover:text-cyan-600 transition-colors">Sign in</button>
+            )}
+            {currentUser?.isSuperAdmin && (
               <button onClick={onSuperAdminClick} className="text-purple-600 font-semibold hover:text-purple-700 transition-colors">
                 Super Admin Panel
-              </button>
-            ) : (
-              <button onClick={onLoginClick} className="hover:text-slate-900 text-xs transition-colors">
-                Super Admin Access
               </button>
             )}
           </div>
