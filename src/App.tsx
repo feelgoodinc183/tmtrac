@@ -611,7 +611,8 @@ export default function App() {
       setBoats((prevBoats) => {
         let hasChange = false;
         const updated = prevBoats.map((b) => {
-          if (sameNodeId(b.nodeId, payload.deviceId) || (payload.boundBoatId && b.id === payload.boundBoatId)) {
+          // The server names the bound boat; fall back to the node id only for older servers that don't
+          if (payload.boundBoatId ? b.id === payload.boundBoatId : sameNodeId(b.nodeId, payload.deviceId)) {
             hasChange = true;
             const oldTrail = b.trail || [];
             const newCoords = payload.points.map((p) => ({ lat: p.lat, lng: p.lng }));

@@ -11,6 +11,13 @@ export interface TrackerRelayDecision {
 }
 
 const NONE: TrackerRelayDecision = { boundBoatId: null, relay: false, applyFix: false };
+
+/**
+ * A fix older than this is not shared or scored. On connect a radio hands over its whole NodeDB,
+ * including positions it heard hours ago; those must not show as live or move a boat. 15 min is
+ * Meshtastic's default position interval, so a tracker on default settings always passes.
+ */
+export const MAX_FIX_AGE_MS = 15 * 60_000;
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 /**
@@ -24,8 +31,9 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
  * - A change of boat is shared at once.
  * - `forget` is called when a tracker is bound, unbound or deleted, so its next update counts as new.
  */
-export function createTrackerRelayGate(opts: { relayIntervalMs?: number; now?: () => number } = {}) {
+export function createTrackerRelayGate(opts: { relayIntervalMs?: number; maxFixAgeMs?: number; now?: () => number } = {}) {
   const relayIntervalMs = opts.relayIntervalMs ?? 60_000;
+  const maxFixAgeMs = opts.maxFixAgeMs ?? MAX_FIX_AGE_MS;
   const now = opts.now ?? Date.now;
   const lastFix = new Map<string, string>();
   const lastRelay = new Map<string, { at: number; boatId: string }>();
@@ -33,15 +41,20 @@ export function createTrackerRelayGate(opts: { relayIntervalMs?: number; now?: (
   return {
     decide(node: MeshtasticNode, boats: Boat[]): TrackerRelayDecision {
       if (!isNum(node.lat) || !isNum(node.lng) || (node.lat === 0 && node.lng === 0)) return NONE;
-      const boat = boats.find((b) => (node.boundBoatId && b.id === node.boundBoatId) || sameNodeId(b.nodeId, node.id));
+      // The node's own binding wins; a boat still naming the node (a stale nodeId) is only the fallback
+      const boat = (node.boundBoatId ? boats.find((b) => b.id === node.boundBoatId) : undefined)
+        ?? boats.find((b) => sameNodeId(b.nodeId, node.id));
       if (!boat) return NONE;
+
+      const t = now();
+      const fixTime = node.positionTime ?? node.lastPingTime;
+      if (!isNum(fixTime) || t - fixTime > maxFixAgeMs) return NONE;
 
       const id = canonicalNodeId(node.id);
       const fixKey = `${node.lat},${node.lng},${isNum(node.speedKt) ? node.speedKt : ''}`;
       const applyFix = lastFix.get(id) !== fixKey;
       if (applyFix) lastFix.set(id, fixKey);
 
-      const t = now();
       const prev = lastRelay.get(id);
       const relay = applyFix || !prev || prev.boatId !== boat.id || t - prev.at >= relayIntervalMs;
       if (relay) lastRelay.set(id, { at: t, boatId: boat.id });

@@ -219,6 +219,9 @@ export interface MeshtasticNode {
   positionErrorMeters?: number | null;
   /** Where the current position came from: heard by this device's radio, or the server's MQTT bridge */
   positionSource?: 'BLE' | 'MQTT';
+  /** When the current position was taken (the tracker's GPS time if it sent one, else when it was
+   *  heard). A radio's NodeDB can hold a fix from hours ago; this is how that is told apart. */
+  positionTime?: number;
   snr?: number;           // dB, e.g. +4.5; missing until a packet reports it
   rssi?: number;          // dBm, e.g. -78
   hops?: number;          // 0-4

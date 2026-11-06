@@ -943,6 +943,7 @@ export class MeshtasticBleMqttService {
       // A new position brings its own precision (exact unless the packet said otherwise)
       positionErrorMeters: hasNewPosition ? (partial.positionErrorMeters ?? null) : existing?.positionErrorMeters,
       positionSource: hasNewPosition ? source : existing?.positionSource,
+      positionTime: hasNewPosition ? (partial.positionTime ?? partial.lastPingTime ?? Date.now()) : existing?.positionTime,
       snr: partial.snr ?? existing?.snr,
       rssi: partial.rssi ?? existing?.rssi,
       hops: partial.hops ?? existing?.hops,
@@ -1058,6 +1059,12 @@ export class MeshtasticBleMqttService {
     const lastPingTime = isLocal
       ? Date.now()
       : (ni.lastHeard && ni.lastHeard > 0 ? Math.min(ni.lastHeard * 1000, Date.now()) : undefined);
+    // A NodeDB position is whatever the radio last heard, possibly hours ago: its GPS time if it
+    // has one, else when the node was last heard. With neither, its age is unknown (0 = treat as old).
+    const posSec = pos?.timestamp || pos?.time;
+    const positionTime = latLng
+      ? (posSec && posSec > 1_000_000_000 ? Math.min(posSec * 1000, Date.now()) : (isLocal ? 0 : lastPingTime ?? 0))
+      : undefined;
 
     const node = this.upsertDiscoveredNode(id, {
       longName: ni.user?.longName || (isLocal ? this.connectedDeviceName || undefined : undefined),
@@ -1065,6 +1072,7 @@ export class MeshtasticBleMqttService {
       hardwareModel: hardwareModelName(ni.user?.hwModel),
       lat: latLng?.lat,
       lng: latLng?.lng,
+      positionTime,
       positionErrorMeters: latLng ? positionErrorMeters(pos?.precisionBits) ?? null : undefined,
       altitudeMeters: pos?.altitude,
       speedKt: pos ? positionSpeedKt(pos) : undefined,
@@ -1141,6 +1149,7 @@ export class MeshtasticBleMqttService {
           // GPS time of the fix if the tracker sent one, else when we received it
           const gpsSec = pos.timestamp || pos.time;
           const fixTime = gpsSec && gpsSec > 1_000_000_000 ? Math.min(gpsSec * 1000, Date.now()) : Date.now();
+          updates.positionTime = fixTime;
           const buf = this.nodePositionBuffers.get(senderId) || [];
           buf.push({ lat: latLng.lat, lng: latLng.lng, speedKt, headingDeg, altitudeMeters: pos.altitude ?? null, timestamp: fixTime });
           if (buf.length > 2000) buf.shift();

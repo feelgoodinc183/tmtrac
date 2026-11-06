@@ -754,7 +754,8 @@ async function startServer() {
               const targetBoatId = payload.boundBoatId || existing.boundBoatId;
               if (targetBoatId && Array.isArray(currentRoom.boats)) {
                 currentRoom.boats = currentRoom.boats.map((b: any) => {
-                  if (b.id === targetBoatId || b.nodeId === payload.deviceId) {
+                  // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
+                  if (b.id === targetBoatId) {
                     const oldBoatTrail = b.trail || [];
                     return {
                       ...b,
@@ -2177,7 +2178,8 @@ async function startServer() {
       const targetBoatId = payload.boundBoatId || existing.boundBoatId;
       if (targetBoatId && Array.isArray(room.boats)) {
         room.boats = room.boats.map((b: any) => {
-          if (b.id === targetBoatId || b.nodeId === payload.deviceId) {
+          // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
+          if (b.id === targetBoatId) {
             const oldBoatTrail = b.trail || [];
             return {
               ...b,
