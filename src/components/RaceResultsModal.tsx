@@ -1,3 +1,4 @@
+import { csvBlob, csvCell, csvRows, csvTextCell } from '../services/csv';
 import React, { useState, useMemo, useEffect, useId } from 'react';
 import { Boat, RaceClassDefinition, RaceState, CompletedRace, SeriesStanding } from '../types/regatta';
 import {
@@ -28,6 +29,7 @@ import {
   buildRaceSnapshotFromBoats,
   exportToWorldSailingXml,
   exportToSailwaveCsv,
+  scoreForRace,
 } from '../services/scoringService';
 import { DialogFrame } from './ui/Dialog';
 
@@ -316,25 +318,28 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
         'Class',
         'Skipper',
         'Rating',
-        ...seriesRaces.map((r) => `R${r.raceNumber} Pts`),
+        ...classSeriesRaces.map((r) => `R${r.raceNumber} Pts`),
         'Total Gross Pts',
         'Nett Pts',
       ];
 
       rows = seriesStandings.map((s) => {
-        const racePointsCols = s.raceScores.map((score) =>
-          score.isDiscarded ? `"[${safeFixed(score.points, 1)}]"` : `"${safeFixed(score.points, 1)}"`
-        );
+        // One column per series race, matched by race (a boat may have no score in some)
+        const racePointsCols = classSeriesRaces.map((race) => {
+          const score = scoreForRace(s, race);
+          if (!score) return csvCell('');
+          return csvCell(score.isDiscarded ? `[${safeFixed(score.points, 1)}]` : safeFixed(score.points, 1));
+        });
         return [
-          s.seriesRank.toString(),
-          `"${s.sailNumber}"`,
-          `"${s.boatName}"`,
-          `"${s.class}"`,
-          `"${s.skipper}"`,
-          safeFixed(s.handicapRating, 3, '1.000'),
+          csvCell(s.seriesRank),
+          csvTextCell(s.sailNumber),
+          csvTextCell(s.boatName),
+          csvTextCell(s.class),
+          csvTextCell(s.skipper),
+          csvCell(safeFixed(s.handicapRating, 3, '1.000')),
           ...racePointsCols,
-          `"${safeFixed(s.totalPoints, 1)}"`,
-          `"${safeFixed(s.nettPoints, 1)}"`,
+          csvCell(safeFixed(s.totalPoints, 1)),
+          csvCell(safeFixed(s.nettPoints, 1)),
         ];
       });
 
@@ -378,18 +383,18 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
           .join(' | ');
 
         return [
-          (b.status === 'FINISHED' ? idx + 1 : b.status).toString(),
-          `"${sail}"`,
-          `"${name}"`,
-          `"${cls}"`,
-          `"${skp}"`,
-          stat,
-          `"${el}"`,
-          rat,
-          `"${cor}"`,
-          `"${deltaStr}"`,
-          `"${pts}"`,
-          `"${roundingsStr}"`,
+          csvCell(b.status === 'FINISHED' ? idx + 1 : b.status),
+          csvTextCell(sail),
+          csvTextCell(name),
+          csvTextCell(cls),
+          csvTextCell(skp),
+          csvCell(stat),
+          csvCell(el),
+          csvCell(rat),
+          csvCell(cor),
+          csvCell(deltaStr),
+          csvCell(pts),
+          csvCell(roundingsStr),
         ];
       });
 
@@ -397,14 +402,15 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
       filename = `Official_${raceLabel}_Results_${selectedClass}_${new Date().toISOString().slice(0, 10)}.csv`;
     }
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    // A file, not a data: URL (a '#' anywhere in a name used to cut the file short there)
+    const url = URL.createObjectURL(csvBlob(csvRows([headers.map(csvCell), ...rows])));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', filename);
+    link.href = url;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     setShowExportMenu(false);
     showToast(`Downloaded ${filename}`);
   };
@@ -452,7 +458,7 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
       validRaces
     );
 
-    const blob = new Blob([sailwaveContent], { type: 'text/csv;charset=utf-8' });
+    const blob = csvBlob(sailwaveContent);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -1136,9 +1142,13 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
                                 </td>
 
                                 {/* Individual Race Score Columns */}
-                                {standing.raceScores.map((score, sIdx) => (
-                                  <td key={sIdx} className="py-3 text-center px-2">
-                                    {score.isDiscarded ? (
+                                {classSeriesRaces.map((race) => {
+                                  const score = scoreForRace(standing, race);
+                                  return (
+                                  <td key={race.id} className="py-3 text-center px-2">
+                                    {!score ? (
+                                      <span className="text-ink-muted">–</span>
+                                    ) : score.isDiscarded ? (
                                       <span
                                         className="px-1.5 py-0.5 rounded bg-surface/40 text-danger-ink/70 line-through text-xs border border-danger-ink/30"
                                         title="Discarded worst race"
@@ -1157,7 +1167,8 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({
                                       </span>
                                     )}
                                   </td>
-                                ))}
+                                  );
+                                })}
 
                                 <td className="py-3 text-right text-ink-muted">
                                   {safeFixed(standing.totalPoints, 1)}

@@ -1,3 +1,4 @@
+import { csvCell, csvRows, csvTextCell } from './csv';
 import { Boat, BoatRaceResult, BoatStatus, CompletedRace, SeriesStanding, SeriesScoreEntry } from '../types/regatta';
 
 /**
@@ -331,6 +332,14 @@ export function exportToWorldSailingXml(
 }
 
 /**
+ * A boat's score in one race of the series, found by race rather than by position: a list of
+ * columns and a boat's own score list can hold different races.
+ */
+export function scoreForRace(standing: SeriesStanding, race: Pick<CompletedRace, 'id' | 'raceNumber'>): SeriesScoreEntry | undefined {
+  return standing.raceScores.find((rs) => (rs.raceId ? rs.raceId === race.id : rs.raceNumber === race.raceNumber));
+}
+
+/**
  * Generates a Sailwave-compatible CSV exchange string
  */
 export function exportToSailwaveCsv(
@@ -339,21 +348,29 @@ export function exportToSailwaveCsv(
   standings: SeriesStanding[],
   races: CompletedRace[]
 ): string {
-  const raceCols = races.map((_, i) => `"R${i + 1}"`).join(',');
-  let csv = `"Rank","Boat","SailNo","Class","Rating","HelmName",${raceCols},"Total","Nett"\n`;
-
-  standings.forEach((s) => {
-    const scores = races.map((_, i) => {
-      const entry = s.raceScores[i];
-      if (!entry) return '""';
-      if (entry.isDiscarded) return `"[${entry.points}]"`;
-      return `"${entry.points}"`;
-    }).join(',');
-
-    csv += `"${s.seriesRank}","${escapeCsv(s.boatName)}","${escapeCsv(s.sailNumber)}","${escapeCsv(s.class)}","${s.handicapRating || 1.0}","${escapeCsv(s.skipper || '')}",${scores},"${s.totalPoints}","${s.nettPoints}"\n`;
+  const header = ['Rank', 'Boat', 'SailNo', 'Class', 'Rating', 'HelmName', ...races.map((r, i) => `R${r.raceNumber || i + 1}`), 'Total', 'Nett'].map(csvCell);
+  const rows = standings.map((s) => {
+    // Matched by race, not by position: the race list here may be filtered differently
+    const scores = races.map((race) => {
+      const entry = scoreForRace(s, race);
+      if (!entry) return csvCell('');
+      // Points, with the scoring code for anything but a finish (e.g. "7 DNF"); discards in brackets
+      const score = entry.status && entry.status !== 'FINISHED' ? `${entry.points} ${entry.status}` : `${entry.points}`;
+      return csvCell(entry.isDiscarded ? `[${score}]` : score);
+    });
+    return [
+      csvCell(s.seriesRank),
+      csvTextCell(s.boatName),
+      csvTextCell(s.sailNumber),
+      csvTextCell(s.class),
+      csvCell(s.handicapRating || 1.0),
+      csvTextCell(s.skipper || ''),
+      ...scores,
+      csvCell(s.totalPoints),
+      csvCell(s.nettPoints),
+    ];
   });
-
-  return csv;
+  return csvRows([header, ...rows]);
 }
 
 /**
@@ -438,6 +455,3 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function escapeCsv(str: string): string {
-  return String(str).replace(/"/g, '""');
-}

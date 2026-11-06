@@ -1,6 +1,7 @@
 // Individual recall (X flag, RRS 29.1) and recording finishes by hand.
 import { Boat, BoatStatus, ClassRaceStatus, CourseMark } from '../types/regatta';
 import { isFinishMark, isSequentialCourseMark, isStartMark } from './courseService';
+import { correctedSeconds as correctedTime } from './handicap';
 
 /** RRS 29.1: X comes down once every recalled boat has returned, and no later than 4 minutes after the start */
 export const X_FLAG_MAX_MS = 4 * 60 * 1000;
@@ -115,7 +116,7 @@ export function recordFinish(b: Boat, at: number, startTime: number | undefined)
     finishTime: at,
     statusBeforeFinish: b.status,
     elapsedSeconds: elapsed,
-    correctedSeconds: elapsed * (b.handicapRating || 1),
+    correctedSeconds: correctedTime(elapsed, b.handicapSystem, b.handicapRating),
   };
 }
 
@@ -127,7 +128,7 @@ export function undoFinish(b: Boat, now: number, startTime: number | undefined):
     ...rest,
     status: statusBeforeFinish && statusBeforeFinish !== 'FINISHED' ? statusBeforeFinish : 'RACING',
     elapsedSeconds: elapsed,
-    correctedSeconds: elapsed * (b.handicapRating || 1),
+    correctedSeconds: correctedTime(elapsed, b.handicapSystem, b.handicapRating),
   };
 }
 

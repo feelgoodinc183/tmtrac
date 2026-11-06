@@ -1,3 +1,5 @@
+import { DEFAULT_CURRENCY, DEFAULT_CURRENCY_SYMBOL } from './packages';
+import { EVENT_PASS_PRICE } from '../utils/pricing';
 import express from 'express';
 import Stripe from 'stripe';
 import { db, insertAuditLog, updateTenantSubscription, adjustTenantEventPasses, getPackageById } from './db';
@@ -42,8 +44,8 @@ export function registerStripeRoutes(app: express.Express, options: StripeRouteO
       mode: isLive ? 'live' : (stripeSecretKey ? 'test' : 'simulator'),
       publishableKey: stripePublishableKey,
       webhookConfigured: !!stripeWebhookSecret,
-      currency: 'USD',
-      currencySymbol: '$',
+      currency: DEFAULT_CURRENCY,
+      currencySymbol: DEFAULT_CURRENCY_SYMBOL,
     });
   });
 
@@ -72,11 +74,13 @@ export function registerStripeRoutes(app: express.Express, options: StripeRouteO
 
       // Price determination
       let priceInCents = 4900;
+      // Charged in the plan's own currency (the amount is in that currency's smallest unit)
+      const chargeCurrency = String(pkg?.currency || DEFAULT_CURRENCY).toLowerCase();
       let displayTitle = 'TMTRAC Club Subscription';
       let description = 'Real-time telemetry, fleet tracking, and race officer management.';
 
       if (isEventPass) {
-        priceInCents = Math.round((pkg?.priceAmount || 29) * 100);
+        priceInCents = Math.round((pkg?.priceAmount || EVENT_PASS_PRICE) * 100);
         displayTitle = pkg?.displayTitle || 'TMTRAC Single Regatta Event Pass';
         description = 'One-time unlock for a high-capacity regatta event with live 4G/LoRa tracking.';
       } else if (pkg) {
@@ -128,7 +132,7 @@ export function registerStripeRoutes(app: express.Express, options: StripeRouteO
           line_items: [
             {
               price_data: {
-                currency: 'usd',
+                currency: chargeCurrency,
                 product_data: {
                   name: displayTitle,
                   description,
@@ -158,7 +162,7 @@ export function registerStripeRoutes(app: express.Express, options: StripeRouteO
           line_items: [
             {
               price_data: {
-                currency: 'usd',
+                currency: chargeCurrency,
                 product_data: {
                   name: displayTitle,
                   description,

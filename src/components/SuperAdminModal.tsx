@@ -1,3 +1,4 @@
+import { formatPrice } from '../utils/pricing';
 import React, { useState, useEffect, useId } from 'react';
 import {
   ShieldAlert,
@@ -1184,9 +1185,9 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     tierKey: 'CUSTOM_TIER',
                     displayTitle: 'New Plan',
                     badge: '',
-                    priceAmount: 79,
-                    currency: 'USD',
-                    currencySymbol: '$',
+                    priceAmount: 299,
+                    currency: 'MYR',
+                    currencySymbol: 'RM',
                     billingInterval: 'month',
                     description: 'Custom plan description',
                     maxActiveRooms: 15,
@@ -1219,7 +1220,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
                     </div>
 
                     <div className="text-2xl font-extrabold text-ink mb-2">
-                      {pkg.priceAmount === 0 ? 'Free' : `${pkg.currencySymbol || '$'}${pkg.priceAmount}`}
+                      {formatPrice(pkg.priceAmount, pkg.currencySymbol)}
                       <span className="text-xs text-ink-muted font-normal"> / {pkg.billingInterval}</span>
                     </div>
 
