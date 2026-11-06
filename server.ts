@@ -515,6 +515,19 @@ async function startServer() {
     return boat.id;
   }
 
+  /**
+   * The boat in this room bound to a device sending its own positions, from the room's bindings
+   * (never from the payload). A phone is bound under "!DEV-" + the last 4 letters/digits of its
+   * deviceId (deviceTrackerService.getLocalNode); a LoRa tracker under its node id.
+   */
+  function boundBoatIdFor(room: ActiveRoomState, deviceId: unknown): string | null {
+    if (typeof deviceId !== 'string' || !deviceId || !Array.isArray(room.boats)) return null;
+    const phoneAlias = `!DEV-${deviceId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
+    const boat = room.boats.find((b: any) =>
+      typeof b?.nodeId === 'string' && (b.nodeId === deviceId || b.nodeId === phoneAlias || sameNodeId(b.nodeId, deviceId)));
+    return boat ? boat.id : null;
+  }
+
   // Register Stripe Payment & Subscription Routes
   registerStripeRoutes(app, { broadcastGlobal });
 
@@ -694,6 +707,8 @@ async function startServer() {
                 payload.boundBoatId = boundBoatId;
               } else {
                 (ws as any).deviceId = payload.deviceId;
+                // The boat comes from the room's binding; a claimed boundBoatId is ignored
+                payload.boundBoatId = boundBoatIdFor(currentRoom, payload.deviceId);
               }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const updatedTracker = {
@@ -730,6 +745,7 @@ async function startServer() {
                 payload.boundBoatId = boundBoatId;
               } else {
                 (ws as any).deviceId = payload.deviceId;
+                payload.boundBoatId = boundBoatIdFor(currentRoom, payload.deviceId);
               }
               const existing = currentRoom.trackers.get(payload.deviceId) || {};
               const existingTrail = existing.trail || [];
@@ -751,7 +767,8 @@ async function startServer() {
               currentRoom.trackers.set(payload.deviceId, updatedTracker);
 
               // Update bound boat in race fleet
-              const targetBoatId = payload.boundBoatId || existing.boundBoatId;
+              // Set above from the room's binding; an older binding stored on the tracker doesn't count
+              const targetBoatId = payload.boundBoatId;
               if (targetBoatId && Array.isArray(currentRoom.boats)) {
                 currentRoom.boats = currentRoom.boats.map((b: any) => {
                   // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
@@ -2156,6 +2173,19 @@ async function startServer() {
     const platform = extractPlatform(req);
 
     if (payload && payload.deviceId && Array.isArray(payload.points) && payload.points.length > 0) {
+      // As on the WebSocket: the boat comes from the room's binding, never from the request.
+      // A relayed LoRa tracker must be a Meshtastic node bound to a boat in this room.
+      if (payload.relayedBy) {
+        if (nodeNumFromId(payload.deviceId) === null) {
+          return res.status(403).json({ error: 'This tracker is not bound to a boat in this room.', reason: 'NOT_RELAYABLE' });
+        }
+        payload.deviceId = canonicalNodeId(payload.deviceId);
+      }
+      payload.boundBoatId = boundBoatIdFor(room, payload.deviceId);
+      if (payload.relayedBy && !payload.boundBoatId) {
+        return res.status(403).json({ error: 'This tracker is not bound to a boat in this room.', reason: 'NOT_RELAYABLE' });
+      }
+
       const existing = room.trackers.get(payload.deviceId) || {};
       const existingTrail = existing.trail || [];
       const newCoords = payload.points.map((p: any) => ({ lat: p.lat, lng: p.lng }));
@@ -2175,7 +2205,7 @@ async function startServer() {
       };
       room.trackers.set(payload.deviceId, updatedTracker);
 
-      const targetBoatId = payload.boundBoatId || existing.boundBoatId;
+      const targetBoatId = payload.boundBoatId;
       if (targetBoatId && Array.isArray(room.boats)) {
         room.boats = room.boats.map((b: any) => {
           // Only the bound boat: another boat still naming this tracker (a stale nodeId) stays put
