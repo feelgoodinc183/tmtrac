@@ -1359,11 +1359,10 @@ async function startServer() {
       FROM users u
       LEFT JOIN tenants t ON u.tenant_id = t.id
       WHERE (
-        LOWER(u.email) = ? 
-        OR LOWER(u.username) = ? 
-        OR (? = 'admin' AND (u.id = 'user-admin-0' OR u.role = 'ADMIN' OR u.is_super_admin = 1))
+        LOWER(u.email) = ?
+        OR LOWER(u.username) = ?
       )
-    `).get(cleanLogin, cleanLogin, cleanLogin) as any;
+    `).get(cleanLogin, cleanLogin) as any;
 
     if (!userRow) {
       return res.status(401).json({ error: 'Invalid credentials. Please check your username/email and password.' });
@@ -1374,7 +1373,7 @@ async function startServer() {
     }
 
     // Password hash validation
-    // Super Admin access comes from the account's flag only; the owner's flag is re-applied at startup.
+    // Super Admin access comes from the account's flag only
     const isUnivAdmin = !!userRow.is_super_admin;
     if (userRow.password_hash !== targetHash) {
       return res.status(401).json({ error: 'Invalid credentials. Please check your username/email and password.' });

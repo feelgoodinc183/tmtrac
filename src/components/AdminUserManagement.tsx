@@ -184,7 +184,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ curren
   const suspendedCount = userList.filter((u) => u.status === 'SUSPENDED').length;
 
   // Club admins manage their own club; the server decides exactly which users each admin may see and change
-  const canManageUsers = currentUser.role === 'ADMIN' || !!currentUser.isSuperAdmin || currentUser.email?.toLowerCase().trim() === 'irsyadismail@gmail.com';
+  const canManageUsers = currentUser.role === 'ADMIN' || !!currentUser.isSuperAdmin;
   if (!canManageUsers) {
     return (
       <div className="p-8 text-center bg-canvas/60 border border-danger-ink/30 rounded-2xl text-ink">
@@ -358,7 +358,8 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ curren
               <tbody className="divide-y divide-line/60">
                 {filteredUsers.map((u) => {
                   const isSelf = u.id === currentUser.id;
-                  const isUniversalMaster = u.email?.toLowerCase().trim() === 'irsyadismail@gmail.com';
+                  // Super Admins are managed in the Super Admin panel, not by club admins
+                  const isUniversalMaster = !!(u as any).isSuperAdmin;
                   const isSuspended = u.status === 'SUSPENDED';
 
                   return (

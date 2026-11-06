@@ -130,8 +130,9 @@ HTTPS is required by modern browsers for Web Bluetooth and Geolocation APIs:
 ---
 
 ## 🔑 Super Admin Login
-- **Username / Email**: `irsyadismail@gmail.com`
-- **Password**: set `SUPER_ADMIN_PASSWORD` as an environment variable in cPanel **Setup Node.js App** before the first start. It is only used when the Super Admin account is first created; the server never resets an existing password. Without it, the account is created with a random password.
+- **Email**: set `SUPER_ADMIN_EMAIL` in cPanel **Setup Node.js App** before the first start (default `superadmin@tmtrac.local`). Username: `superadmin`.
+- **Password**: set `SUPER_ADMIN_PASSWORD` the same way. Both are only used when the Super Admin account is first created, on an install with no Super Admin yet; the server never resets an existing account. Without a password, the account is created with a random one.
+- **Rights**: Super Admin rights come only from an account's Super Admin flag. No email or username grants them, so changing the Super Admin's email can't let someone else take over by registering the old address.
 - **Existing installs**: the password stays whatever it currently is. Change it after deploying this version.
 - **Access Level**: Full Super Admin (Multi-Tenant Organization Management, Event Creation, Database Backups)
 
