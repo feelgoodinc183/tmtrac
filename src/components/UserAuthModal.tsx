@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useEffect, useState, useId } from 'react';
 import {
   X,
   User,
@@ -31,6 +31,10 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   const titleId = useId();
   const createdTitleId = useId();
   const [mode, setMode] = useState<'login' | 'register-participant' | 'register-org'>(initialMode);
+  // The window stays mounted: open it on the mode asked for (Start free opens club sign-up)
+  useEffect(() => {
+    if (isOpen) setMode(initialMode);
+  }, [isOpen, initialMode]);
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
 
