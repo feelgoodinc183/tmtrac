@@ -45,6 +45,8 @@ import { FEATURES } from './config/features';
 import { MqttPacketInspectorModal } from './components/MqttPacketInspectorModal';
 import { OfflineCacheModal } from './components/OfflineCacheModal';
 import { SpectatorQrModal } from './components/SpectatorQrModal';
+import { ServerConnectionBanner } from './components/ServerConnectionBanner';
+import { ServerConnectionStatus } from './services/serverConnection';
 import { ConnectDeviceDialog } from './components/ConnectDeviceDialog';
 import { VhfAndJuryProtestModal } from './components/VhfAndJuryProtestModal';
 import { NmeaAndMalaysiaMeshModal } from './components/NmeaAndMalaysiaMeshModal';
@@ -75,6 +77,7 @@ import { generateRaceHighlights, recordedRaceDurationSec } from './services/high
 import { meshtasticService } from './services/meshtasticBleMqttService';
 import { deviceTrackerService, getDefaultDeviceProfile } from './services/deviceTrackerService';
 import { roomService } from './services/roomService';
+import { ocsCandidates, recordFinish, sailList, undoFinish } from './services/recallAndFinish';
 import { serverNow } from './services/serverClock';
 import { getClassRaceState } from './services/classRaceState';
 import { computeLiveBoatStatus, createTrackerFixApplier, TrackerFix } from './services/trackerFix';
@@ -197,7 +200,9 @@ export default function App() {
   useEffect(() => {
     if (boatsBroadcastPendingRef.current) {
       boatsBroadcastPendingRef.current = false;
-      deviceTrackerService.broadcastBoats(boats);
+      // Only the race office sends the fleet. A skipper's device that relays its tracker moves the
+      // boat on its own map too, but the server would refuse the fleet (and show "not saved").
+      if (canEditRef.current) deviceTrackerService.broadcastBoats(boats);
     }
     const horn = pendingHornRef.current;
     if (horn) {
@@ -229,6 +234,13 @@ export default function App() {
   // Edit controls follow the server's answer for this room (PIN, own-club role, owner); an
   // Admin or Race Officer account from another club does not get them.
   const isUserAdminOrOfficer = Boolean(isOrganizer || currentUser?.isSuperAdmin || authService.isSuperAdmin());
+  const canEditRef = useRef(isUserAdminOrOfficer);
+  canEditRef.current = isUserAdminOrOfficer;
+  // Unlocked with the skipper PIN in this room (the server's role for this connection)
+  const [isSkipper, setIsSkipper] = useState(() => roomService.isParticipant());
+  // Whether this device can reach the server (header dot, connection banner)
+  const [serverStatus, setServerStatus] = useState<ServerConnectionStatus>(() => deviceTrackerService.getConnectionStatus());
+  useEffect(() => deviceTrackerService.onConnectionStatus(setServerStatus), []);
   // Shown when the server refuses an edit, so a change never looks saved when it wasn't
   const [saveRejection, setSaveRejection] = useState<{ action: string; roomCode: string; at: number } | null>(null);
   // Boats that pointed at a tracker id from an older version and need their tracker attached again
@@ -515,6 +527,7 @@ export default function App() {
     const unsubRoom = roomService.onRoomChange((code, isOrg) => {
       setActiveRoomCode(code);
       setIsOrganizer(isOrg);
+      setIsSkipper(roomService.isParticipant());
       if (!isOrg) {
         setViewMode('SPECTATOR');
       }
@@ -533,6 +546,7 @@ export default function App() {
       if (session.roomCode) {
         setActiveRoomCode(session.roomCode);
       }
+      if (typeof session.userRole === 'string') setIsSkipper(session.userRole === 'PARTICIPANT');
       if (typeof session.canEdit === 'boolean') {
         setIsOrganizer(session.canEdit);
       } else if (typeof session.isAdmin === 'boolean') {
@@ -971,6 +985,8 @@ export default function App() {
         elapsedSeconds: 0,
         correctedSeconds: 0,
         markRoundings: [],
+        finishTime: undefined,
+        statusBeforeFinish: undefined,
       }))
     );
     setRaceState((prev) => ({
@@ -1238,9 +1254,15 @@ export default function App() {
 
           // Freeze elapsed seconds once finished or if this class is not active racing
           const isClassActiveRacing = boatClassState.status === 'RACING' && boatClassState.countdownSeconds <= 0;
+          // Finished by GPS on this tick: stamp the finish and take the exact time from the class
+          // start (the tick count drifts when the tab is in the background)
+          const gpsFinish = updatedStatus === 'FINISHED' && boat.status !== 'FINISHED' && !isValidNumber(boat.finishTime);
+          const finishAt = gpsFinish ? serverNow() : boat.finishTime;
           const newElapsed = isClassInPreStartOrCountdown
             ? 0
-            : updatedStatus === 'FINISHED'
+            : gpsFinish && isValidNumber(boatClassState.startTime)
+            ? Math.max(0, ((finishAt as number) - boatClassState.startTime) / 1000)
+            : updatedStatus === 'FINISHED' || isValidNumber(boat.finishTime)
             ? boat.elapsedSeconds
             : isClassActiveRacing
             ? boat.elapsedSeconds + dtSec
@@ -1260,6 +1282,7 @@ export default function App() {
             ...boat,
             ...(isBoundToTracker ? {} : { sog: 0 }),
             status: updatedStatus,
+            ...(isClassInPreStartOrCountdown ? { finishTime: undefined, statusBeforeFinish: undefined } : gpsFinish ? { finishTime: finishAt } : {}),
             markRoundings: progress.updatedRoundings,
             dtw: progress.dtwNm,
             elapsedSeconds: newElapsed,
@@ -1534,6 +1557,8 @@ export default function App() {
                   elapsedSeconds: 0,
                   correctedSeconds: 0,
                   markRoundings: [],
+                  finishTime: undefined,
+                  statusBeforeFinish: undefined,
                 };
               }
               return b;
@@ -1571,6 +1596,8 @@ export default function App() {
           startSequenceActive: nextSequenceActive,
           targetStartTime,
           startTime,
+          // The X flag belongs to one start: gone once the class is back before a start
+          xFlag: nextStatus === 'RACING' || nextStatus === 'FINISHED' ? cur.xFlag : undefined,
           // AP only holds a class that hasn't started; a running sequence or a start clears it.
           postponed: nextStatus === 'PRE_START' && !nextSequenceActive ? (partial.postponed ?? cur.postponed ?? false) : false,
           updatedAt: now,
@@ -1620,6 +1647,8 @@ export default function App() {
                 elapsedSeconds: 0,
                 correctedSeconds: 0,
                 markRoundings: [],
+                finishTime: undefined,
+                statusBeforeFinish: undefined,
               };
             }
             return b;
@@ -1675,6 +1704,8 @@ export default function App() {
             elapsedSeconds: 0,
             correctedSeconds: 0,
             markRoundings: [],
+            finishTime: undefined,
+            statusBeforeFinish: undefined,
           };
         }
         return b;
@@ -1695,6 +1726,7 @@ export default function App() {
           startSequenceActive: false,
           targetStartTime: undefined,
           startTime: undefined,
+          xFlag: undefined,
           updatedAt: now,
         },
       };
@@ -1718,6 +1750,78 @@ export default function App() {
     });
   };
 
+  // When this boat's position was last taken, from its tracker; null without a usable exact fix
+  const boatFixTime = (boat: Boat): number | null => {
+    const node = nodes.find((n) => n.boundBoatId === boat.id || (!!boat.nodeId && sameNodeId(n.id, boat.nodeId)));
+    if (!node || (node.positionErrorMeters ?? 0) > 50) return null;
+    return nodeFixTime(node) ?? null;
+  };
+
+  // Boats GPS puts on the course side of the start line (a suggestion for the X flag)
+  const getOcsCandidates = (forClass: string) => ocsCandidates(boats, marks, forClass, boatFixTime, Date.now());
+
+  // Individual recall (RRS 29.1): X flag up with one sound, the boats marked OCS, the fleet told
+  const handleIndividualRecall = (forClass: string, boatIds: string[]) => {
+    if (boatIds.length === 0) return;
+    const now = serverNow();
+    setBoats((prev) => {
+      const updated = prev.map((b) => (boatIds.includes(b.id) ? { ...b, status: 'OCS' as const } : b));
+      scheduleBoatsBroadcast();
+      return updated;
+    });
+    setRaceState((prev) => {
+      const cur = getClassRaceState(prev, forClass);
+      const next: RaceState = {
+        ...prev,
+        classStates: { ...(prev.classStates || {}), [forClass]: { ...cur, xFlag: { raisedAt: now, boatIds }, updatedAt: now } },
+        updatedAt: now,
+      };
+      deviceTrackerService.broadcastRaceState(next);
+      return next;
+    });
+    playHornSound(660, 1000, true);
+    handleSendVhfNotice(
+      `INDIVIDUAL RECALL (X FLAG) ${forClass}`,
+      `Over the line at the start: ${sailList(boats, boatIds)}. Return to the pre-start side and start correctly (RRS 29.1, 30).`,
+      'SAFETY_WARNING'
+    );
+  };
+
+  const handleLowerXFlag = (forClass: string) => {
+    const now = serverNow();
+    setRaceState((prev) => {
+      const cur = getClassRaceState(prev, forClass);
+      if (!cur.xFlag || cur.xFlag.loweredAt) return prev;
+      const next: RaceState = {
+        ...prev,
+        classStates: { ...(prev.classStates || {}), [forClass]: { ...cur, xFlag: { ...cur.xFlag, loweredAt: now }, updatedAt: now } },
+        updatedAt: now,
+      };
+      deviceTrackerService.broadcastRaceState(next);
+      return next;
+    });
+  };
+
+  // A finish taken by the race officer: now, timed from the boat's own class start
+  const handleRecordFinish = (boatId: string) => {
+    const at = serverNow();
+    setBoats((prev) => {
+      const updated = prev.map((b) => (b.id === boatId ? recordFinish(b, at, getClassRaceState(raceState, b.class).startTime) : b));
+      scheduleBoatsBroadcast();
+      return updated;
+    });
+    playHornSound(880, 500);
+  };
+
+  const handleUndoFinish = (boatId: string) => {
+    const now = serverNow();
+    setBoats((prev) => {
+      const updated = prev.map((b) => (b.id === boatId ? undoFinish(b, now, getClassRaceState(raceState, b.class).startTime) : b));
+      scheduleBoatsBroadcast();
+      return updated;
+    });
+  };
+
   // Handle Boat Status Update
   const handleUpdateBoatStatus = (boatId: string, status: Boat['status']) => {
     setBoats((prev) => {
@@ -1736,7 +1840,7 @@ export default function App() {
             ...b,
             status,
             ...(status === 'PRE_START'
-              ? { elapsedSeconds: 0, correctedSeconds: 0, markRoundings: [] }
+              ? { elapsedSeconds: 0, correctedSeconds: 0, markRoundings: [], finishTime: undefined, statusBeforeFinish: undefined }
               : {}),
           };
         }
@@ -1837,8 +1941,8 @@ export default function App() {
         if (!forClass || b.class === forClass) {
           // 1. If already finished, preserve FINISHED status
           if (b.status === 'FINISHED') return b;
-          // 2. If disqualified or retired or already has DNF/DNS, preserve status
-          if (b.status === 'DSQ' || b.status === 'RET' || b.status === 'DNF' || b.status === 'DNS') return b;
+          // 2. If disqualified, retired, OCS (never started correctly) or already DNF/DNS, preserve status
+          if (b.status === 'OCS' || b.status === 'DSQ' || b.status === 'RET' || b.status === 'DNF' || b.status === 'DNS') return b;
 
           // 3. Check if boat actually rounded all waypoints and crossed finish line
           const boatClassState = getClassRaceState(raceState, b.class);
@@ -1851,7 +1955,6 @@ export default function App() {
           // If in PRE_START or 0 elapsed time with no start mark rounding -> DNS (Did Not Start)
           const hasStarted =
             b.status === 'RACING' ||
-            b.status === 'OCS' ||
             b.status === 'CLEARED_OCS' ||
             (b.elapsedSeconds && b.elapsedSeconds > 0) ||
             (b.markRoundings && b.markRoundings.length > 0);
@@ -1928,6 +2031,8 @@ export default function App() {
             elapsedSeconds: 0,
             correctedSeconds: 0,
             markRoundings: [],
+            finishTime: undefined,
+            statusBeforeFinish: undefined,
             dtw: 1.0,
           };
         }
@@ -2529,6 +2634,19 @@ export default function App() {
     if (boatId) handleBindNodeToBoat(nodeId, boatId);
   };
 
+  // A skipper's binding goes through the server, which checks it and then sends everyone the
+  // fleet; this device only notes the binding locally once the server has accepted it
+  const handleSkipperBind = async (nodeId: string, boatId: string) => {
+    const res = await deviceTrackerService.requestSkipperBind(canonicalNodeId(nodeId), boatId);
+    if (!('message' in res)) {
+      deviceTrackerService.setNodeBoundBoat(res.nodeId, res.boatId);
+      meshtasticService.setNodeBoundBoatId(res.nodeId, res.boatId);
+      trackerRelay.forget(res.nodeId);
+      setNodes((prev) => prev.map((n) => (sameNodeId(n.id, res.nodeId) ? { ...n, boundBoatId: res.boatId } : n)));
+    }
+    return res;
+  };
+
   // Forget a tracker's binding in both services, so its next packet doesn't bind it again
   const clearTrackerBinding = (nodeId: string) => {
     meshtasticService.setNodeBoundBoatId(nodeId, null);
@@ -2637,6 +2755,8 @@ export default function App() {
 
   // Setup and race control are for people who can run this room's race
   const canRunRace = viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer;
+  // A skipper may connect their own tracker when the race office has turned that on
+  const skipperCanConnect = isSkipper && !isUserAdminOrOfficer && raceState.skipperConnectEnabled === true;
   const setupStatus = getSetupStatus(raceClasses, boats, marks, raceState);
   const setupDoneCount = Object.values(setupStatus).filter((st) => st.done).length;
 
@@ -2646,6 +2766,13 @@ export default function App() {
         'bg-surface text-ink'
       }`}
     >
+      <ServerConnectionBanner
+        status={serverStatus}
+        canEdit={isUserAdminOrOfficer}
+        queuedPoints={serverStatus.state === 'connected' ? 0 : deviceTrackerService.getOfflineBufferCount()}
+        onDismissLostEdits={() => deviceTrackerService.clearLostEdits()}
+      />
+
       {saveRejection && (
         <div
           id="save-rejected-banner"
@@ -2727,6 +2854,8 @@ export default function App() {
         hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
         connectedPeerCount={connectedPeerCount}
         viewMode={viewMode}
+        isSkipper={isSkipper && !isUserAdminOrOfficer}
+        serverStatus={serverStatus}
         setViewMode={setViewMode}
         activeRoomCode={activeRoomCode}
         onOpenLobby={() => setShowLobbyModal(true)}
@@ -2779,6 +2908,11 @@ export default function App() {
             onEndRace={requestEndRace}
             onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
+            getOcsCandidates={getOcsCandidates}
+            onIndividualRecall={handleIndividualRecall}
+            onLowerXFlag={handleLowerXFlag}
+            onRecordFinish={handleRecordFinish}
+            onUndoFinish={handleUndoFinish}
             raceClasses={raceClasses}
             onOpenClassManager={() => openSetup('CLASSES')}
             onOpenResults={() => setShowResultsModal(true)}
@@ -2824,6 +2958,7 @@ export default function App() {
                   onCollapse={() => setIsSidebarOpen(false)}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
+                  skipperCanConnect={skipperCanConnect}
                 />
               </div>
             </div>
@@ -2961,6 +3096,7 @@ export default function App() {
                   onEndRace={requestEndRace}
                   viewMode={viewMode}
                   isAdmin={isUserAdminOrOfficer}
+                  skipperCanConnect={skipperCanConnect}
                 />
               </div>
             </div>
@@ -3113,6 +3249,11 @@ export default function App() {
                   onEndRace={requestEndRace}
                   onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
+            getOcsCandidates={getOcsCandidates}
+            onIndividualRecall={handleIndividualRecall}
+            onLowerXFlag={handleLowerXFlag}
+            onRecordFinish={handleRecordFinish}
+            onUndoFinish={handleUndoFinish}
                   raceClasses={raceClasses}
                   onOpenClassManager={() => openSetup('CLASSES')}
                   onOpenResults={() => setShowResultsModal(true)}
@@ -3180,6 +3321,7 @@ export default function App() {
           onOpenRosterImport={() => setShowRosterImport(true)}
           onOpenBoatQr={() => handleOpenBoatQr()}
           onOpenConnectDevice={openConnectDevice}
+          onSetSkipperConnect={(enabled) => handleUpdateRaceState({ skipperConnectEnabled: enabled })}
           onLoadCourse={handleLoadCourse}
           onManageCourses={() => {
             setCourseProfileCount(getSavedCourseProfiles().length);
@@ -3232,6 +3374,7 @@ export default function App() {
           onBindNodeToBoat={handleBindNodeToBoat}
           onCreateBoatForTracker={handleCreateBoatForTracker}
           onUnbindNode={(nodeId) => handleBindNodeToBoat(nodeId, '')}
+          onSkipperBind={isUserAdminOrOfficer ? undefined : handleSkipperBind}
           initialNodeId={connectTarget.nodeId}
           initialBoatId={connectTarget.boatId}
           onClose={() => setShowConnectDevice(false)}

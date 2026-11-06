@@ -59,6 +59,8 @@ interface LeaderboardSidebarProps {
   onClose?: () => void;
   isOverlay?: boolean;
   isAdmin?: boolean;
+  /** A skipper in an event whose race office lets skippers connect their own tracker */
+  skipperCanConnect?: boolean;
 }
 
 export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
@@ -88,6 +90,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
   onClose,
   isOverlay = false,
   isAdmin = false,
+  skipperCanConnect = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'LEADERBOARD' | 'MESH_NODES'>('LEADERBOARD');
   const [filterClass, setFilterClass] = useState<RaceClass | 'ALL'>('ALL');
@@ -238,7 +241,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
       >
         <button
           onClick={() => setActiveTab('LEADERBOARD')}
-          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
+          className={`flex-1 min-h-11 landscape:min-h-0 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
             activeTab === 'LEADERBOARD'
               ? 'border-accent text-accent bg-accent/5'
               : 'border-transparent text-ink-muted hover:text-ink-muted'
@@ -249,7 +252,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('MESH_NODES')}
-          className={`flex-1 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
+          className={`flex-1 min-h-11 landscape:min-h-0 py-3 landscape:py-1.5 px-3 landscape:px-2 text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 border-b-2 transition-all ${
             activeTab === 'MESH_NODES'
               ? 'border-accent text-accent bg-accent/5'
               : 'border-transparent text-ink-muted hover:text-ink-muted'
@@ -288,11 +291,11 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               Standings (IRC/ORC)
             </h2>
             {/* Filters the leaderboard only; the race console's class tabs pick the active class */}
-            <div role="group" aria-label="Show class" className="flex items-center gap-1 flex-wrap">
+            <div role="group" aria-label="Show class" className="flex items-center gap-1 max-sm:gap-2 flex-wrap">
               <span className="text-xs text-ink-muted mr-0.5">Show</span>
               <button
                 onClick={() => setFilterClass('ALL')}
-                className={`text-xs px-1.5 py-0.5 rounded  transition-all ${
+                className={`text-xs px-1.5 py-0.5 max-sm:min-h-11 max-sm:min-w-11 max-sm:px-3 rounded  transition-all ${
                   filterClass === 'ALL'
                     ? 'bg-accent text-on-accent font-bold'
                     : 'bg-raised/60 text-ink-muted hover:text-ink'
@@ -315,7 +318,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   <button
                     key={cls.id}
                     onClick={() => setFilterClass(cls.name)}
-                    className={`text-xs px-1.5 py-0.5 rounded  transition-all flex items-center gap-1 ${
+                    className={`text-xs px-1.5 py-0.5 max-sm:min-h-11 max-sm:px-3 rounded  transition-all flex items-center gap-1 ${
                       filterClass === cls.name
                         ? 'bg-accent text-on-accent font-bold'
                         : 'bg-raised/60 text-ink-muted hover:text-ink'
@@ -392,7 +395,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 {onOpenBoatQr && boats.length > 0 && (
                   <button
                     onClick={() => onOpenBoatQr(boats[0]?.id || '')}
-                    className="font-bold text-accent bg-accent/15 hover:bg-accent/25 border border-accent/40 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all text-xs"
+                    className="font-bold text-accent bg-accent/15 hover:bg-accent/25 border border-accent/40 px-2 py-0.5 max-sm:min-h-11 max-sm:px-3 rounded-lg flex items-center gap-1 transition-all text-xs"
                     title="Generate and print Smart Boat QR codes for 1-tap skipper check-in"
                   >
                     <QrCode className="w-2.5 h-2.5" />
@@ -404,7 +407,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                 {onOpenResults && viewMode === 'SPECTATOR' && (
                   <button
                     onClick={onOpenResults}
-                    className="font-bold text-warning-ink bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all"
+                    className="font-bold text-warning-ink bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/40 px-2 py-0.5 max-sm:min-h-11 max-sm:px-3 rounded flex items-center gap-1 transition-all"
                     title="View official finish results and scoring breakdown"
                   >
                     <Trophy className="w-2.5 h-2.5 text-warning-ink" />
@@ -569,7 +572,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                     ) : (
                       <>
                         <span className="text-ink-muted">No tracker, position not live</span>
-                        {canManage && onConnectTracker && (
+                        {(canManage || (skipperCanConnect && !boat.nodeId)) && onConnectTracker && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -724,7 +727,7 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                {viewMode !== 'SPECTATOR' && onOpenConnectDevice && (
+                {(viewMode !== 'SPECTATOR' || skipperCanConnect) && onOpenConnectDevice && (
                   <Button variant="primary" icon={<Plus />} onClick={onOpenConnectDevice}>
                     Connect device
                   </Button>
@@ -839,11 +842,13 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                   <h4 className="text-xs font-bold text-ink">No trackers for this event yet</h4>
                   <p className="text-xs text-ink-muted mt-1">
                     {viewMode === 'SPECTATOR'
-                      ? 'Trackers appear here once the race office connects them.'
+                      ? skipperCanConnect
+                        ? 'Connect the tracker on your boat, or wait for the race office to connect it.'
+                        : 'Trackers appear here once the race office connects them.'
                       : 'Connect a LoRa tracker, or have skippers share their phone position with Track in the header.'}
                   </p>
                 </div>
-                {viewMode !== 'SPECTATOR' && onOpenConnectDevice && (
+                {(viewMode !== 'SPECTATOR' || skipperCanConnect) && onOpenConnectDevice && (
                   <Button variant="primary" className="w-full" icon={<Plus />} onClick={onOpenConnectDevice}>
                     Connect device
                   </Button>

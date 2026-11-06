@@ -19,6 +19,11 @@ interface ConnectDeviceDialogProps {
   onCreateBoatForTracker: (nodeId: string, name: string, sailNumber: string) => void;
   /** Unbinds a tracker from its boat. Without it, the boat step offers no unbind. */
   onUnbindNode?: (nodeId: string) => void;
+  /**
+   * Set for a skipper (no Race Officer rights): binds through the server, which only accepts a
+   * boat with no tracker. The dialog then offers no new boat, no replacing and no unbinding.
+   */
+  onSkipperBind?: (nodeId: string, boatId: string) => Promise<{ ok: true } | { ok: false; message: string }>;
   /** Opened from a boat card: that boat is already chosen at the boat step */
   initialBoatId?: string;
   /** Opened from a tracker already heard: skip straight to the boat step */
@@ -54,6 +59,7 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
   onBindNodeToBoat,
   onCreateBoatForTracker,
   onUnbindNode,
+  onSkipperBind,
   initialBoatId,
   initialNodeId,
   onClose,
@@ -77,6 +83,9 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
   const [newBoatName, setNewBoatName] = useState('');
   const [newSailNumber, setNewSailNumber] = useState('');
   const [doneText, setDoneText] = useState('');
+  const skipperMode = !!onSkipperBind;
+  // Waiting for the server to accept a skipper's binding
+  const [binding, setBinding] = useState(false);
 
   useEffect(() => meshtasticService.onBleStatusChange(setBle), []);
 
@@ -109,8 +118,9 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
           const currentNode = current ? nodes.find((n) => sameNodeId(n.id, current)) : undefined;
           return { boat: b, replaces: current, replacesHeard: !!currentNode };
         })
-        .filter((o) => !o.replacesHeard || o.boat.id === targetBoatId),
-    [boats, nodes, nodeId, targetBoatId]
+        // A skipper can only put a tracker on a boat that has none (the server checks this too)
+        .filter((o) => (skipperMode ? !o.replaces : !o.replacesHeard || o.boat.id === targetBoatId)),
+    [boats, nodes, nodeId, targetBoatId, skipperMode]
   );
   const chosenOption = boatOptions.find((o) => o.boat.id === boatChoice);
   const targetBoat = targetBoatId ? boats.find((b) => b.id === targetBoatId) : undefined;
@@ -159,8 +169,37 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
     setWaitingForId(false);
   };
 
+  const handleSkipperBind = async (choice: string) => {
+    if (!nodeId || !onSkipperBind || binding) return;
+    const name = node?.longName || nodeId;
+    if (!choice) {
+      setDoneText(`${name} is connected to this device. It shows on the map once the race office puts it on a boat.`);
+      setError(null);
+      setStep('done');
+      return;
+    }
+    const boat = boats.find((b) => b.id === choice);
+    setBinding(true);
+    setError(null);
+    try {
+      const res = await onSkipperBind(nodeId, choice);
+      if ('message' in res) {
+        setError(res.message);
+        return;
+      }
+      setDoneText(`${name} is now tracking ${boat?.name || 'the boat'}. Keep this page open so it keeps sending positions.`);
+      setStep('done');
+    } finally {
+      setBinding(false);
+    }
+  };
+
   const handleBind = (choice: string = boatChoice) => {
     if (!nodeId) return;
+    if (skipperMode) {
+      void handleSkipperBind(choice);
+      return;
+    }
     const name = node?.longName || nodeId;
     if (choice === '__new__') {
       const boatName = newBoatName.trim();
@@ -296,7 +335,7 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
       const shown = internetNodes.slice(0, INTERNET_LIST_LIMIT);
       body = (
         <div className="space-y-4">
-          <MqttSettingsPanel />
+          {!skipperMode && <MqttSettingsPanel />}
           <div>
             <h3 className="text-sm font-bold text-ink mb-2">Which tracker?</h3>
             <label className="block text-xs text-ink-muted mb-2">
@@ -372,14 +411,25 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
               </label>
             ))}
             {boatOptions.length === 0 && (
-              <p className="text-xs text-ink-muted">{boats.length === 0 ? 'No boats yet.' : 'Every boat already has a working tracker.'}</p>
+              <p className="text-xs text-ink-muted">
+                {boats.length === 0
+                  ? skipperMode ? 'No boats yet. Ask the race office to add your boat.' : 'No boats yet.'
+                  : skipperMode ? 'Every boat already has a tracker. Ask the race office to change one.' : 'Every boat already has a working tracker.'}
+              </p>
             )}
-            <label className="flex items-center gap-3 p-2.5 rounded-control border border-line bg-canvas cursor-pointer has-[:checked]:border-accent">
-              <input type="radio" name="tracker-boat" value="__new__" checked={boatChoice === '__new__'} onChange={() => setBoatChoice('__new__')} />
-              <Plus className="w-4 h-4 text-accent" />
-              <span className="text-sm text-ink font-bold">Create a boat for this tracker</span>
-            </label>
+            {!skipperMode && (
+              <label className="flex items-center gap-3 p-2.5 rounded-control border border-line bg-canvas cursor-pointer has-[:checked]:border-accent">
+                <input type="radio" name="tracker-boat" value="__new__" checked={boatChoice === '__new__'} onChange={() => setBoatChoice('__new__')} />
+                <Plus className="w-4 h-4 text-accent" />
+                <span className="text-sm text-ink font-bold">Create a boat for this tracker</span>
+              </label>
+            )}
           </fieldset>
+          {skipperMode && currentBoat && (
+            <p className="text-sm text-ink-muted" role="note">
+              This tracker is on {currentBoat.name}. Ask the race office if it should move.
+            </p>
+          )}
           {chosenOption?.replaces && (
             <p className="text-sm text-warning-ink" role="note">
               {chosenOption.boat.name} is linked to tracker {chosenOption.replaces}. Binding replaces it.
@@ -412,13 +462,13 @@ export const ConnectDeviceDialog: React.FC<ConnectDeviceDialogProps> = ({
       );
       footer = (
         <>
-          {currentBoat && onUnbindNode ? (
+          {currentBoat && onUnbindNode && !skipperMode ? (
             <Button variant="ghost" onClick={handleUnbind}>{`Unbind from ${currentBoat.name}`}</Button>
           ) : (
-            <Button variant="ghost" onClick={() => handleBind('')}>Skip for now</Button>
+            <Button variant="ghost" onClick={() => handleBind('')} disabled={binding}>Skip for now</Button>
           )}
-          <Button variant="primary" onClick={() => handleBind()} disabled={!boatChoice}>
-            {boatChoice === '__new__' ? 'Create boat and bind' : chosenOption?.replaces ? 'Replace tracker' : 'Bind tracker'}
+          <Button variant="primary" onClick={() => handleBind()} disabled={!boatChoice || binding}>
+            {binding ? 'Connecting…' : boatChoice === '__new__' ? 'Create boat and bind' : chosenOption?.replaces ? 'Replace tracker' : 'Bind tracker'}
           </Button>
         </>
       );

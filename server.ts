@@ -38,6 +38,7 @@ import { createSession, endSession, endAllSessionsForUser, findActiveUserByToken
 import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
 import { MAX_RACE_CLASSES, StoredRaceClass, parseStoredRaceClasses, sanitizeRaceClasses } from './src/server/raceClasses';
+import { SKIPPER_BIND_MESSAGES, decideSkipperBinding } from './src/server/skipperBinding';
 import mqtt from 'mqtt';
 import { canonicalNodeId, nodeNumFromId, sameNodeId } from './src/utils/nodeId';
 import {
@@ -894,6 +895,37 @@ async function startServer() {
               broadcastToRoom(currentRoom.code, 'BOATS_UPDATED', payload, ws);
               persistRoom(currentRoom);
             }
+            break;
+          }
+
+          // A skipper binding their own tracker to a boat, when the race office allows it
+          case 'SKIPPER_BIND_TRACKER': {
+            const requestId = payload && typeof payload.requestId === 'string' ? payload.requestId.slice(0, 64) : undefined;
+            const decision = decideSkipperBinding(currentRoom.boats, currentRoom.raceState, isAdminSession ? 'ADMIN' : role, payload);
+            if ('reason' in decision) {
+              ws.send(JSON.stringify({
+                type: 'SKIPPER_BIND_RESULT',
+                payload: { requestId, ok: false, reason: decision.reason, message: SKIPPER_BIND_MESSAGES[decision.reason] },
+              }));
+              return;
+            }
+            if (decision.changed) {
+              currentRoom.boats = decision.boats;
+              // To the sender too: its boats change only when the server has accepted the binding
+              broadcastAllInRoom(currentRoom.code, 'BOATS_UPDATED', currentRoom.boats);
+              persistRoom(currentRoom);
+              insertAuditLog({
+                tenantId: currentRoom.tenantId,
+                roomCode: currentRoom.code,
+                action: 'SKIPPER_BOUND_TRACKER',
+                userRole: role,
+                details: { boatId: decision.boatId, nodeId: decision.nodeId },
+              });
+            }
+            ws.send(JSON.stringify({
+              type: 'SKIPPER_BIND_RESULT',
+              payload: { requestId, ok: true, boatId: decision.boatId, nodeId: decision.nodeId },
+            }));
             break;
           }
 

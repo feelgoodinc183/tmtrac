@@ -107,6 +107,7 @@ export function getDefaultDeviceProfile(): DeviceTrackerProfile {
 import { roomService } from './roomService';
 import { authService } from './authService';
 import { recordRoundTrip, recordServerTimestamp } from './serverClock';
+import { createServerConnectionMonitor, ServerConnectionStatus } from './serverConnection';
 
 export type FleetMemberUpdateCallback = (members: HybridFleetMember[]) => void;
 export type DeviceGpsUpdateCallback = (gpsState: DeviceGpsState) => void;
@@ -120,6 +121,8 @@ export type SessionSyncCallback = (session: {
   isAdmin?: boolean;
   // Whether this connection may edit the room (Race Officer or admin), as decided by the server
   canEdit?: boolean;
+  // This connection's room role as the server sees it: ADMIN, RACE_OFFICER, PARTICIPANT or SPECTATOR
+  userRole?: string;
   raceState?: Partial<RaceState>;
   marks?: CourseMark[];
   boats?: Boat[];
@@ -136,6 +139,7 @@ export type RemoteVhfCallback = (bulletin: VhfBulletin) => void;
 export type RemoteSeriesRacesCallback = (series: CompletedRace[]) => void;
 export type RemoteClassesCallback = (classes: RaceClassDefinition[]) => void;
 export type BatchBackfillCallback = (payload: GpsBatchBackfillPayload) => void;
+export type SkipperBindResult = { ok: true; boatId: string; nodeId: string } | { ok: false; message: string };
 export type EditRejectedCallback = (rejection: { action: string; roomCode: string; role: string; reason: string }) => void;
 
 class HybridDeviceTrackerService {
@@ -160,6 +164,8 @@ class HybridDeviceTrackerService {
   private remoteClassesCallbacks: RemoteClassesCallback[] = [];
   private batchBackfillCallbacks: BatchBackfillCallback[] = [];
   private editRejectedCallbacks: EditRejectedCallback[] = [];
+  // Skipper tracker bindings waiting for the server's answer, by request id
+  private pendingSkipperBinds = new Map<string, { resolve: (r: SkipperBindResult) => void; timer: ReturnType<typeof setTimeout> }>();
 
   // Store-and-Forward Offline FIFO Buffer
   private offlinePointsBuffer: BackfillPoint[] = [];
@@ -173,6 +179,14 @@ class HybridDeviceTrackerService {
   private wsConnected = false;
   private wsReconnectTimer: any = null;
   private pingTimer: any = null;
+  // The socket currently connecting or open; older sockets' events are ignored
+  private wsAttempt: WebSocket | null = null;
+  // Opens a new socket now (set by initWebSocketClient)
+  private reconnectWsNow: (() => void) | null = null;
+  // Whether the server can be reached, for the header dot and the connection banner
+  private connection = createServerConnectionMonitor({
+    online: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
+  });
   private connectedPeerCount = 1;
   // Room + PIN last sent to the server, so a PIN unlocked after connecting still reaches the socket
   private joinedRoomCode = '';
@@ -236,13 +250,16 @@ class HybridDeviceTrackerService {
     // Listen to network online event to flush buffered points on reconnection
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
-        console.log('📶 Internet connectivity restored on mobile device, flushing Store-and-Forward buffer...');
+        this.connection.browserWentOnline();
         if (!this.wsConnected) {
-          this.initWebSocketClient();
+          // Don't wait for the retry timer. (This used to call initWebSocketClient again, which
+          // started a second connect loop next to the one already retrying.)
+          this.reconnectWsNow?.();
         } else {
           this.flushOfflineBuffer();
         }
       });
+      window.addEventListener('offline', () => this.connection.browserWentOffline());
     }
 
     // Listen to active room changes and seamlessly switch WebSocket room
@@ -280,6 +297,20 @@ class HybridDeviceTrackerService {
 
   public isServerConnected(): boolean {
     return this.wsConnected;
+  }
+
+  public getConnectionStatus(): ServerConnectionStatus {
+    return this.connection.get();
+  }
+
+  /** Called now and on every change: connected, reconnecting, offline, edits not saved */
+  public onConnectionStatus(cb: (status: ServerConnectionStatus) => void): () => void {
+    return this.connection.subscribe(cb);
+  }
+
+  /** The person has seen that some edits didn't reach the server */
+  public clearLostEdits() {
+    this.connection.clearLostEdits();
   }
 
   public onFleetUpdate(cb: FleetMemberUpdateCallback) {
@@ -628,6 +659,32 @@ class HybridDeviceTrackerService {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
 
+    // A socket closed, or found dead: clean up and retry. `force` closes it ourselves; a dead
+    // socket may never fire its own close event.
+    const handleClosed = (socket: WebSocket, force: boolean) => {
+      if (this.wsAttempt !== socket) return;
+      this.wsAttempt = null;
+      if (force) {
+        socket.onclose = null;
+        try {
+          socket.close();
+        } catch {}
+      }
+      this.wsConnected = false;
+      this.ws = null;
+      this.connection.socketClosed();
+      // Batches the server never confirmed go back in the queue for the next connection
+      this.requeuePendingBatches();
+      if (this.pingTimer) clearInterval(this.pingTimer);
+      // Retry shortly; a forced close retries at once
+      if (!this.wsReconnectTimer) {
+        this.wsReconnectTimer = setTimeout(() => {
+          this.wsReconnectTimer = null;
+          connect();
+        }, force ? 0 : 2500);
+      }
+    };
+
     const connect = () => {
       try {
         const activeRoom = roomService.getActiveRoomCode();
@@ -635,18 +692,35 @@ class HybridDeviceTrackerService {
         this.wsToken = token;
         const wsUrl = `${protocol}//${host}/ws?room=${encodeURIComponent(activeRoom)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
         const socket = new WebSocket(wsUrl);
+        this.wsAttempt = socket;
+        let opened = false;
 
         socket.onopen = () => {
+          // Replaced by a newer attempt while connecting
+          if (this.wsAttempt !== socket) {
+            socket.onclose = null;
+            socket.close();
+            return;
+          }
+          opened = true;
           this.ws = socket;
           this.wsConnected = true;
+          this.connection.socketOpened();
           console.log('⚡ Connected to TMTRAC Central Real-Time Regatta Server:', wsUrl);
 
           // Start ping heartbeat
           if (this.pingTimer) clearInterval(this.pingTimer);
           const sendPing = () => {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            if (this.ws !== socket) return;
+            // Open but silent (e.g. the phone changed networks): drop it and connect again
+            if (this.connection.isSilent()) {
+              console.warn('TMTRAC server silent for too long; reconnecting');
+              handleClosed(socket, true);
+              return;
+            }
+            if (socket.readyState === WebSocket.OPEN) {
               this.lastPingSentAt = Date.now();
-              this.ws.send(JSON.stringify({ type: 'PING' }));
+              socket.send(JSON.stringify({ type: 'PING' }));
             }
           };
           this.pingTimer = setInterval(sendPing, 15000);
@@ -671,6 +745,8 @@ class HybridDeviceTrackerService {
         };
 
         socket.onmessage = (event) => {
+          if (this.wsAttempt !== socket) return;
+          this.connection.messageReceived();
           try {
             const data = JSON.parse(event.data);
             const { type, payload } = data;
@@ -706,6 +782,20 @@ class HybridDeviceTrackerService {
                 if (payload?.batchId) {
                   console.warn(`[Store-and-Forward] Server kept none of batch ${payload.batchId} (${payload.reason}); points stay queued`);
                   this.requeuePendingBatches([payload.batchId]);
+                }
+                break;
+              }
+
+              case 'SKIPPER_BIND_RESULT': {
+                const pending = payload?.requestId ? this.pendingSkipperBinds.get(payload.requestId) : undefined;
+                if (pending) {
+                  this.pendingSkipperBinds.delete(payload.requestId);
+                  clearTimeout(pending.timer);
+                  pending.resolve(
+                    payload.ok
+                      ? { ok: true, boatId: payload.boatId, nodeId: payload.nodeId }
+                      : { ok: false, message: payload.message || 'The tracker was not connected.' }
+                  );
                 }
                 break;
               }
@@ -829,20 +919,11 @@ class HybridDeviceTrackerService {
           }
         };
 
-        socket.onclose = () => {
-          this.wsConnected = false;
-          this.ws = null;
-          // Batches the server never confirmed go back in the queue for the next connection
-          this.requeuePendingBatches();
-          if (this.pingTimer) clearInterval(this.pingTimer);
-          // Auto reconnect after 2 seconds
-          if (!this.wsReconnectTimer) {
-            this.wsReconnectTimer = setTimeout(() => {
-              this.wsReconnectTimer = null;
-              connect();
-            }, 2500);
-          }
-        };
+        socket.onclose = () => handleClosed(socket, false);
+        // Not connected yet when the first try fails: the status should say so
+        socket.addEventListener('close', () => {
+          if (!opened) this.connection.connectFailed();
+        });
 
         socket.onerror = (e) => {
           console.warn('TMTRAC WebSocket notice:', e);
@@ -852,6 +933,16 @@ class HybridDeviceTrackerService {
       }
     };
 
+    this.reconnectWsNow = () => {
+      // Already connecting or open: nothing to do
+      if (this.wsAttempt && this.wsAttempt.readyState <= WebSocket.OPEN) return;
+      if (this.wsReconnectTimer) {
+        clearTimeout(this.wsReconnectTimer);
+        this.wsReconnectTimer = null;
+      }
+      connect();
+    };
+
     connect();
 
     // Signing in or out after the page loaded must reach the server, or the room keeps treating
@@ -859,7 +950,8 @@ class HybridDeviceTrackerService {
     authService.onAuthChange(() => {
       const token = typeof localStorage !== 'undefined' ? (localStorage.getItem('tmtrac_auth_token_v1') || '') : '';
       if (token === this.wsToken) return;
-      const old = this.ws;
+      const old = this.wsAttempt || this.ws;
+      this.wsAttempt = null;
       if (old) {
         old.onclose = null;
         old.close();
@@ -916,9 +1008,12 @@ class HybridDeviceTrackerService {
       })
         .then((res) => {
           if (!res.ok) console.warn(`Room update ${endpoint} rejected by server (HTTP ${res.status})`);
+          this.connection.httpEditResult(res.ok);
         })
-        .catch(() => {});
-    } catch (e) {}
+        .catch(() => this.connection.httpEditResult(false));
+    } catch (e) {
+      this.connection.httpEditResult(false);
+    }
   }
 
   // Relay a LoRa tracker that is bound to a boat in this room to the room. The caller checks the
@@ -982,6 +1077,27 @@ class HybridDeviceTrackerService {
       } catch (e) {}
     }
     if (!sent) this.postSessionUpdate('/api/session/racestate', raceState);
+  }
+
+  /**
+   * A skipper asks the server to bind a tracker to a boat (the race office must allow it). Resolves
+   * with the server's answer; the boats themselves change through the BOATS_UPDATED that follows.
+   * Needs the live connection: there is no offline fallback, so the skipper knows at once.
+   */
+  public requestSkipperBind(nodeId: string, boatId: string, timeoutMs = 10_000): Promise<SkipperBindResult> {
+    const requestId = `skb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingSkipperBinds.delete(requestId);
+        resolve({ ok: false, message: 'No answer from the server. Check the connection and try again.' });
+      }, timeoutMs);
+      this.pendingSkipperBinds.set(requestId, { resolve, timer });
+      if (!this.sendWs('SKIPPER_BIND_TRACKER', { requestId, nodeId, boatId })) {
+        clearTimeout(timer);
+        this.pendingSkipperBinds.delete(requestId);
+        resolve({ ok: false, message: 'Not connected to the server. Check the connection and try again.' });
+      }
+    });
   }
 
   // Synchronize Fleet Boats across all phones

@@ -47,7 +47,7 @@ export const MapLayersControl: React.FC<MapLayersControlProps> = ({
       {!isBarExpanded ? (
         <button
           onClick={() => setIsBarExpanded(true)}
-          className={`p-2 rounded-xl border text-xs  font-bold transition-all shadow-xl flex items-center justify-center backdrop-blur-md group shrink-0 ${
+          className={`tap-target p-2 rounded-xl border text-xs  font-bold transition-all shadow-xl flex items-center justify-center backdrop-blur-md group shrink-0 ${
             'bg-canvas/90 border-line hover:border-accent/70 text-accent hover:bg-raised '
           }`}
           title="Map & View Controls (Click to expand)"

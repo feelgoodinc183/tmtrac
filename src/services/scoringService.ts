@@ -234,10 +234,9 @@ export function buildRaceSnapshotFromBoats(
     const rank = idx + 1;
     // Auto-detect DNF or DNS for unfinished racing boats
     let finalStatus = b.status;
-    if (finalStatus !== 'FINISHED' && finalStatus !== 'DSQ' && finalStatus !== 'RET' && finalStatus !== 'DNF' && finalStatus !== 'DNS') {
+    if (finalStatus !== 'FINISHED' && finalStatus !== 'OCS' && finalStatus !== 'DSQ' && finalStatus !== 'RET' && finalStatus !== 'DNF' && finalStatus !== 'DNS') {
       const hasStarted =
         finalStatus === 'RACING' ||
-        finalStatus === 'OCS' ||
         finalStatus === 'CLEARED_OCS' ||
         (b.elapsedSeconds && b.elapsedSeconds > 0) ||
         (b.markRoundings && b.markRoundings.length > 0);

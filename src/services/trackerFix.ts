@@ -8,6 +8,8 @@ import { sameNodeId } from '../utils/nodeId';
  * - If race concludes or ends: unfinished racing boats become DNF, boats in pre-start become DNS.
  * - If boat crosses finish line: becomes FINISHED.
  * - Preserves existing final statuses (FINISHED, DSQ, RET, DNF, DNS).
+ * - OCS is set and cleared by the race committee only, and survives finishing and the race ending
+ *   (a boat that didn't start correctly is scored OCS, RRS A5.1).
  */
 export function computeLiveBoatStatus(
   currentStatus: BoatStatus,
@@ -18,6 +20,7 @@ export function computeLiveBoatStatus(
 ): BoatStatus {
   // Preserve final locked outcomes
   if (
+    currentStatus === 'OCS' ||
     currentStatus === 'FINISHED' ||
     currentStatus === 'DSQ' ||
     currentStatus === 'RET' ||
@@ -38,7 +41,6 @@ export function computeLiveBoatStatus(
       (elapsedSec && elapsedSec > 0) ||
       (roundingsCount && roundingsCount > 0) ||
       currentStatus === 'RACING' ||
-      currentStatus === 'OCS' ||
       currentStatus === 'CLEARED_OCS';
     return currentStatus === 'PRE_START' || !hasStarted ? 'DNS' : 'DNF';
   }
@@ -55,14 +57,6 @@ export function computeLiveBoatStatus(
 
   if (currentStatus === 'CLEARED_OCS') {
     return 'CLEARED_OCS';
-  }
-
-  if (progress.isOcs) {
-    return 'OCS';
-  }
-
-  if (currentStatus === 'OCS' && !progress.isOcs) {
-    return 'RACING';
   }
 
   if (currentStatus === 'PRE_START' && classState.status === 'RACING') {

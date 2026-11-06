@@ -12,6 +12,8 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: 'finished',
 };
 import { CourseMarksEditor } from './CourseMarksEditor';
+import { FinishRecorder, IndividualRecallDialog, XFlagCard } from './RecallAndFinish';
+import { canRaiseXFlag, startLineSide, xFlagState } from '../services/recallAndFinish';
 import {
   Compass,
   Play,
@@ -30,6 +32,7 @@ import {
   Trophy,
   X,
   Route,
+  Timer,
 } from 'lucide-react';
 
 interface RcCommandConsolePanelProps {
@@ -50,6 +53,14 @@ interface RcCommandConsolePanelProps {
   onEndRace?: (forClass?: string) => void;
   onRestartRace?: (forClass?: string) => void;
   onGeneralRecall?: (forClass: string) => void;
+  /** Boats GPS puts over the start line, suggested for an individual recall */
+  getOcsCandidates?: (forClass: string) => string[];
+  /** X flag up for these boats (RRS 29.1) */
+  onIndividualRecall?: (forClass: string, boatIds: string[]) => void;
+  onLowerXFlag?: (forClass: string) => void;
+  /** A finish taken now, by hand */
+  onRecordFinish?: (boatId: string) => void;
+  onUndoFinish?: (boatId: string) => void;
   raceClasses?: RaceClassDefinition[];
   /** Opens Setup > Classes */
   onOpenClassManager?: () => void;
@@ -80,6 +91,11 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   onEndRace,
   onRestartRace,
   onGeneralRecall,
+  getOcsCandidates,
+  onIndividualRecall,
+  onLowerXFlag,
+  onRecordFinish,
+  onUndoFinish,
   raceClasses = [],
   onOpenClassManager,
   onOpenResults,
@@ -102,7 +118,9 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
       localStorage.setItem('tmtrac_console_expanded', isExpanded ? '1' : '0');
     } catch {}
   }, [isExpanded]);
-  const [activeTab, setActiveTab] = useState<'SEQUENCE' | 'OCS_FLEET' | 'ENVIRONMENT' | 'MARKS' | 'ANNOUNCE'>('SEQUENCE');
+  const [activeTab, setActiveTab] = useState<'SEQUENCE' | 'FINISHES' | 'OCS_FLEET' | 'ENVIRONMENT' | 'MARKS' | 'ANNOUNCE'>('SEQUENCE');
+  // Individual recall: the boats to choose from, open while not null
+  const [recallSuggested, setRecallSuggested] = useState<string[] | null>(null);
   // Setup finished: show the start sequence
   useEffect(() => {
     if (!showSequenceSignal) return;
@@ -168,6 +186,9 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
     .padStart(2, '0')}`;
 
   const ocsBoats = boats.filter((b) => b.status === 'OCS');
+  const nowMs = serverNow();
+  const showRaiseX = !!onIndividualRecall && canRaiseXFlag(activeClassState as any, nowMs);
+  const xUp = xFlagState(activeClassState as any, boats, nowMs).up;
 
   const handleBroadcastNotice = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,7 +266,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                 key={cls}
                 onClick={() => onUpdateRaceState({ activeClass: cls })}
                 aria-pressed={raceState.activeClass === cls}
-                className={`px-2.5 py-0.5 rounded-full font-bold transition-all shrink-0 ${
+                className={`px-2.5 py-0.5 max-sm:min-h-11 rounded-full font-bold transition-all shrink-0 ${
                   raceState.activeClass === cls
                     ? 'bg-accent text-on-accent shadow-sm'
                     : 'text-ink-muted hover:text-ink'
@@ -257,8 +278,9 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
             {onOpenClassManager && (
               <button
                 onClick={onOpenClassManager}
-                className="px-2 py-0.5 rounded-full text-accent hover:text-ink hover:bg-raised transition-all flex items-center gap-1 font-bold text-xs"
+                className="px-2 py-0.5 max-sm:min-h-11 max-sm:min-w-11 justify-center rounded-full text-accent hover:text-ink hover:bg-raised transition-all flex items-center gap-1 font-bold text-xs"
                 title="Manage Regatta Race Classes"
+                aria-label="Manage classes"
               >
                 <Layers className="w-3 h-3" />
                 <span className="hidden md:inline">Classes</span>
@@ -293,7 +315,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               aria-expanded={isExpanded}
-              className="px-2 py-1 rounded-full text-xs font-bold text-ink-muted hover:text-ink hover:bg-raised transition-all flex items-center gap-1"
+              className="tap-target px-2 py-1 rounded-full text-xs font-bold text-ink-muted hover:text-ink hover:bg-raised transition-all flex items-center gap-1"
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
@@ -321,7 +343,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'SEQUENCE'}
               onClick={() => setActiveTab('SEQUENCE')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'SEQUENCE'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -331,11 +353,27 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               Start sequence
             </button>
 
+            {onRecordFinish && (
+              <button
+                role="tab"
+                aria-selected={activeTab === 'FINISHES'}
+                onClick={() => setActiveTab('FINISHES')}
+                className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'FINISHES'
+                    ? 'bg-accent text-on-accent shadow-sm'
+                    : 'bg-canvas text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <Timer className="w-3.5 h-3.5" />
+                Finishes
+              </button>
+            )}
+
             <button
               role="tab"
               aria-selected={activeTab === 'MARKS'}
               onClick={() => setActiveTab('MARKS')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'MARKS'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -349,7 +387,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'OCS_FLEET'}
               onClick={() => setActiveTab('OCS_FLEET')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'OCS_FLEET'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -363,7 +401,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'ENVIRONMENT'}
               onClick={() => setActiveTab('ENVIRONMENT')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'ENVIRONMENT'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -377,7 +415,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               role="tab"
               aria-selected={activeTab === 'ANNOUNCE'}
               onClick={() => setActiveTab('ANNOUNCE')}
-              className={`min-h-10 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'ANNOUNCE'
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'bg-canvas text-ink-muted hover:text-ink border border-line'
@@ -590,6 +628,31 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     </button>
                     )}
 
+                    {showRaiseX && (
+                      <button
+                        onClick={() => setRecallSuggested(getOcsCandidates ? getOcsCandidates(raceState.activeClass) : [])}
+                        className="p-3 bg-danger/10 border border-danger-ink hover:bg-danger/20 text-danger-ink text-xs font-bold rounded-xl text-left transition-all"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Flag className="w-3.5 h-3.5 text-danger-ink" />
+                          <span>X flag</span>
+                        </div>
+                        <div className="text-xs text-danger-ink/80 font-normal">Individual recall (boats over early)</div>
+                      </button>
+                    )}
+
+                    {xUp && (
+                      <XFlagCard
+                        className={raceState.activeClass}
+                        raceState={raceState}
+                        boats={boats}
+                        now={nowMs}
+                        sideOf={(b) => startLineSide(b, marks)}
+                        onReturned={(id) => onUpdateBoatStatus(id, 'CLEARED_OCS')}
+                        onLower={() => onLowerXFlag?.(raceState.activeClass)}
+                      />
+                    )}
+
                     {isRacing && (
                       <button
                         onClick={() => setActiveTab('OCS_FLEET')}
@@ -636,6 +699,23 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               </div>
 
             </div>
+          )}
+
+          {activeTab === 'FINISHES' && onRecordFinish && onUndoFinish && (
+            <FinishRecorder raceState={raceState} boats={boats} onRecordFinish={onRecordFinish} onUndoFinish={onUndoFinish} />
+          )}
+
+          {recallSuggested && onIndividualRecall && (
+            <IndividualRecallDialog
+              className={raceState.activeClass}
+              boats={boats}
+              suggested={recallSuggested}
+              onClose={() => setRecallSuggested(null)}
+              onConfirm={(ids) => {
+                setRecallSuggested(null);
+                onIndividualRecall(raceState.activeClass, ids);
+              }}
+            />
           )}
 
           {/* TAB 2: OCS & FLEET FLAGS */}
