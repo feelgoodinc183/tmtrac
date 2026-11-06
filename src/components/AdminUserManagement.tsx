@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import {
   Users,
   UserPlus,
@@ -17,12 +17,16 @@ import {
 } from 'lucide-react';
 import { UserAccount } from '../types/regatta';
 import { authService } from '../services/authService';
+import { DialogFrame } from './ui/Dialog';
 
 interface AdminUserManagementProps {
   currentUser: UserAccount;
 }
 
 export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser }) => {
+  const addTitleId = useId();
+  const resetTitleId = useId();
+  const deleteTitleId = useId();
   const [userList, setUserList] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -529,249 +533,249 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ curren
 
       {/* SUB-MODAL 1: ADD NEW USER */}
       {showAddUserModal && (
-        <div
-          id="admin-add-user-modal-backdrop"
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/80 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddUserModal(false);
-          }}
+        <DialogFrame
+          onClose={() => setShowAddUserModal(false)}
+          labelledBy={addTitleId}
+          closeOnBackdrop
+          overlayId="admin-add-user-modal-backdrop"
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/80 backdrop-blur-sm"
+          className="bg-surface border border-line rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
         >
-          <div className="bg-surface border border-line rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-line flex items-center justify-between">
-              <div className="flex items-center gap-2 text-ink font-bold">
-                <UserPlus className="w-5 h-5 text-accent" />
-                <span>Create User Account</span>
-              </div>
-              <button
-                onClick={() => setShowAddUserModal(false)}
-                className="text-ink-muted hover:text-ink p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <div className="p-4 sm:p-5 border-b border-line flex items-center justify-between">
+            <div className="flex items-center gap-2 text-ink font-bold">
+              <UserPlus className="w-5 h-5 text-accent" />
+              <span id={addTitleId}>Create User Account</span>
+            </div>
+            <button
+              aria-label="Close"
+              onClick={() => setShowAddUserModal(false)}
+              className="text-ink-muted hover:text-ink p-1 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateUser} className="p-4 sm:p-5 space-y-3">
+            <div>
+              <label className="block text-xs text-ink-muted mb-1">Full Name</label>
+              <input
+                id="admin-new-user-fullname"
+                type="text"
+                required
+                value={newFullName}
+                onChange={(e) => setNewFullName(e.target.value)}
+                placeholder="e.g. Commander Sarah Jenkins"
+                className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
+              />
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-4 sm:p-5 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs text-ink-muted mb-1">Full Name</label>
+                <label className="block text-xs text-ink-muted mb-1">Username</label>
                 <input
-                  id="admin-new-user-fullname"
+                  id="admin-new-user-username"
                   type="text"
                   required
-                  value={newFullName}
-                  onChange={(e) => setNewFullName(e.target.value)}
-                  placeholder="e.g. Commander Sarah Jenkins"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="e.g. sarah_j"
                   className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Username</label>
-                  <input
-                    id="admin-new-user-username"
-                    type="text"
-                    required
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="e.g. sarah_j"
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Role</label>
-                  <select
-                    id="admin-new-user-role"
-                    value={newUserRole}
-                    onChange={(e) =>
-                      setNewUserRole(e.target.value as 'ADMIN' | 'RACE_OFFICER' | 'SKIPPER' | 'SPECTATOR')
-                    }
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
-                  >
-                    <option value="RACE_OFFICER">RACE_OFFICER</option>
-                    <option value="SKIPPER">SKIPPER</option>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="SPECTATOR">SPECTATOR</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="block text-xs text-ink-muted mb-1">Email Address</label>
-                <input
-                  id="admin-new-user-email"
-                  type="email"
-                  required
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="e.g. sarah@marine.org"
-                  className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-ink-muted mb-1">Initial Password</label>
-                <input
-                  id="admin-new-user-password"
-                  type="password"
-                  required
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="Minimum 4 characters"
-                  className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Sailing Club</label>
-                  <input
-                    id="admin-new-user-club"
-                    type="text"
-                    value={newUserClub}
-                    onChange={(e) => setNewUserClub(e.target.value)}
-                    placeholder="e.g. RLYC"
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Sail Number</label>
-                  <input
-                    id="admin-new-user-sail"
-                    type="text"
-                    value={newUserSailNumber}
-                    onChange={(e) => setNewUserSailNumber(e.target.value)}
-                    placeholder="e.g. MAS 77"
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
-                <button
-                  type="button"
-                  onClick={() => setShowAddUserModal(false)}
-                  className="px-3.5 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs font-semibold"
+                <label className="block text-xs text-ink-muted mb-1">Role</label>
+                <select
+                  id="admin-new-user-role"
+                  value={newUserRole}
+                  onChange={(e) =>
+                    setNewUserRole(e.target.value as 'ADMIN' | 'RACE_OFFICER' | 'SKIPPER' | 'SPECTATOR')
+                  }
+                  className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingUser}
-                  className="px-4 py-2 rounded-xl bg-accent hover:brightness-110 text-on-accent text-xs font-semibold shadow"
-                >
-                  {isSubmittingUser ? 'Creating...' : 'Create User'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SUB-MODAL 2: RESET PASSWORD */}
-      {resetPasswordTarget && (
-        <div
-          id="admin-reset-pwd-modal-backdrop"
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/80 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setResetPasswordTarget(null);
-          }}
-        >
-          <div className="bg-surface border border-line rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-ink font-bold">
-                <KeyRound className="w-5 h-5 text-warning-ink" />
-                <span>Reset User Password</span>
-              </div>
-              <button
-                onClick={() => setResetPasswordTarget(null)}
-                className="text-ink-muted hover:text-ink p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-ink">
-              Set a new password for <span className="font-bold text-ink">@{resetPasswordTarget.username}</span> ({resetPasswordTarget.fullName}).
-            </p>
-
-            <form onSubmit={handleConfirmResetPassword} className="space-y-3">
-              <div>
-                <label className="block text-xs text-ink-muted mb-1">New Password</label>
-                <input
-                  id="admin-reset-pwd-input"
-                  type="password"
-                  required
-                  value={newPasswordInput}
-                  onChange={(e) => setNewPasswordInput(e.target.value)}
-                  placeholder="Enter new password (min 4 characters)"
-                  className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setResetPasswordTarget(null)}
-                  className="px-3.5 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isResettingPassword || !newPasswordInput}
-                  className="px-4 py-2 rounded-xl bg-warning-ink hover:brightness-110 text-canvas text-xs font-semibold shadow"
-                >
-                  {isResettingPassword ? 'Updating...' : 'Set Password'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SUB-MODAL 3: DELETE CONFIRMATION */}
-      {deleteTarget && (
-        <div
-          id="admin-delete-user-modal-backdrop"
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/80 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeleteTarget(null);
-          }}
-        >
-          <div className="bg-surface border border-danger-ink/60 rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-danger/20 text-danger-ink border border-danger-ink/30 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-ink">Delete User Account?</h3>
-                <p className="text-xs text-ink-muted">This action is permanent and cannot be undone.</p>
+                  <option value="RACE_OFFICER">RACE_OFFICER</option>
+                  <option value="SKIPPER">SKIPPER</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="SPECTATOR">SPECTATOR</option>
+                </select>
               </div>
             </div>
 
-            <div className="p-3 bg-surface/30 border border-danger-ink/40 rounded-xl text-xs text-ink">
-              Are you sure you want to delete account <span className="text-ink font-bold">@{deleteTarget.username}</span> ({deleteTarget.email})? All active sessions will be terminated.
+            <div>
+              <label className="block text-xs text-ink-muted mb-1">Email Address</label>
+              <input
+                id="admin-new-user-email"
+                type="email"
+                required
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="e.g. sarah@marine.org"
+                className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
+              />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div>
+              <label className="block text-xs text-ink-muted mb-1">Initial Password</label>
+              <input
+                id="admin-new-user-password"
+                type="password"
+                required
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                placeholder="Minimum 4 characters"
+                className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-ink-muted mb-1">Sailing Club</label>
+                <input
+                  id="admin-new-user-club"
+                  type="text"
+                  value={newUserClub}
+                  onChange={(e) => setNewUserClub(e.target.value)}
+                  placeholder="e.g. RLYC"
+                  className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-ink-muted mb-1">Sail Number</label>
+                <input
+                  id="admin-new-user-sail"
+                  type="text"
+                  value={newUserSailNumber}
+                  onChange={(e) => setNewUserSailNumber(e.target.value)}
+                  placeholder="e.g. MAS 77"
+                  className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
               <button
                 type="button"
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => setShowAddUserModal(false)}
                 className="px-3.5 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs font-semibold"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeletingUser}
-                className="px-4 py-2 rounded-xl bg-danger hover:brightness-110 text-on-danger text-xs font-semibold shadow"
+                type="submit"
+                disabled={isSubmittingUser}
+                className="px-4 py-2 rounded-xl bg-accent hover:brightness-110 text-on-accent text-xs font-semibold shadow"
               >
-                {isDeletingUser ? 'Deleting...' : 'Delete User'}
+                {isSubmittingUser ? 'Creating...' : 'Create User'}
               </button>
             </div>
+          </form>
+        </DialogFrame>
+      )}
+
+      {/* SUB-MODAL 2: RESET PASSWORD */}
+      {resetPasswordTarget && (
+        <DialogFrame
+          onClose={() => setResetPasswordTarget(null)}
+          labelledBy={resetTitleId}
+          closeOnBackdrop
+          overlayId="admin-reset-pwd-modal-backdrop"
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/80 backdrop-blur-sm"
+          className="bg-surface border border-line rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-ink font-bold">
+              <KeyRound className="w-5 h-5 text-warning-ink" />
+              <span id={resetTitleId}>Reset User Password</span>
+            </div>
+            <button
+              aria-label="Close"
+              onClick={() => setResetPasswordTarget(null)}
+              className="text-ink-muted hover:text-ink p-1 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </div>
+
+          <p className="text-xs text-ink">
+            Set a new password for <span className="font-bold text-ink">@{resetPasswordTarget.username}</span> ({resetPasswordTarget.fullName}).
+          </p>
+
+          <form onSubmit={handleConfirmResetPassword} className="space-y-3">
+            <div>
+              <label className="block text-xs text-ink-muted mb-1">New Password</label>
+              <input
+                id="admin-reset-pwd-input"
+                type="password"
+                required
+                value={newPasswordInput}
+                onChange={(e) => setNewPasswordInput(e.target.value)}
+                placeholder="Enter new password (min 4 characters)"
+                className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-ink-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setResetPasswordTarget(null)}
+                className="px-3.5 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isResettingPassword || !newPasswordInput}
+                className="px-4 py-2 rounded-xl bg-warning-ink hover:brightness-110 text-canvas text-xs font-semibold shadow"
+              >
+                {isResettingPassword ? 'Updating...' : 'Set Password'}
+              </button>
+            </div>
+          </form>
+        </DialogFrame>
+      )}
+
+      {/* SUB-MODAL 3: DELETE CONFIRMATION */}
+      {deleteTarget && (
+        <DialogFrame
+          onClose={() => setDeleteTarget(null)}
+          labelledBy={deleteTitleId}
+          closeOnBackdrop
+          role="alertdialog"
+          overlayId="admin-delete-user-modal-backdrop"
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/80 backdrop-blur-sm"
+          className="bg-surface border border-danger-ink/60 rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-danger/20 text-danger-ink border border-danger-ink/30 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 id={deleteTitleId} className="text-base font-bold text-ink">Delete User Account?</h3>
+              <p className="text-xs text-ink-muted">This action is permanent and cannot be undone.</p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-surface/30 border border-danger-ink/40 rounded-xl text-xs text-ink">
+            Are you sure you want to delete account <span className="text-ink font-bold">@{deleteTarget.username}</span> ({deleteTarget.email})? All active sessions will be terminated.
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="px-3.5 py-2 rounded-xl bg-raised hover:bg-raised text-ink text-xs font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={isDeletingUser}
+              className="px-4 py-2 rounded-xl bg-danger hover:brightness-110 text-on-danger text-xs font-semibold shadow"
+            >
+              {isDeletingUser ? 'Deleting...' : 'Delete User'}
+            </button>
+          </div>
+        </DialogFrame>
       )}
     </div>
   );

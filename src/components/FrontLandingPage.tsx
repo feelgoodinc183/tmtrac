@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import {
   Compass,
   Radio,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PricingPackage, UserAccount } from '../types/regatta';
 import { APP_VERSION } from '../appVersion';
+import { DialogFrame } from './ui/Dialog';
 
 interface FrontLandingPageProps {
   onLoginClick: () => void;
@@ -35,6 +36,7 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
   currentUser,
   onLogoutClick,
 }) => {
+  const spectatorTitleId = useId();
   const [packages, setPackages] = useState<PricingPackage[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [activeEvents, setActiveEvents] = useState<Array<{ code: string; title: string; locationName: string; boatCount: number; status: string }>>([]);
@@ -700,101 +702,105 @@ export const FrontLandingPage: React.FC<FrontLandingPageProps> = ({
 
       {/* Spectator Quick Modal */}
       {spectatorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-2xl relative text-slate-900">
-            <button
-              onClick={() => setSpectatorModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-sm"
-            >
-              ✕
-            </button>
+        <DialogFrame
+          onClose={() => setSpectatorModalOpen(false)}
+          labelledBy={spectatorTitleId}
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+          className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-2xl relative text-slate-900"
+        >
+          <button
+            aria-label="Close"
+            onClick={() => setSpectatorModalOpen(false)}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-sm"
+          >
+            ✕
+          </button>
 
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600">
-                <Eye className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Watch Regatta (Spectator)</h3>
-                <p className="text-xs text-slate-500">No account required. Instant read-only telemetry.</p>
-              </div>
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600">
+              <Eye className="w-5 h-5" />
             </div>
-
-            <form onSubmit={handleJoinSpectator} className="space-y-4 mb-6">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Enter Regatta Access Code
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={inputCode}
-                    onChange={(e) => {
-                      setInputCode(e.target.value.toUpperCase());
-                      setCodeError(null);
-                    }}
-                    placeholder="e.g. RLIR26 or LANGKAWI"
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 uppercase placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono tracking-wider"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isValidatingCode}
-                    className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs shadow-sm min-w-[70px] flex items-center justify-center"
-                  >
-                    {isValidatingCode ? 'Checking...' : 'View'}
-                  </button>
-                </div>
-                {codeError && (
-                  <div className="mt-2 text-xs text-rose-600 font-medium flex items-start gap-1.5 bg-rose-50 border border-rose-200 rounded-lg p-2 animate-fade-in">
-                    <span className="shrink-0 mt-0.5">⚠️</span>
-                    <span>{codeError}</span>
-                  </div>
-                )}
-              </div>
-            </form>
-
             <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                Active Public Regattas
-              </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {activeEvents.length === 0 ? (
-                  <div
-                    onClick={() => {
-                      onViewRaceClick('RLIR26');
-                      setSpectatorModalOpen(false);
-                    }}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 cursor-pointer transition-colors"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-xs text-slate-900">Royal Langkawi Regatta (RLIR26)</span>
-                      <span className="text-xs text-cyan-700 font-mono font-medium">DEFAULT</span>
-                    </div>
-                    <div className="text-xs text-slate-500">Kuah Bay, Langkawi (RLYC)</div>
-                  </div>
-                ) : (
-                  activeEvents.map((ev) => (
-                    <div
-                      key={ev.code}
-                      onClick={() => {
-                        onViewRaceClick(ev.code);
-                        setSpectatorModalOpen(false);
-                      }}
-                      className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 cursor-pointer transition-colors flex justify-between items-center"
-                    >
-                      <div>
-                        <div className="text-xs font-semibold text-slate-900">{ev.title}</div>
-                        <div className="text-xs text-slate-500">{ev.locationName}</div>
-                      </div>
-                      <span className="text-xs px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold">
-                        {ev.code}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
+              <h3 id={spectatorTitleId} className="text-base font-bold text-slate-900">Watch Regatta (Spectator)</h3>
+              <p className="text-xs text-slate-500">No account required. Instant read-only telemetry.</p>
             </div>
           </div>
-        </div>
+
+          <form onSubmit={handleJoinSpectator} className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Enter Regatta Access Code
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={inputCode}
+                  onChange={(e) => {
+                    setInputCode(e.target.value.toUpperCase());
+                    setCodeError(null);
+                  }}
+                  placeholder="e.g. RLIR26 or LANGKAWI"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 uppercase placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono tracking-wider"
+                />
+                <button
+                  type="submit"
+                  disabled={isValidatingCode}
+                  className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs shadow-sm min-w-[70px] flex items-center justify-center"
+                >
+                  {isValidatingCode ? 'Checking...' : 'View'}
+                </button>
+              </div>
+              {codeError && (
+                <div className="mt-2 text-xs text-rose-600 font-medium flex items-start gap-1.5 bg-rose-50 border border-rose-200 rounded-lg p-2 animate-fade-in">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  <span>{codeError}</span>
+                </div>
+              )}
+            </div>
+          </form>
+
+          <div>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Active Public Regattas
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {activeEvents.length === 0 ? (
+                <div
+                  onClick={() => {
+                    onViewRaceClick('RLIR26');
+                    setSpectatorModalOpen(false);
+                  }}
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 cursor-pointer transition-colors"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-xs text-slate-900">Royal Langkawi Regatta (RLIR26)</span>
+                    <span className="text-xs text-cyan-700 font-mono font-medium">DEFAULT</span>
+                  </div>
+                  <div className="text-xs text-slate-500">Kuah Bay, Langkawi (RLYC)</div>
+                </div>
+              ) : (
+                activeEvents.map((ev) => (
+                  <div
+                    key={ev.code}
+                    onClick={() => {
+                      onViewRaceClick(ev.code);
+                      setSpectatorModalOpen(false);
+                    }}
+                    className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 cursor-pointer transition-colors flex justify-between items-center"
+                  >
+                    <div>
+                      <div className="text-xs font-semibold text-slate-900">{ev.title}</div>
+                      <div className="text-xs text-slate-500">{ev.locationName}</div>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold">
+                      {ev.code}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogFrame>
       )}
 
       {/* Minimal Footer */}
