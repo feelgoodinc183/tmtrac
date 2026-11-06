@@ -14,6 +14,8 @@ import {
   MoreHorizontal,
   Sailboat,
 } from 'lucide-react';
+import { ServerConnectionStatus } from '../services/serverConnection';
+import { connectionLabel } from './ServerConnectionBanner';
 import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
 
@@ -33,6 +35,8 @@ interface HeaderProps {
   viewMode: 'RC_CONSOLE' | 'SPECTATOR';
   /** Unlocked with the skipper PIN: the read-only chip says Skipper instead of Spectator */
   isSkipper?: boolean;
+  /** Whether this device can reach the server: a dot on the room selector */
+  serverStatus?: ServerConnectionStatus;
   setViewMode?: (mode: 'RC_CONSOLE' | 'SPECTATOR') => void;
   activeRoomCode?: string;
   onOpenLobby?: () => void;
@@ -59,6 +63,13 @@ interface HeaderProps {
   onOpenLandingPage?: () => void;
 }
 
+const DOT_TONE = {
+  ok: 'bg-success-ink',
+  muted: 'bg-ink-muted',
+  warning: 'bg-warning-ink motion-safe:animate-pulse',
+  danger: 'bg-danger-ink',
+} as const;
+
 export const Header: React.FC<HeaderProps> = ({
   raceState,
   directSunlightMode,
@@ -66,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
   connectedPeerCount = 1,
   viewMode,
   isSkipper = false,
+  serverStatus,
   setViewMode,
   activeRoomCode = 'LOBBY',
   onOpenLobby,
@@ -82,6 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSuperAdmin,
   onOpenLandingPage,
 }) => {
+  const server = serverStatus ? connectionLabel(serverStatus) : null;
 
   return (
     <header
@@ -143,8 +156,10 @@ export const Header: React.FC<HeaderProps> = ({
           id="header-room-selector"
           onClick={onOpenLobby}
           className="tap-target flex items-center gap-1 px-2 py-1 rounded-lg bg-surface hover:bg-raised border border-accent/30 hover:border-accent text-accent text-xs transition-all cursor-pointer shadow-xs"
-          title="Switch Regatta Room or Host Session"
+          title={server ? `${server.text}. Switch regatta room.` : 'Switch Regatta Room or Host Session'}
+          aria-label={`Room ${activeRoomCode}${server ? `, ${server.text.toLowerCase()}` : ''}. Switch room`}
         >
+          {server && <span className={`w-2 h-2 rounded-full shrink-0 ${DOT_TONE[server.tone]}`} aria-hidden="true" />}
           <Radio className="hidden sm:block w-3 h-3 text-accent shrink-0" />
           <span className="font-bold max-w-[65px] sm:max-w-[100px] truncate">#{activeRoomCode}</span>
           <ChevronDown className="w-2.5 h-2.5 text-ink-muted shrink-0" />

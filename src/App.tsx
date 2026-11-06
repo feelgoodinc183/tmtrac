@@ -45,6 +45,8 @@ import { FEATURES } from './config/features';
 import { MqttPacketInspectorModal } from './components/MqttPacketInspectorModal';
 import { OfflineCacheModal } from './components/OfflineCacheModal';
 import { SpectatorQrModal } from './components/SpectatorQrModal';
+import { ServerConnectionBanner } from './components/ServerConnectionBanner';
+import { ServerConnectionStatus } from './services/serverConnection';
 import { ConnectDeviceDialog } from './components/ConnectDeviceDialog';
 import { VhfAndJuryProtestModal } from './components/VhfAndJuryProtestModal';
 import { NmeaAndMalaysiaMeshModal } from './components/NmeaAndMalaysiaMeshModal';
@@ -235,6 +237,9 @@ export default function App() {
   canEditRef.current = isUserAdminOrOfficer;
   // Unlocked with the skipper PIN in this room (the server's role for this connection)
   const [isSkipper, setIsSkipper] = useState(() => roomService.isParticipant());
+  // Whether this device can reach the server (header dot, connection banner)
+  const [serverStatus, setServerStatus] = useState<ServerConnectionStatus>(() => deviceTrackerService.getConnectionStatus());
+  useEffect(() => deviceTrackerService.onConnectionStatus(setServerStatus), []);
   // Shown when the server refuses an edit, so a change never looks saved when it wasn't
   const [saveRejection, setSaveRejection] = useState<{ action: string; roomCode: string; at: number } | null>(null);
   // Boats that pointed at a tracker id from an older version and need their tracker attached again
@@ -2669,6 +2674,13 @@ export default function App() {
         'bg-surface text-ink'
       }`}
     >
+      <ServerConnectionBanner
+        status={serverStatus}
+        canEdit={isUserAdminOrOfficer}
+        queuedPoints={serverStatus.state === 'connected' ? 0 : deviceTrackerService.getOfflineBufferCount()}
+        onDismissLostEdits={() => deviceTrackerService.clearLostEdits()}
+      />
+
       {saveRejection && (
         <div
           id="save-rejected-banner"
@@ -2751,6 +2763,7 @@ export default function App() {
         connectedPeerCount={connectedPeerCount}
         viewMode={viewMode}
         isSkipper={isSkipper && !isUserAdminOrOfficer}
+        serverStatus={serverStatus}
         setViewMode={setViewMode}
         activeRoomCode={activeRoomCode}
         onOpenLobby={() => setShowLobbyModal(true)}
