@@ -410,6 +410,8 @@ export interface RaceState {
   airtimePercent: number;
   windSpeedKt: number;
   windDirectionDeg: number;
+  /** Name of the preset or profile that set the current marks; '' or absent when none was applied. */
+  courseName?: string;
   deadReckoningEnabled: boolean;
   offlineCacheActive: boolean;
   syncProgress: number; // 0-100

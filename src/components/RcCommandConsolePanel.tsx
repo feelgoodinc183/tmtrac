@@ -12,11 +12,9 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: 'finished',
 };
 import {
-  addCourseMark,
   removeCourseMark,
   moveMarkOrder,
   updateMarkSettings,
-  generateCoursePreset,
 } from '../services/courseService';
 import {
   Compass,
@@ -63,6 +61,10 @@ interface RcCommandConsolePanelProps {
   onOpenResults?: () => void;
   onOpenCourseProfiles?: () => void;
   courseProfileCount?: number;
+  /** Replaces the course with a preset (App asks first when marks exist). */
+  onApplyCoursePreset: (preset: 'WINDWARD_LEEWARD' | 'TRIANGLE' | 'TRAPEZOID') => void;
+  /** Adds the next mark near the course, or where the map is looking when there is none. */
+  onAddCourseMark: () => void;
   onClose?: () => void;
   isOverlay?: boolean;
 }
@@ -90,6 +92,8 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   onOpenResults,
   onOpenCourseProfiles,
   courseProfileCount = 0,
+  onApplyCoursePreset,
+  onAddCourseMark,
   onClose,
   isOverlay = false,
 }) => {
@@ -199,18 +203,18 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
           <div className="min-w-0">
             <h2 className="text-xs sm:text-sm font-bold tracking-tight text-ink flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span>Race Control</span>
-              {(() => {
-                 const currentClassDef = raceClasses.find(c => c.name === raceState.activeClass);
-                 if (currentClassDef?.courseProfileName) {
-                   return (
-                     <span className="bg-accent/20 text-accent text-xs px-1.5 sm:px-2 py-0.5 rounded-full border border-accent/40 flex items-center gap-1 font-bold max-w-full truncate">
-                       <Route className="w-3 h-3" />
-                       Course: {currentClassDef.courseProfileName}
-                     </span>
-                   );
-                 }
-                 return null;
-               })()}
+              {/* The course on the water: what was last applied, not the class's linked profile. */}
+              {marks.length === 0 ? (
+                <span className="bg-raised/50 text-ink-muted text-xs px-1.5 sm:px-2 py-0.5 rounded-full border border-line flex items-center gap-1 font-bold max-w-full truncate">
+                  <Route className="w-3 h-3" />
+                  No course set
+                </span>
+              ) : (
+                <span className="bg-accent/20 text-accent text-xs px-1.5 sm:px-2 py-0.5 rounded-full border border-accent/40 flex items-center gap-1 font-bold max-w-full truncate">
+                  <Route className="w-3 h-3" />
+                  Course: {raceState.courseName || `Custom, ${marks.length} ${marks.length === 1 ? 'mark' : 'marks'}`}
+                </span>
+              )}
               <span
                 className={`text-xs sm:text-xs px-2 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
                   activeClassState.status === 'RACING'
@@ -872,12 +876,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      const centerLat = marks.length > 0 ? marks[0].lat : 6.308;
-                      const centerLng = marks.length > 0 ? marks[0].lng : 99.845;
-                      const newMarks = addCourseMark(marks, centerLat + (Math.random() - 0.5) * 0.01, centerLng + (Math.random() - 0.5) * 0.01, 'WINDWARD');
-                      onUpdateMarks(newMarks);
-                    }}
+                    onClick={onAddCourseMark}
                     className="min-h-10 px-4 bg-accent text-on-accent text-sm font-semibold rounded-control flex items-center gap-1.5 hover:brightness-110 transition-[filter]"
                   >
                     <Plus className="w-4 h-4" /> Add mark #{marks.filter(m => m.type !== 'PIN_END' && m.type !== 'RC_BOAT' && m.type !== 'FINISH' && m.type !== 'FINISH_PIN' && m.type !== 'FINISH_RC').length + 1}
@@ -886,11 +885,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                   <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-line">
                     <button
                       type="button"
-                      onClick={() => {
-                        const centerLat = marks.length > 0 ? marks[0].lat : 6.308;
-                        const centerLng = marks.length > 0 ? marks[0].lng : 99.845;
-                        onUpdateMarks(generateCoursePreset('WINDWARD_LEEWARD', centerLat, centerLng, raceState.windDirectionDeg));
-                      }}
+                      onClick={() => onApplyCoursePreset('WINDWARD_LEEWARD')}
                       className="px-2 py-1 rounded-lg text-xs text-ink-muted hover:text-ink hover:bg-raised transition-colors"
                       title="Load Windward-Leeward Course"
                     >
@@ -898,11 +893,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        const centerLat = marks.length > 0 ? marks[0].lat : 6.308;
-                        const centerLng = marks.length > 0 ? marks[0].lng : 99.845;
-                        onUpdateMarks(generateCoursePreset('TRIANGLE', centerLat, centerLng, raceState.windDirectionDeg));
-                      }}
+                      onClick={() => onApplyCoursePreset('TRIANGLE')}
                       className="px-2 py-1 rounded-lg text-xs text-ink-muted hover:text-ink hover:bg-raised transition-colors"
                       title="Load Olympic Triangle Course"
                     >
@@ -910,11 +901,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        const centerLat = marks.length > 0 ? marks[0].lat : 6.308;
-                        const centerLng = marks.length > 0 ? marks[0].lng : 99.845;
-                        onUpdateMarks(generateCoursePreset('TRAPEZOID', centerLat, centerLng, raceState.windDirectionDeg));
-                      }}
+                      onClick={() => onApplyCoursePreset('TRAPEZOID')}
                       className="px-2 py-1 rounded-lg text-xs text-ink-muted hover:text-ink hover:bg-raised transition-colors"
                       title="Load Trapezoid Course"
                     >
