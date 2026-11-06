@@ -160,8 +160,8 @@ interface MarineMapCanvasProps {
   onMoveNodePosition?: (nodeId: string, lat: number, lng: number) => void;
   onUpdateMarkSettings?: (markId: string, updates: Partial<CourseMark>) => void;
   onMoveMarkOrder?: (markId: string, direction: 'UP' | 'DOWN') => void;
-  onApplyCoursePreset?: (preset: 'WINDWARD_LEEWARD' | 'TRIANGLE' | 'TRAPEZOID') => void;
-  onOpenCourseProfiles?: () => void;
+  /** Opens Setup > Course: load a course, list and order marks */
+  onEditCourse?: () => void;
   viewMode?: 'RC_CONSOLE' | 'SPECTATOR';
 }
 
@@ -200,8 +200,7 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   onMoveNodePosition,
   onUpdateMarkSettings,
   onMoveMarkOrder,
-  onApplyCoursePreset,
-  onOpenCourseProfiles,
+  onEditCourse,
   viewMode = 'RC_CONSOLE',
 }) => {
   // Only move boats along their trails when there is a recorded race to replay.
@@ -1215,42 +1214,17 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
               Legs {showCourseLegs ? 'ON' : 'OFF'}
             </button>
 
-            {/* Course Presets Dropdown / Quick Switch */}
-            {onApplyCoursePreset && (
-              <div className="hidden sm:flex items-center gap-1 border-l border-line pl-1.5 ml-0.5">
-                <button
-                  onClick={() => onApplyCoursePreset('WINDWARD_LEEWARD')}
-                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
-                  title="Apply Windward-Leeward Preset Course"
-                >
-                  W/L
-                </button>
-                <button
-                  onClick={() => onApplyCoursePreset('TRIANGLE')}
-                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
-                  title="Apply Olympic Triangle Preset Course"
-                >
-                  Triangle
-                </button>
-                <button
-                  onClick={() => onApplyCoursePreset('TRAPEZOID')}
-                  className="px-2 py-1 rounded-lg bg-raised hover:bg-raised text-ink-muted hover:text-ink text-xs transition-colors"
-                  title="Apply 4-Mark Trapezoid Preset Course"
-                >
-                  Trapezoid
-                </button>
-              </div>
-            )}
-
-            {/* Saved Course Profiles Button (Moved to Course Tool Menu) */}
-            {onOpenCourseProfiles && (
+            {/* Loading a course and the mark list live in Setup > Course */}
+            {onEditCourse && (
               <button
-                onClick={onOpenCourseProfiles}
-                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-warning-ink/20 hover:bg-warning-ink/30 border border-warning-ink/50 text-warning-ink text-xs sm:text-xs font-bold flex items-center gap-1 transition-all"
-                title="Manage Saved Course Profiles & Buoy Layouts (Max 10)"
+                onClick={() => {
+                  setCourseEditMode('NONE');
+                  onEditCourse();
+                }}
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-raised hover:brightness-110 border border-line text-ink text-xs font-bold flex items-center gap-1 transition-all"
               >
                 <Route className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>Profiles</span>
+                <span>Edit in Setup</span>
               </button>
             )}
 

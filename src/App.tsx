@@ -36,7 +36,7 @@ import { Footer } from './components/Footer';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { RcCommandConsolePanel } from './components/RcCommandConsolePanel';
 import { MobileBottomBar, MobileTab } from './components/MobileBottomBar';
-import { SetupPanel, SetupSection, getSetupStatus } from './components/SetupPanel';
+import { SetupPanel, SetupSection, CourseChoice, getSetupStatus } from './components/SetupPanel';
 import { MoreMenu } from './components/MoreMenu';
 import { RosterImportDialog } from './components/RosterImportDialog';
 import { HeadToHeadModal } from './components/HeadToHeadModal';
@@ -70,7 +70,7 @@ import { SuperAdminModal } from './components/SuperAdminModal';
 import { authService } from './services/authService';
 import { tenantService } from './services/tenantService';
 import { UserAccount, Tenant } from './types/regatta';
-import { getSavedCourseProfiles } from './services/courseProfileService';
+import { getSavedCourseProfiles, relocateCourseMarksToLocation } from './services/courseProfileService';
 import { generateRaceHighlights, recordedRaceDurationSec } from './services/highlightService';
 import { meshtasticService } from './services/meshtasticBleMqttService';
 import { deviceTrackerService, getDefaultDeviceProfile } from './services/deviceTrackerService';
@@ -308,6 +308,8 @@ export default function App() {
   const openSetup = (section?: SetupSection) => setSetupOpen({ section });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showRosterImport, setShowRosterImport] = useState(false);
+  // Bumped when Setup is finished, so race control shows the start sequence
+  const [sequenceSignal, setSequenceSignal] = useState(0);
   const [connectedPeerCount, setConnectedPeerCount] = useState<number>(1);
 
   // Sunlight Mode: light, high-contrast theme for use outdoors. Remembered per device.
@@ -1410,11 +1412,27 @@ export default function App() {
     fitMapTo(updated);
   };
 
-  // A preset replaces the whole course, so ask first when there is one.
-  const [pendingCoursePreset, setPendingCoursePreset] = useState<CoursePresetType | null>(null);
-  const handleApplyCoursePreset = (preset: CoursePresetType) => {
-    if (marks.length > 0) setPendingCoursePreset(preset);
-    else applyCoursePreset(preset);
+  // Loading a course (template or saved) replaces the whole course, so ask first when there is one.
+  const [pendingCourseLoad, setPendingCourseLoad] = useState<{ name: string; apply: () => void } | null>(null);
+  const handleLoadCourse = (choice: CourseChoice) => {
+    let name: string;
+    let apply: () => void;
+    if ('preset' in choice) {
+      name = COURSE_PRESET_LABEL[choice.preset];
+      apply = () => applyCoursePreset(choice.preset);
+    } else {
+      const profile = getSavedCourseProfiles().find((p) => p.id === choice.profileId);
+      if (!profile) return;
+      name = profile.name;
+      // Laid out where the race is: this device's GPS, else where the map is looking
+      const at =
+        deviceGps.active && deviceGps.lat && deviceGps.lng
+          ? { lat: deviceGps.lat, lng: deviceGps.lng }
+          : getMapCenter() ?? { lat: selectedLocation?.centerLat ?? 6.308, lng: selectedLocation?.centerLng ?? 99.845 };
+      apply = () => handleApplyCourseProfile(relocateCourseMarksToLocation(profile.marks, at.lat, at.lng), profile.name, profile.id);
+    }
+    if (marks.length > 0) setPendingCourseLoad({ name, apply });
+    else apply();
   };
 
   const handleAddCourseMarkNearView = () => {
@@ -2762,15 +2780,10 @@ export default function App() {
             onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
             raceClasses={raceClasses}
-            onOpenClassManager={() => setShowClassManager(true)}
+            onOpenClassManager={() => openSetup('CLASSES')}
             onOpenResults={() => setShowResultsModal(true)}
-            onOpenCourseProfiles={() => {
-              setCourseProfileCount(getSavedCourseProfiles().length);
-              setShowCourseProfilesModal(true);
-            }}
-            courseProfileCount={courseProfileCount}
-            onApplyCoursePreset={handleApplyCoursePreset}
-            onAddCourseMark={handleAddCourseMarkNearView}
+            onEditCourse={() => openSetup('COURSE')}
+            showSequenceSignal={sequenceSignal}
           />
         )}
       </div>
@@ -2851,11 +2864,7 @@ export default function App() {
               onMoveBoatPosition={handleMoveBoatPosition}
               onUpdateMarkSettings={handleUpdateMarkSettings}
               onMoveMarkOrder={handleMoveMarkOrder}
-              onApplyCoursePreset={handleApplyCoursePreset}
-              onOpenCourseProfiles={() => {
-                setCourseProfileCount(getSavedCourseProfiles().length);
-                setShowCourseProfilesModal(true);
-              }}
+              onEditCourse={canRunRace ? () => openSetup('COURSE') : undefined}
               viewMode={viewMode}
             />
 
@@ -2902,11 +2911,7 @@ export default function App() {
                 onMoveBoatPosition={handleMoveBoatPosition}
                 onUpdateMarkSettings={handleUpdateMarkSettings}
                 onMoveMarkOrder={handleMoveMarkOrder}
-                onApplyCoursePreset={handleApplyCoursePreset}
-                onOpenCourseProfiles={() => {
-                  setCourseProfileCount(getSavedCourseProfiles().length);
-                  setShowCourseProfilesModal(true);
-                }}
+                onEditCourse={canRunRace ? () => openSetup('COURSE') : undefined}
                 viewMode={viewMode}
               />
 
@@ -3109,15 +3114,10 @@ export default function App() {
                   onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
                   raceClasses={raceClasses}
-                  onOpenClassManager={() => setShowClassManager(true)}
+                  onOpenClassManager={() => openSetup('CLASSES')}
                   onOpenResults={() => setShowResultsModal(true)}
-                  onOpenCourseProfiles={() => {
-                    setCourseProfileCount(getSavedCourseProfiles().length);
-                    setShowCourseProfilesModal(true);
-                  }}
-                  courseProfileCount={courseProfileCount}
-                  onApplyCoursePreset={handleApplyCoursePreset}
-                  onAddCourseMark={handleAddCourseMarkNearView}
+                  onEditCourse={() => openSetup('COURSE')}
+                  showSequenceSignal={sequenceSignal}
                 />
               </div>
             </div>
@@ -3173,19 +3173,26 @@ export default function App() {
           marks={marks}
           deviceGps={deviceGps}
           onToggleDeviceGps={handleToggleDeviceGps}
-          onOpenClassManager={() => setShowClassManager(true)}
+          onAddClass={handleAddClass}
+          onUpdateClass={handleUpdateClass}
+          onDeleteClass={handleDeleteClass}
           onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
           onOpenRosterImport={() => setShowRosterImport(true)}
           onOpenBoatQr={() => handleOpenBoatQr()}
           onOpenConnectDevice={openConnectDevice}
-          onOpenCourseProfiles={() => {
+          onLoadCourse={handleLoadCourse}
+          onManageCourses={() => {
             setCourseProfileCount(getSavedCourseProfiles().length);
             setShowCourseProfilesModal(true);
           }}
           courseProfileCount={courseProfileCount}
           onUpdateMarks={handleUpdateMarks}
-          onApplyCoursePreset={handleApplyCoursePreset}
           onAddCourseMark={handleAddCourseMarkNearView}
+          onFinish={() => {
+            setSetupOpen(null);
+            setMobileTab('RC_CONSOLE');
+            setSequenceSignal((n) => n + 1);
+          }}
         />
       )}
 
@@ -3485,17 +3492,17 @@ export default function App() {
         onClose={() => setShowCpanelDeployModal(false)}
       />
 
-      {pendingCoursePreset && (
+      {pendingCourseLoad && (
         <ConfirmDialog
-          title={`Replace ${marks.length} ${marks.length === 1 ? 'mark' : 'marks'} with ${COURSE_PRESET_LABEL[pendingCoursePreset]}?`}
-          body={`The current course${raceState.courseName ? ` (${raceState.courseName})` : ''} is removed and the fleet's course updates. This can't be undone; save it as a course profile first if you want it back.`}
+          title={`Replace ${marks.length} ${marks.length === 1 ? 'mark' : 'marks'} with ${pendingCourseLoad.name}?`}
+          body={`The current course${raceState.courseName ? ` (${raceState.courseName})` : ''} is removed and the fleet's course updates. This can't be undone. To keep it, save it first (Setup, Course: Save, rename or import courses).`}
           confirmLabel="Replace course"
           onConfirm={() => {
-            const preset = pendingCoursePreset;
-            setPendingCoursePreset(null);
-            applyCoursePreset(preset);
+            const load = pendingCourseLoad;
+            setPendingCourseLoad(null);
+            load.apply();
           }}
-          onCancel={() => setPendingCoursePreset(null)}
+          onCancel={() => setPendingCourseLoad(null)}
         />
       )}
 

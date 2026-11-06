@@ -51,14 +51,13 @@ interface RcCommandConsolePanelProps {
   onRestartRace?: (forClass?: string) => void;
   onGeneralRecall?: (forClass: string) => void;
   raceClasses?: RaceClassDefinition[];
+  /** Opens Setup > Classes */
   onOpenClassManager?: () => void;
   onOpenResults?: () => void;
-  onOpenCourseProfiles?: () => void;
-  courseProfileCount?: number;
-  /** Replaces the course with a preset (App asks first when marks exist). */
-  onApplyCoursePreset: (preset: 'WINDWARD_LEEWARD' | 'TRIANGLE' | 'TRAPEZOID') => void;
-  /** Adds the next mark near the course, or where the map is looking when there is none. */
-  onAddCourseMark: () => void;
+  /** Opens Setup > Course, the one place the course is built */
+  onEditCourse?: () => void;
+  /** Changes when Setup is finished, to bring the start sequence to the front */
+  showSequenceSignal?: number;
   onClose?: () => void;
   isOverlay?: boolean;
 }
@@ -84,10 +83,8 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
   raceClasses = [],
   onOpenClassManager,
   onOpenResults,
-  onOpenCourseProfiles,
-  courseProfileCount = 0,
-  onApplyCoursePreset,
-  onAddCourseMark,
+  onEditCourse,
+  showSequenceSignal,
   onClose,
   isOverlay = false,
 }) => {
@@ -106,6 +103,12 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
     } catch {}
   }, [isExpanded]);
   const [activeTab, setActiveTab] = useState<'SEQUENCE' | 'OCS_FLEET' | 'ENVIRONMENT' | 'MARKS' | 'ANNOUNCE'>('SEQUENCE');
+  // Setup finished: show the start sequence
+  useEffect(() => {
+    if (!showSequenceSignal) return;
+    setActiveTab('SEQUENCE');
+    setIsExpanded(true);
+  }, [showSequenceSignal]);
 
   // Announcement form
   const [noticeTitle, setNoticeTitle] = useState('');
@@ -339,7 +342,7 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               }`}
             >
               <MapPin className="w-3.5 h-3.5" />
-              Course marks ({marks.length})
+              Course ({marks.length})
             </button>
 
             <button
@@ -842,16 +845,21 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
             </div>
           )}
 
-          {/* TAB 4: COURSE MARKS (the same editor as Setup > Course) */}
+          {/* TAB 4: COURSE. Read here; built in Setup > Course. */}
           {activeTab === 'MARKS' && (
-            <CourseMarksEditor
-              marks={marks}
-              onUpdateMarks={onUpdateMarks}
-              onOpenCourseProfiles={onOpenCourseProfiles}
-              courseProfileCount={courseProfileCount}
-              onApplyCoursePreset={onApplyCoursePreset}
-              onAddCourseMark={onAddCourseMark}
-            />
+            <div className="bg-canvas border border-line p-3.5 rounded-2xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-ink">
+                  {marks.length === 0 ? 'No course set.' : <>Course: <strong>{raceState.courseName || 'Custom course'}</strong></>}
+                </p>
+                {onEditCourse && (
+                  <Button variant={marks.length === 0 ? 'primary' : 'secondary'} icon={<Route />} onClick={onEditCourse}>
+                    {marks.length === 0 ? 'Set the course in Setup' : 'Edit course in Setup'}
+                  </Button>
+                )}
+              </div>
+              {marks.length > 0 && <CourseMarksEditor marks={marks} readOnly />}
+            </div>
           )}
 
           {/* TAB 5: BROADCAST VHF BULLETIN */}
