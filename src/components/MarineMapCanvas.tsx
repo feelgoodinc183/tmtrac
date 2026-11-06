@@ -20,7 +20,6 @@ import {
   Plus,
   Flag,
   Target,
-  SlidersHorizontal,
   Check,
   RotateCcw,
   Minimize2,
@@ -163,7 +162,6 @@ interface MarineMapCanvasProps {
   onMoveMarkOrder?: (markId: string, direction: 'UP' | 'DOWN') => void;
   onApplyCoursePreset?: (preset: 'WINDWARD_LEEWARD' | 'TRIANGLE' | 'TRAPEZOID') => void;
   onOpenCourseProfiles?: () => void;
-  onOpenHub?: (hub?: 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM') => void;
   viewMode?: 'RC_CONSOLE' | 'SPECTATOR';
 }
 
@@ -204,7 +202,6 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
   onMoveMarkOrder,
   onApplyCoursePreset,
   onOpenCourseProfiles,
-  onOpenHub,
   viewMode = 'RC_CONSOLE',
 }) => {
   // Only move boats along their trails when there is a recorded race to replay.
@@ -1138,28 +1135,6 @@ export const MarineMapCanvas: React.FC<MarineMapCanvasProps> = ({
 
       {/* FLOATING TOP-RIGHT MAP CONTROLS & BASEMAP SELECTOR */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2 pointer-events-auto">
-        {/* Floating Control Hub Button */}
-        {onOpenHub && (
-          <button
-            id="map-control-hub-btn"
-            onClick={() => onOpenHub('FLEET')}
-            className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs  font-bold transition-all shadow-xl flex items-center gap-1.5 backdrop-blur-md cursor-pointer group shrink-0 ${
-              'bg-canvas/90 border border-accent/50 hover:border-accent text-accent hover:bg-raised '
-            }`}
-            title="Open Control Hub: Fleet, Racing, Results & System"
-            aria-label="Open Control Hub"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-accent group-hover:scale-110 transition-transform shrink-0" />
-            <span className="hidden sm:inline text-ink group-hover:text-ink text-xs">
-              Control Hub
-            </span>
-            {boats.length > 0 && (
-              <span className="text-xs text-accent bg-accent/20 px-1.5 py-0.5 rounded-full font-bold">
-                {boats.length}
-              </span>
-            )}
-          </button>
-        )}
 
         <MapLayersControl
           basemap={basemap}

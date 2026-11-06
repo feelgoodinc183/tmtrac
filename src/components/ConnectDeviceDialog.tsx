@@ -7,6 +7,7 @@ import { Boat, MeshtasticNode } from '../types/regatta';
 import { BleStatus, meshtasticService } from '../services/meshtasticBleMqttService';
 import { formatBattery, formatLastHeard, trackerFreshness } from '../utils/formatters';
 import { sameNodeId } from '../utils/nodeId';
+import { normalizeSail } from '../utils/sailNumber';
 
 type Step = 'method' | 'bluetooth' | 'internet' | 'boat' | 'done';
 
@@ -43,8 +44,6 @@ function nodeSummary(n: MeshtasticNode): string {
   parts.push(`heard ${formatLastHeard(n.lastPingTime).toLowerCase()}`);
   return parts.join(' · ');
 }
-
-const normalizeSail = (s: string) => s.trim().toUpperCase().replace(/\s+/g, ' ');
 
 /**
  * The one way to add a tracker: how is it connected → connect it → which boat is it on.

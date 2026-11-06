@@ -36,7 +36,9 @@ import { Footer } from './components/Footer';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { RcCommandConsolePanel } from './components/RcCommandConsolePanel';
 import { MobileBottomBar, MobileTab } from './components/MobileBottomBar';
-import { UnifiedHubModal, HubTab } from './components/UnifiedHubModal';
+import { SetupPanel, SetupSection, getSetupStatus } from './components/SetupPanel';
+import { MoreMenu } from './components/MoreMenu';
+import { RosterImportDialog } from './components/RosterImportDialog';
 import { HeadToHeadModal } from './components/HeadToHeadModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
 import { FEATURES } from './config/features';
@@ -301,13 +303,11 @@ export default function App() {
     setViewMode('RC_CONSOLE');
     setMobileTab('RC_CONSOLE');
   }, [isOrganizer, activeRoomCode]);
-  const [showHubModal, setShowHubModal] = useState<boolean>(false);
-  const [activeHubTab, setActiveHubTab] = useState<HubTab>('FLEET');
-
-  const handleOpenHub = (hub: HubTab = 'FLEET') => {
-    setActiveHubTab(hub);
-    setShowHubModal(true);
-  };
+  // Setup (classes, fleet, trackers, course) and the More menu replace the old Control Hub
+  const [setupOpen, setSetupOpen] = useState<{ section?: SetupSection } | null>(null);
+  const openSetup = (section?: SetupSection) => setSetupOpen({ section });
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showRosterImport, setShowRosterImport] = useState(false);
   const [connectedPeerCount, setConnectedPeerCount] = useState<number>(1);
 
   // Sunlight Mode: light, high-contrast theme for use outdoors. Remembered per device.
@@ -2617,6 +2617,11 @@ export default function App() {
     );
   }
 
+  // Setup and race control are for people who can run this room's race
+  const canRunRace = viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer;
+  const setupStatus = getSetupStatus(raceClasses, boats, marks, raceState);
+  const setupDoneCount = Object.values(setupStatus).filter((st) => st.done).length;
+
   return (
     <div
       className={`h-screen w-screen flex flex-col overflow-hidden select-none ${
@@ -2723,9 +2728,9 @@ export default function App() {
         onOpenResults={() => setShowResultsModal(true)}
         onOpenBoatQr={() => handleOpenBoatQr()}
         onOpenSkipperCheckIn={() => handleOpenSkipperCheckIn()}
-        onOpenTools={() => handleOpenHub('FLEET')}
-        onOpenHub={handleOpenHub}
-        isToolsOpen={showHubModal}
+        onOpenSetup={canRunRace ? () => openSetup() : undefined}
+        setupDoneCount={setupDoneCount}
+        onOpenMore={() => setShowMoreMenu(true)}
         onOpenCourseProfiles={() => {
           setCourseProfileCount(getSavedCourseProfiles().length);
           setShowCourseProfilesModal(true);
@@ -2851,7 +2856,6 @@ export default function App() {
                 setCourseProfileCount(getSavedCourseProfiles().length);
                 setShowCourseProfilesModal(true);
               }}
-              onOpenHub={handleOpenHub}
               viewMode={viewMode}
             />
 
@@ -2903,7 +2907,6 @@ export default function App() {
                   setCourseProfileCount(getSavedCourseProfiles().length);
                   setShowCourseProfilesModal(true);
                 }}
-                onOpenHub={handleOpenHub}
                 viewMode={viewMode}
               />
 
@@ -3126,9 +3129,11 @@ export default function App() {
       <MobileBottomBar
         activeTab={mobileTab}
         onSelectTab={setMobileTab}
-        showRace={viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer}
+        showRace={canRunRace}
+        onOpenSetup={() => openSetup()}
+        setupDoneCount={setupDoneCount}
         onOpenResults={() => setShowResultsModal(true)}
-        onOpenTools={() => handleOpenHub('FLEET')}
+        onOpenMore={() => setShowMoreMenu(true)}
       />
 
       {/* Race Replay Scrubber for Spectator / Analysis mode - Slides open on demand */}
@@ -3155,44 +3160,62 @@ export default function App() {
 
 
 
-      {/* Unified 4-Hub Control Modal */}
-      <UnifiedHubModal
-        isOpen={showHubModal}
-        onClose={() => setShowHubModal(false)}
-        onOpenMqttInspector={() => setShowMqttInspector(true)}
-        initialHub={activeHubTab}
-        boats={boats}
-        nodes={nodes}
-        deviceGps={deviceGps}
-        onToggleDeviceGps={handleToggleDeviceGps}
-        hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
-        onOpenBoatQr={() => handleOpenBoatQr()}
-        onOpenConnectDevice={() => openConnectDevice()}
-        onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
-        onSelectBoat={(id) => {
-          setSelectedBoatId(id);
-          setMobileTab('MAP');
-        }}
-        onOpenHeadToHead={() => {
-          if (boats.length >= 2) {
-            setHeadToHeadPair([boats[0].id, boats[1].id]);
-            setShowHeadToHead(true);
+      {/* Setup: classes, fleet, trackers, course. Its dialogs render after it, so they sit on top. */}
+      {setupOpen && canRunRace && (
+        <SetupPanel
+          onClose={() => setSetupOpen(null)}
+          initialSection={setupOpen.section}
+          activeRoomCode={activeRoomCode}
+          raceState={raceState}
+          raceClasses={raceClasses}
+          boats={boats}
+          nodes={nodes}
+          marks={marks}
+          deviceGps={deviceGps}
+          onToggleDeviceGps={handleToggleDeviceGps}
+          onOpenClassManager={() => setShowClassManager(true)}
+          onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
+          onOpenRosterImport={() => setShowRosterImport(true)}
+          onOpenBoatQr={() => handleOpenBoatQr()}
+          onOpenConnectDevice={openConnectDevice}
+          onOpenCourseProfiles={() => {
+            setCourseProfileCount(getSavedCourseProfiles().length);
+            setShowCourseProfilesModal(true);
+          }}
+          courseProfileCount={courseProfileCount}
+          onUpdateMarks={handleUpdateMarks}
+          onApplyCoursePreset={handleApplyCoursePreset}
+          onAddCourseMark={handleAddCourseMarkNearView}
+        />
+      )}
+
+      {showRosterImport && (
+        <RosterImportDialog onClose={() => setShowRosterImport(false)} onImport={handleImportCompetitors} />
+      )}
+
+      {/* Everything that isn't setup or racing */}
+      {showMoreMenu && (
+        <MoreMenu
+          onClose={() => setShowMoreMenu(false)}
+          onOpenResults={() => setShowResultsModal(true)}
+          onOpenVhfJury={() => setShowVhfJuryModal(true)}
+          onOpenSpectatorQr={() => setShowSpectatorQr(true)}
+          onOpenHeadToHead={
+            boats.length >= 2
+              ? () => {
+                  setHeadToHeadPair([boats[0].id, boats[1].id]);
+                  setShowHeadToHead(true);
+                }
+              : undefined
           }
-        }}
-        raceState={raceState}
-        viewMode={viewMode}
-        onOpenVhfJuryModal={() => setShowVhfJuryModal(true)}
-        onOpenChat={FEATURES.aiTactician ? () => setShowGeminiChat(true) : undefined}
-        activeRoomCode={activeRoomCode}
-        connectedPeerCount={connectedPeerCount}
-        onOpenSpectatorQr={() => setShowSpectatorQr(true)}
-        onOpenNmeaMalaysiaModal={() => setShowNmeaMalaysiaModal(true)}
-        onOpenOfflineCache={() => setShowOfflineCache(true)}
-        onOpenAbout={() => setShowAboutModal(true)}
-        onOpenTenantDashboard={isUserAdminOrOfficer ? () => setShowTenantDashboard(true) : undefined}
-        tenantName={currentTenant?.name || currentUser?.tenantName || 'Royal Langkawi Yacht Club (RLYC)'}
-        planTier={currentTenant?.planTier || currentUser?.planTier || 'CLUB'}
-      />
+          onOpenChat={FEATURES.aiTactician ? () => setShowGeminiChat(true) : undefined}
+          onOpenMqttInspector={() => setShowMqttInspector(true)}
+          onOpenOfflineCache={() => setShowOfflineCache(true)}
+          onOpenLocations={() => setShowNmeaMalaysiaModal(true)}
+          onOpenClub={isUserAdminOrOfficer ? () => setShowTenantDashboard(true) : undefined}
+          onOpenAbout={() => setShowAboutModal(true)}
+        />
+      )}
 
       {/* The one way to connect a tracker: method → connect → which boat */}
       {showConnectDevice && (
@@ -3298,6 +3321,7 @@ export default function App() {
           isOpen={showBoatEditorModal}
           boatToEdit={boatToEdit}
           nodes={nodes}
+          boats={boats}
           deviceGps={deviceGps}
           onClose={() => {
             setShowBoatEditorModal(false);
@@ -3355,7 +3379,6 @@ export default function App() {
         onResetForNextRace={handleResetForNextRace}
         onClearSeries={handleClearSeries}
         onNewSeries={handleNewSeries}
-        onImportCompetitors={handleImportCompetitors}
         viewMode={viewMode}
       />
 
