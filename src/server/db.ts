@@ -930,6 +930,10 @@ export function runSafeColumnMigrations(targetDb: any = db) {
       if (!eventCols.includes('mqtt_config_json')) {
         try { targetDb.exec('ALTER TABLE events ADD COLUMN mqtt_config_json TEXT DEFAULT NULL;'); } catch {}
       }
+      // Race classes per room (null = not set yet, clients show the default classes)
+      if (!eventCols.includes('race_classes_json')) {
+        try { targetDb.exec('ALTER TABLE events ADD COLUMN race_classes_json TEXT DEFAULT NULL;'); } catch {}
+      }
     }
 
     // Check & migrate packages columns
@@ -1231,6 +1235,7 @@ export function initDatabase() {
       series_races_json TEXT,
       unlocked_with_event_pass INTEGER DEFAULT 0,
       mqtt_config_json TEXT DEFAULT NULL,
+      race_classes_json TEXT DEFAULT NULL,
       created_at INTEGER,
       last_active INTEGER,
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE

@@ -13,6 +13,7 @@ import {
   Boat,
   VhfBulletin,
   CompletedRace,
+  RaceClassDefinition,
   BackfillPoint,
   GpsBatchBackfillPayload,
 } from '../types/regatta';
@@ -122,6 +123,8 @@ export type SessionSyncCallback = (session: {
   raceState?: Partial<RaceState>;
   marks?: CourseMark[];
   boats?: Boat[];
+  // null when the race office hasn't set classes for this room yet
+  raceClasses?: RaceClassDefinition[] | null;
   trackers?: any[];
   vhfBulletins?: VhfBulletin[];
   seriesRaces?: CompletedRace[];
@@ -131,6 +134,7 @@ export type RemoteRaceStateCallback = (raceState: Partial<RaceState>) => void;
 export type RemoteBoatsCallback = (boats: Boat[]) => void;
 export type RemoteVhfCallback = (bulletin: VhfBulletin) => void;
 export type RemoteSeriesRacesCallback = (series: CompletedRace[]) => void;
+export type RemoteClassesCallback = (classes: RaceClassDefinition[]) => void;
 export type BatchBackfillCallback = (payload: GpsBatchBackfillPayload) => void;
 export type EditRejectedCallback = (rejection: { action: string; roomCode: string; role: string; reason: string }) => void;
 
@@ -153,6 +157,7 @@ class HybridDeviceTrackerService {
   private remoteBoatsCallbacks: RemoteBoatsCallback[] = [];
   private remoteVhfCallbacks: RemoteVhfCallback[] = [];
   private remoteSeriesRacesCallbacks: RemoteSeriesRacesCallback[] = [];
+  private remoteClassesCallbacks: RemoteClassesCallback[] = [];
   private batchBackfillCallbacks: BatchBackfillCallback[] = [];
   private editRejectedCallbacks: EditRejectedCallback[] = [];
 
@@ -345,6 +350,13 @@ class HybridDeviceTrackerService {
     this.remoteVhfCallbacks.push(cb);
     return () => {
       this.remoteVhfCallbacks = this.remoteVhfCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  public onRemoteClasses(cb: RemoteClassesCallback) {
+    this.remoteClassesCallbacks.push(cb);
+    return () => {
+      this.remoteClassesCallbacks = this.remoteClassesCallbacks.filter((c) => c !== cb);
     };
   }
 
@@ -753,6 +765,13 @@ class HybridDeviceTrackerService {
                 break;
               }
 
+              case 'CLASSES_UPDATED': {
+                if (Array.isArray(payload)) {
+                  this.remoteClassesCallbacks.forEach((cb) => cb(payload));
+                }
+                break;
+              }
+
               case 'SERIES_RACES_UPDATED': {
                 if (Array.isArray(payload)) {
                   this.remoteSeriesRacesCallbacks.forEach((cb) => cb(payload));
@@ -974,6 +993,13 @@ class HybridDeviceTrackerService {
       } catch (e) {}
     }
     if (!sent) this.postSessionUpdate('/api/session/boats', boats);
+  }
+
+  // Race classes belong to the room. Not posted on the cross-tab channel: that channel isn't
+  // scoped to a room, and the server already sends the update to every tab in this room.
+  public broadcastClasses(classes: RaceClassDefinition[]) {
+    const sent = this.sendWs('UPDATE_CLASSES', classes);
+    if (!sent) this.postSessionUpdate('/api/session/classes', classes);
   }
 
   // Synchronize Official Scoring Series Races across all connected devices in room

@@ -127,20 +127,34 @@ export function deduplicateNodes(nodeList: MeshtasticNode[]): MeshtasticNode[] {
 
 
 
+// Before classes were room state they were kept per browser under this key. Returns them once
+// (and removes the key) so a Race Officer's existing classes move to the room they open next.
+const LEGACY_RACE_CLASSES_KEY = 'regatta_race_classes';
+function takeLegacyRaceClasses(): RaceClassDefinition[] | null {
+  try {
+    const saved = localStorage.getItem(LEGACY_RACE_CLASSES_KEY);
+    if (!saved) return null;
+    localStorage.removeItem(LEGACY_RACE_CLASSES_KEY);
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return null;
+    const valid = parsed.filter(
+      (c: any) => c && typeof c.id === 'string' && c.id && typeof c.name === 'string' && c.name.trim()
+    );
+    // Unchanged defaults aren't worth saving to the room
+    const isDefaults =
+      valid.length === INITIAL_RACE_CLASSES.length &&
+      valid.every((c: any, i: number) => JSON.stringify(c) === JSON.stringify(INITIAL_RACE_CLASSES[i]));
+    return valid.length > 0 && !isDefaults ? valid : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [raceState, setRaceState] = useState<RaceState>(INITIAL_RACE_STATE);
-  const [raceClasses, setRaceClasses] = useState<RaceClassDefinition[]>(() => {
-    try {
-      const saved = localStorage.getItem('regatta_race_classes');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Failed to load saved race classes:', e);
-    }
-    return INITIAL_RACE_CLASSES;
-  });
+  // Race classes belong to the room: they come from the server and edits go back through
+  // deviceTrackerService. The defaults show until the room has classes of its own.
+  const [raceClasses, setRaceClasses] = useState<RaceClassDefinition[]>(INITIAL_RACE_CLASSES);
   const [boats, setBoats] = useState<Boat[]>([]);
   const boatsRef = useRef(boats);
   boatsRef.current = boats;
@@ -455,6 +469,10 @@ export default function App() {
       setBulletins((prev) => [bulletin, ...prev]);
     });
 
+    const unsubRemoteClasses = deviceTrackerService.onRemoteClasses((syncedClasses) => {
+      if (Array.isArray(syncedClasses) && syncedClasses.length > 0) setRaceClasses(syncedClasses);
+    });
+
     const unsubRemoteSeries = deviceTrackerService.onRemoteSeriesRaces((syncedSeries) => {
       if (Array.isArray(syncedSeries)) {
         setSeriesRaces(syncedSeries);
@@ -495,8 +513,18 @@ export default function App() {
         setMarks(cleanMarks);
       }
       if (session.raceState) setRaceState((prev) => ({ ...prev, ...session.raceState }));
+      const canEditSession = session.canEdit === true || session.isAdmin === true;
       if (session.boats && Array.isArray(session.boats)) {
-        adoptRoomBoats(session.boats, session.canEdit === true || session.isAdmin === true);
+        adoptRoomBoats(session.boats, canEditSession);
+      }
+      if (Array.isArray(session.raceClasses) && session.raceClasses.length > 0) {
+        setRaceClasses(session.raceClasses);
+      } else if ('raceClasses' in session) {
+        // The room has no classes yet. A Race Officer whose browser still holds classes from the
+        // old per-browser storage sends them to this room once, then the local copy is removed.
+        const legacy = canEditSession ? takeLegacyRaceClasses() : null;
+        setRaceClasses(legacy || INITIAL_RACE_CLASSES);
+        if (legacy) deviceTrackerService.broadcastClasses(legacy);
       }
       if (session.vhfBulletins && Array.isArray(session.vhfBulletins)) setBulletins(session.vhfBulletins);
       if (session.trackers && Array.isArray(session.trackers) && session.trackers.length > 0) {
@@ -640,6 +668,7 @@ export default function App() {
       unsubRemoteBoats();
       unsubRemoteVhf();
       unsubRemoteSeries();
+      unsubRemoteClasses();
       unsubSessionSync();
       unsubRemoteNode();
       unsubMeshtasticNode();
@@ -912,15 +941,6 @@ export default function App() {
       startSequenceActive: false,
     }));
   };
-
-  // Sync raceClasses to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem('regatta_race_classes', JSON.stringify(raceClasses));
-    } catch (e) {
-      console.warn('Failed to save race classes:', e);
-    }
-  }, [raceClasses]);
 
   // Gemini Chat Messages state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -2338,20 +2358,23 @@ export default function App() {
     });
   };
 
-  // Race Class Management (Add, Edit, Delete)
+  // Race Class Management (Add, Edit, Delete). Classes are room state, so every change goes to the room.
+  const commitRaceClasses = (next: RaceClassDefinition[]) => {
+    setRaceClasses(next);
+    deviceTrackerService.broadcastClasses(next);
+  };
+
   const handleAddClass = (newClassData: Omit<RaceClassDefinition, 'id'>) => {
     const newClass: RaceClassDefinition = {
       ...newClassData,
       id: 'class-' + Date.now(),
     };
-    setRaceClasses((prev) => [...prev, newClass]);
+    commitRaceClasses([...raceClasses, newClass]);
   };
 
   const handleUpdateClass = (classId: string, updated: Partial<RaceClassDefinition>) => {
     const oldClass = raceClasses.find((c) => c.id === classId);
-    setRaceClasses((prev) =>
-      prev.map((c) => (c.id === classId ? { ...c, ...updated } : c))
-    );
+    commitRaceClasses(raceClasses.map((c) => (c.id === classId ? { ...c, ...updated } : c)));
 
     // If class name changed, propagate to all boats in that class
     if (oldClass && updated.name && oldClass.name !== updated.name) {
@@ -2373,7 +2396,8 @@ export default function App() {
     if (!classToDelete) return;
 
     const remaining = raceClasses.filter((c) => c.id !== classId);
-    setRaceClasses(remaining);
+    if (remaining.length === 0) return;
+    commitRaceClasses(remaining);
 
     const fallbackClass = reassignToClassName || remaining[0]?.name || 'Class 1';
 
@@ -2535,6 +2559,7 @@ export default function App() {
                 UPDATE_BOATS: 'Fleet changes',
                 UPDATE_RACE_STATE: 'Race settings',
                 UPDATE_SERIES_RACES: 'Series results',
+                UPDATE_CLASSES: 'Race classes',
                 SEND_VHF_NOTICE: 'VHF notice',
               } as Record<string, string>)[saveRejection.action] || 'Change'}{' '}
               not saved

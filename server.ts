@@ -37,6 +37,7 @@ import {
 import { createSession, endSession, endAllSessionsForUser, findActiveUserByToken } from './src/server/sessions';
 import { PlanTier } from './src/types/regatta';
 import { registerStripeRoutes } from './src/server/stripe';
+import { MAX_RACE_CLASSES, StoredRaceClass, parseStoredRaceClasses, sanitizeRaceClasses } from './src/server/raceClasses';
 import mqtt from 'mqtt';
 import {
   DEFAULT_ROOM_MQTT_CONFIG,
@@ -90,6 +91,8 @@ export interface ActiveRoomState {
   raceState: typeof DEFAULT_RACE_STATE;
   marks: any[];
   boats: any[];
+  /** null until the race office sets classes for this room; clients then show the defaults */
+  raceClasses: StoredRaceClass[] | null;
   trackers: Map<string, any>;
   vhfBulletins: any[];
   seriesRaces: any[];
@@ -177,6 +180,7 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
       raceState,
       marks,
       boats,
+      raceClasses: parseStoredRaceClasses(row.race_classes_json),
       trackers: new Map(),
       vhfBulletins,
       seriesRaces,
@@ -210,6 +214,7 @@ function getOrLoadRoom(rawCode: string, autoCreate: boolean = true): ActiveRoomS
     raceState: { ...DEFAULT_RACE_STATE, name: `${code} Regatta` },
     marks: [],
     boats: [],
+    raceClasses: null,
     trackers: new Map(),
     vhfBulletins: [],
     seriesRaces: [],
@@ -244,6 +249,7 @@ function persistRoom(room: ActiveRoomState) {
         race_state_json = ?,
         marks_json = ?,
         boats_json = ?,
+        race_classes_json = ?,
         vhf_bulletins_json = ?,
         series_races_json = ?,
         last_active = ?
@@ -260,6 +266,7 @@ function persistRoom(room: ActiveRoomState) {
       JSON.stringify(room.raceState),
       JSON.stringify(room.marks),
       JSON.stringify(room.boats),
+      room.raceClasses ? JSON.stringify(room.raceClasses) : null,
       JSON.stringify(room.vhfBulletins),
       JSON.stringify(room.seriesRaces),
       Date.now(),
@@ -548,6 +555,7 @@ async function startServer() {
       raceState: room.raceState,
       marks: room.marks,
       boats: room.boats,
+      raceClasses: room.raceClasses,
       trackers: trackerList,
       vhfBulletins: room.vhfBulletins,
       seriesRaces: room.seriesRaces || [],
@@ -608,6 +616,7 @@ async function startServer() {
                 raceState: newRoom.raceState,
                 marks: newRoom.marks,
                 boats: newRoom.boats,
+                raceClasses: newRoom.raceClasses,
                 trackers: Array.from(newRoom.trackers.values()),
                 vhfBulletins: newRoom.vhfBulletins,
                 seriesRaces: newRoom.seriesRaces || [],
@@ -832,6 +841,20 @@ async function startServer() {
             break;
           }
 
+          case 'UPDATE_CLASSES': {
+            if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
+              rejectEdit('UPDATE_CLASSES');
+              return;
+            }
+            const classes = sanitizeRaceClasses(payload);
+            if (classes) {
+              currentRoom.raceClasses = classes;
+              broadcastToRoom(currentRoom.code, 'CLASSES_UPDATED', classes, ws);
+              persistRoom(currentRoom);
+            }
+            break;
+          }
+
           case 'UPDATE_SERIES_RACES': {
             if (!isAdminSession && role !== 'ADMIN' && role !== 'RACE_OFFICER') {
               rejectEdit('UPDATE_SERIES_RACES');
@@ -888,6 +911,7 @@ async function startServer() {
                   raceState: currentRoom.raceState,
                   marks: currentRoom.marks,
                   boats: currentRoom.boats,
+                  raceClasses: currentRoom.raceClasses,
                   trackers: Array.from(currentRoom.trackers.values()),
                   vhfBulletins: currentRoom.vhfBulletins,
                   seriesRaces: currentRoom.seriesRaces || [],
@@ -2175,6 +2199,7 @@ async function startServer() {
       raceState: room.raceState,
       marks: room.marks,
       boats: room.boats,
+      raceClasses: room.raceClasses,
       trackers: Array.from(room.trackers.values()),
       vhfBulletins: room.vhfBulletins,
       seriesRaces: room.seriesRaces || [],
@@ -2276,6 +2301,23 @@ async function startServer() {
     mqttBridge.setRoomConfig(room.code, next);
     refreshRoomActivity(room.code);
     res.json({ roomCode: room.code, canEdit: true, config: toPublicConfig(next), status: mqttBridge.getStatus(room.code) });
+  });
+
+  app.post('/api/session/classes', (req, res) => {
+    const room = resolveRoom(req);
+    if (!canEditRoom(requestRoomRole(req, room))) {
+      return res.status(403).json({ error: 'Unauthorized: Admin PIN or Organization Admin role required.' });
+    }
+
+    const classes = sanitizeRaceClasses(req.body?.raceClasses || req.body);
+    if (classes) {
+      room.raceClasses = classes;
+      broadcastAllInRoom(room.code, 'CLASSES_UPDATED', classes);
+      persistRoom(room);
+      res.json({ success: true, count: classes.length, roomCode: room.code });
+    } else {
+      res.status(400).json({ error: `Payload must be 1-${MAX_RACE_CLASSES} race classes, each with an id and a name` });
+    }
   });
 
   app.post('/api/session/series', (req, res) => {
