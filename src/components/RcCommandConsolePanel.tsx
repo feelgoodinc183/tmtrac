@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Boat, CourseMark, RaceClassDefinition, RaceState } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
 import { Button } from './ui/Button';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const STATUS_LABEL: Record<string, string> = {
   PRE_START: 'pre-start',
@@ -19,7 +21,6 @@ import {
 import {
   Compass,
   Play,
-  Pause,
   RotateCcw,
   Volume2,
   VolumeX,
@@ -121,8 +122,39 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
     startSequenceActive: raceState.startSequenceActive,
     targetStartTime: raceState.targetStartTime,
     startTime: raceState.startTime,
+    postponed: raceState.postponed,
   };
   const isSeqActive = activeClassState.startSequenceActive ?? raceState.startSequenceActive;
+  const classStatus = activeClassState.status;
+  const isRacing = classStatus === 'RACING';
+  // AP holds a class only before its start signal.
+  const isPostponed = !!activeClassState.postponed && !isSeqActive && classStatus === 'PRE_START';
+  const isBeforeStart = classStatus === 'PRE_START' || classStatus === 'COUNTDOWN';
+  const [confirmAp, setConfirmAp] = useState(false);
+
+  // RRS 27.3 / Race Signals: when AP comes down, the warning signal is made 1 minute later.
+  // So the clock restarts at 6:00; the existing horn at 5:00 is that warning signal.
+  const AP_DOWN_TO_START_SECONDS = 360;
+
+  const hoistAp = () => {
+    setConfirmAp(false);
+    onUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300, postponed: true });
+    onSendVhfNotice(
+      `POSTPONEMENT (AP) ${raceState.activeClass}`,
+      `${raceState.activeClass}: races not started are postponed (RRS 27.3). The warning signal will be made 1 minute after AP is removed.`,
+      'POSTPONEMENT'
+    );
+  };
+
+  const lowerAp = () => {
+    onUpdateRaceState({ countdownSeconds: AP_DOWN_TO_START_SECONDS, startSequenceActive: true, postponed: false });
+    onPlayStartSignal();
+    onSendVhfNotice(
+      `AP DOWN ${raceState.activeClass}`,
+      `${raceState.activeClass}: postponement over. Warning signal in 1 minute, start in 6 minutes.`,
+      'POSTPONEMENT'
+    );
+  };
   const target = activeClassState.targetStartTime ?? raceState.targetStartTime;
   const displayCountdown = isSeqActive && target
     ? Math.max(0, Math.ceil((target - serverNow()) / 1000))
@@ -238,13 +270,21 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
               <span className="font-mono text-lg font-bold text-ink tabular-nums" aria-label={`Start clock ${formattedTimer}`}>
                 {formattedTimer}
               </span>
-              <Button
-                variant="primary"
-                onClick={onToggleRaceTimer}
-                icon={isSeqActive ? <Pause className="fill-current" /> : <Play className="fill-current" />}
-              >
-                {isSeqActive ? 'Pause' : `Start ${raceState.activeClass}`}
-              </Button>
+              {isPostponed ? (
+                <Button variant="primary" onClick={lowerAp} icon={<Flag />}>
+                  AP down
+                </Button>
+              ) : isSeqActive ? (
+                <Button onClick={() => setConfirmAp(true)} icon={<Flag />}>
+                  AP
+                </Button>
+              ) : classStatus === 'PRE_START' ? (
+                <Button variant="primary" onClick={onToggleRaceTimer} icon={<Play className="fill-current" />}>
+                  Start {raceState.activeClass}
+                </Button>
+              ) : isRacing && onEndRace ? (
+                <Button onClick={() => onEndRace(raceState.activeClass)}>Finish {raceState.activeClass}</Button>
+              ) : null}
             </div>
           )}
 
@@ -364,13 +404,23 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     Start clock: <span className="text-ink">{raceState.activeClass}</span>
                   </span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
-                    isSeqActive
-                      ? 'bg-success-ink/20 text-success-ink border-success-ink/40'
-                      : activeClassState.status === 'RACING'
+                    isPostponed
+                      ? 'bg-warning-ink/20 text-warning-ink border-warning-ink/50'
+                      : isSeqActive || isRacing
                       ? 'bg-success-ink/20 text-success-ink border-success-ink/40'
                       : 'bg-raised text-ink-muted border-line'
                   }`}>
-                    {isSeqActive ? 'SEQUENCE RUNNING' : activeClassState.status === 'RACING' ? 'RACING' : 'STOPPED'}
+                    {isPostponed
+                      ? 'POSTPONED (AP)'
+                      : isSeqActive && displayCountdown > 300
+                      ? `WARNING IN ${displayCountdown - 300}s`
+                      : isSeqActive
+                      ? 'SEQUENCE RUNNING'
+                      : isRacing
+                      ? 'RACING'
+                      : classStatus === 'FINISHED'
+                      ? 'FINISHED'
+                      : 'STOPPED'}
                   </span>
                 </div>
 
@@ -380,7 +430,8 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                   {formattedTimer}
                 </div>
 
-                {/* Incorporated Quick sequence presets (Compacted directly inside Clock Division) */}
+                {/* Presets start or jump the sequence, so they're only offered before the start and not under AP. */}
+                {isBeforeStart && !isPostponed && (
                 <div className="bg-surface border border-line/80 p-2 rounded-xl space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-ink-muted font-semibold">
@@ -427,19 +478,25 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     </button>
                   </div>
                 </div>
+                )}
 
-                {/* Control Action Buttons (Start button is prominent / slightly larger) */}
+                {/* The primary action follows the class state: Start before the sequence, AP down while
+                    postponed. During the sequence and racing, the actions are under Flags and recalls. */}
                 <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={onToggleRaceTimer}
-                    icon={isSeqActive ? <Pause className="fill-current" /> : <Play className="fill-current" />}
-                  >
-                    {isSeqActive ? 'Pause sequence' : `Start ${raceState.activeClass}`}
-                  </Button>
+                  {isPostponed ? (
+                    <Button variant="primary" size="lg" onClick={lowerAp} icon={<Flag />}>
+                      AP down
+                    </Button>
+                  ) : classStatus === 'PRE_START' && !isSeqActive ? (
+                    <Button variant="primary" size="lg" onClick={onToggleRaceTimer} icon={<Play className="fill-current" />}>
+                      Start {raceState.activeClass}
+                    </Button>
+                  ) : null}
 
-                  <Button size="lg" onClick={onResetTimer} icon={<RotateCcw />} aria-label="Reset clock to 5:00" />
+                  {/* Reset is how a sequence started by mistake is stopped; after the start, Restart (confirmed) does this. */}
+                  {isBeforeStart && (
+                    <Button size="lg" onClick={onResetTimer} icon={<RotateCcw />} aria-label="Reset clock to 5:00" />
+                  )}
 
                   {onToggleMute && (
                     <Button
@@ -466,29 +523,43 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-ink-muted mb-3">
-                    Signal fleet flags over VHF bulletins and synchronize timers automatically.
+                    {isPostponed
+                      ? 'AP is up. Lower it to restart the sequence: warning signal 1 minute later, start 6 minutes later.'
+                      : isRacing
+                      ? 'Racing. Recall the class or mark boats over the line early.'
+                      : classStatus === 'FINISHED'
+                      ? 'This class has finished.'
+                      : 'Flags go out to the fleet as VHF bulletins.'}
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button
-                      onClick={() => {
-                        onUpdateRaceState({ status: 'PRE_START', startSequenceActive: false, countdownSeconds: 300 });
-                        if (onUpdateFleetStatus) {
-                          onUpdateFleetStatus('PRE_START', raceState.activeClass);
-                        } else {
-                          boats.forEach((b) => onUpdateBoatStatus(b.id, 'PRE_START'));
-                        }
-                        onSendVhfNotice('POSTPONEMENT (AP FLAG)', 'Race postponed under RRS 27.3. Starting sequence held in pre-start.', 'POSTPONEMENT');
-                      }}
-                      className="p-3 bg-warning-ink/10 border border-warning-ink hover:bg-warning-ink/20 text-warning-ink text-xs font-bold rounded-xl text-left transition-all"
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Flag className="w-3.5 h-3.5 text-warning-ink" />
-                        <span>AP Flag</span>
-                      </div>
-                      <div className="text-xs text-warning-ink/80 font-normal">Postponement (Hold in Pre-Start)</div>
-                    </button>
+                    {isPostponed && (
+                      <button
+                        onClick={lowerAp}
+                        className="p-3 bg-warning-ink/10 border border-warning-ink hover:bg-warning-ink/20 text-warning-ink text-xs font-bold rounded-xl text-left transition-all"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Flag className="w-3.5 h-3.5 text-warning-ink" />
+                          <span>AP down</span>
+                        </div>
+                        <div className="text-xs text-warning-ink/80 font-normal">Warning signal in 1 minute</div>
+                      </button>
+                    )}
 
+                    {isBeforeStart && !isPostponed && (
+                      <button
+                        onClick={() => setConfirmAp(true)}
+                        className="p-3 bg-warning-ink/10 border border-warning-ink hover:bg-warning-ink/20 text-warning-ink text-xs font-bold rounded-xl text-left transition-all"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Flag className="w-3.5 h-3.5 text-warning-ink" />
+                          <span>AP flag</span>
+                        </div>
+                        <div className="text-xs text-warning-ink/80 font-normal">Postpone (hold the sequence)</div>
+                      </button>
+                    )}
+
+                    {(isSeqActive || isRacing) && (
                     <button
                       onClick={() => {
                         if (onGeneralRecall) {
@@ -516,6 +587,20 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                       </div>
                       <div className="text-xs text-danger-ink/80 font-normal">1st Substitute (Reset Start)</div>
                     </button>
+                    )}
+
+                    {isRacing && (
+                      <button
+                        onClick={() => setActiveTab('OCS_FLEET')}
+                        className="p-3 bg-surface border border-line hover:bg-raised text-ink text-xs font-bold rounded-xl text-left transition-all"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>OCS{ocsBoats.length > 0 ? ` (${ocsBoats.length})` : ''}</span>
+                        </div>
+                        <div className="text-xs text-ink-muted font-normal">Mark or clear boats over early</div>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -525,13 +610,13 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                     Fleet: {boats.filter((b) => b.status === 'RACING').length} racing · {boats.filter((b) => b.status === 'FINISHED').length} finished · {boats.filter((b) => b.status === 'OCS').length} OCS
                   </p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {onEndRace && (
-                    <Button onClick={() => onEndRace(raceState.activeClass)}>Finish {raceState.activeClass}</Button>
+                  {onEndRace && isRacing && (
+                    <Button variant="primary" onClick={() => onEndRace(raceState.activeClass)}>Finish {raceState.activeClass}</Button>
                   )}
 
                   {/* Actions that wipe or end the race sit apart from Finish, behind a divider. */}
                   {(onRestartRace || onEndRace) && (
-                    <div className="flex items-center gap-2 pl-3 ml-3 border-l border-line">
+                    <div className={`flex items-center gap-2 ${onEndRace && isRacing ? 'pl-3 ml-3 border-l border-line' : ''}`}>
                       {onRestartRace && (
                         <Button variant="danger" onClick={() => onRestartRace(raceState.activeClass)} icon={<RotateCcw />}>
                           Restart {raceState.activeClass}
@@ -875,9 +960,9 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
                           <span
                             className={`text-xs px-1.5 py-0.5 rounded ${
                               m.requiredRounding === 'STARBOARD'
-                                ? 'bg-success-ink text-success-ink border border-success-ink'
+                                ? 'bg-success-ink/20 text-success-ink border border-success-ink/50'
                                 : m.requiredRounding === 'PORT'
-                                ? 'bg-danger text-danger-ink border border-danger-ink'
+                                ? 'bg-danger text-on-danger border border-danger'
                                 : 'bg-raised text-ink'
                             }`}
                           >
@@ -992,6 +1077,19 @@ export const RcCommandConsolePanel: React.FC<RcCommandConsolePanelProps> = ({
           )}
         </div>
       )}
+
+      {/* Portaled: the overlay panel's backdrop-blur would otherwise trap the fixed-position dialog inside it. */}
+      {confirmAp &&
+        createPortal(
+          <ConfirmDialog
+            title={`Postpone ${raceState.activeClass}?`}
+            body="AP goes up and the start clock stops at 5:00. The fleet gets a postponement notice on VHF. When you lower AP, the warning signal comes 1 minute later."
+            confirmLabel="Hoist AP"
+            onConfirm={hoistAp}
+            onCancel={() => setConfirmAp(false)}
+          />,
+          document.body
+        )}
     </div>
   );
 };
