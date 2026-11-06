@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import {
   X,
   Building2,
@@ -16,6 +16,7 @@ import { Tenant, AuditLogEntry, RegattaRoomSummary } from '../types/regatta';
 import { tenantService } from '../services/tenantService';
 import { roomService } from '../services/roomService';
 import { SubscriptionUpgradeModal } from './SubscriptionUpgradeModal';
+import { DialogFrame } from './ui/Dialog';
 
 interface TenantDashboardModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export const TenantDashboardModal: React.FC<TenantDashboardModalProps> = ({
   onSelectEvent,
   onCreateEvent,
 }) => {
+  const titleId = useId();
   const [tenant, setTenant] = useState<Tenant | null>(() => tenantService.getCurrentTenant());
   const [activeTab, setActiveTab] = useState<'events' | 'members' | 'audit' | 'plan'>('events');
   const [events, setEvents] = useState<RegattaRoomSummary[]>([]);
@@ -77,13 +79,14 @@ export const TenantDashboardModal: React.FC<TenantDashboardModalProps> = ({
   const isRoomLimitReached = roomsUsed >= limits.maxActiveRooms;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/85 backdrop-blur-md overflow-y-auto"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-surface border border-line/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col text-ink">
+    <>
+      <DialogFrame
+        onClose={onClose}
+        labelledBy={titleId}
+        closeOnBackdrop
+        overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-canvas/85 backdrop-blur-md overflow-y-auto"
+        className="bg-surface border border-line/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col text-ink"
+      >
         {/* Top Header */}
         <div className="p-4 sm:p-6 bg-gradient-to-r from-surface via-surface to-surface border-b border-line flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -92,7 +95,7 @@ export const TenantDashboardModal: React.FC<TenantDashboardModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-bold text-ink">
+                <h2 id={titleId} className="text-lg sm:text-xl font-bold text-ink">
                   {tenant?.name || 'Organization Dashboard'}
                 </h2>
                 <span className={`text-xs  px-2 py-0.5 rounded font-bold  border ${
@@ -121,6 +124,7 @@ export const TenantDashboardModal: React.FC<TenantDashboardModalProps> = ({
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <button
+              aria-label="Close"
               onClick={onClose}
               className="p-1.5 text-ink-muted hover:text-ink rounded-lg hover:bg-raised transition-colors"
             >
@@ -368,7 +372,7 @@ export const TenantDashboardModal: React.FC<TenantDashboardModalProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </DialogFrame>
 
       {showUpgradeModal && (
         <SubscriptionUpgradeModal
@@ -378,6 +382,6 @@ export const TenantDashboardModal: React.FC<TenantDashboardModalProps> = ({
           onSuccess={refreshData}
         />
       )}
-    </div>
+    </>
   );
 };

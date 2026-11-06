@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import {
   X,
   Trophy,
@@ -22,6 +22,7 @@ import { authService } from '../services/authService';
 import { roomService } from '../services/roomService';
 import { RoomPinModal, RoomDeleteModal } from './RoomManagementModals';
 import { AdminUserManagement } from './AdminUserManagement';
+import { DialogFrame } from './ui/Dialog';
 
 interface UserDashboardModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   user,
   onOpenCreateRoom,
 }) => {
+  const titleId = useId();
   const [activeTab, setActiveTab] = useState<'overview' | 'my_rooms' | 'history' | 'profile' | 'admin_users'>('overview');
   const [myRooms, setMyRooms] = useState<RegattaRoomSummary[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -105,15 +107,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   if (!isOpen || !user) return null;
 
   return (
-    <div
-      id="user-dashboard-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-canvas/85 backdrop-blur-md overflow-y-auto"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
+    <>
+      <DialogFrame
+        onClose={onClose}
+        labelledBy={titleId}
+        closeOnBackdrop
+        overlayId="user-dashboard-modal-backdrop"
         id="user-dashboard-modal-card"
+        overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-canvas/85 backdrop-blur-md overflow-y-auto"
         className="bg-surface border border-line/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col text-ink"
       >
         {/* Top Profile Banner - Responsive for Mobile & Desktop */}
@@ -126,7 +127,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-ink truncate max-w-[160px] sm:max-w-none">
+                <h2 id={titleId} className="text-sm sm:text-base font-bold text-ink truncate max-w-[160px] sm:max-w-none">
                   {user.fullName}
                 </h2>
                 <span className="px-2 py-0.5 bg-accent/10 border border-accent/40 text-accent text-xs sm:text-xs font-bold rounded-md shadow-sm shrink-0 inline-flex items-center">
@@ -658,7 +659,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <AdminUserManagement currentUser={user} />
           )}
         </div>
-      </div>
+      </DialogFrame>
 
       {/* Sub-modals for Room Management */}
       {selectedRoomForPin && (
@@ -682,6 +683,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           onDeleted={loadUserRooms}
         />
       )}
-    </div>
+    </>
   );
 };
