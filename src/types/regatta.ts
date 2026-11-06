@@ -341,6 +341,10 @@ export interface Boat {
   markSplits?: any[];
   elapsedSeconds: number;  // raw time
   correctedSeconds: number; // elapsedSeconds * handicapRating
+  /** When the boat crossed the finish (server clock, ms), from GPS or recorded by the race officer */
+  finishTime?: number;
+  /** Status before a finish was recorded by hand, so Undo can put it back */
+  statusBeforeFinish?: BoatStatus;
   color: string;
   trail: Array<{ lat: number; lng: number }>;
 }
@@ -391,6 +395,8 @@ export interface ClassRaceStatus {
   updatedAt?: number;
   /** AP flag is up (RRS 27.3): the start sequence is held until AP comes down. Only meaningful before the start. */
   postponed?: boolean;
+  /** Individual recall (X flag, RRS 29.1) for this start: when it went up, which boats, when it came down */
+  xFlag?: { raisedAt: number; boatIds: string[]; loweredAt?: number };
 }
 
 export interface RaceState {

@@ -592,25 +592,11 @@ export function evaluateBoatCourseProgress(
     }
   }
 
-  // OCS Start Line crossing check
-  // World Sailing RRS: Boats cannot be OCS before the starting gun (countdownSeconds > 0).
-  // Once cleared by RC or by dipping back behind the line, OCS is cleared.
-  let isOcs = boat.status === 'OCS';
-  if (boat.status === 'CLEARED_OCS') {
-    isOcs = false;
-  } else if (pin && rc) {
-    const lineLat = (pin.lat + rc.lat) / 2;
-    const firstSeqMark = roundingWaypoints[0];
-    const isNorthwardCourse = firstSeqMark ? firstSeqMark.lat > lineLat : true;
-
-    if (isOcs) {
-      // If boat returns behind the starting line to clear OCS
-      const hasReturned = isNorthwardCourse ? boat.lat <= lineLat - 0.0001 : boat.lat >= lineLat + 0.0001;
-      if (hasReturned) {
-        isOcs = false;
-      }
-    }
-  }
+  // OCS is the race committee's call (RRS 29.1): it stays until they clear it. It used to clear
+  // itself when the boat's latitude was behind the line's, which ignored the line's angle and also
+  // cleared boats without a tracker from their last position. The X flag card shows which recalled
+  // boats GPS puts back behind the line (recallAndFinish.startLineSide).
+  const isOcs = boat.status === 'OCS';
 
   const isFinished = (countdownSeconds > 0)
     ? false
@@ -672,12 +658,9 @@ export function replayBatchThroughCourseProgress(
 
     currentBoat.dtw = evalResult.dtwNm;
     currentBoat.markRoundings = evalResult.updatedRoundings;
-    if (evalResult.isFinished) {
+    // A boat still OCS stays OCS even if it sails the course (it didn't start correctly)
+    if (evalResult.isFinished && currentBoat.status !== 'OCS') {
       currentBoat.status = 'FINISHED';
-    } else if (evalResult.isOcs && currentBoat.status !== 'CLEARED_OCS') {
-      currentBoat.status = 'OCS';
-    } else if (currentBoat.status === 'OCS' && !evalResult.isOcs) {
-      currentBoat.status = 'RACING';
     }
 
     prevLat = pt.lat;
