@@ -1,6 +1,5 @@
 import { CourseMark, CourseProfile } from '../types/regatta';
-import { calculateCourseLegs } from './courseService';
-import { INITIAL_MARKS } from './initialData';
+import { calculateCourseLegs, generateCoursePreset } from './courseService';
 
 export const MAX_COURSE_PROFILES = 10;
 const STORAGE_KEY = 'tmtrac_saved_course_profiles';
@@ -19,7 +18,8 @@ export const DEFAULT_COURSE_PROFILES: CourseProfile[] = [
     windDirectionDeg: 45,
     windSpeedKt: 14.5,
     totalDistanceNm: 2.85,
-    marks: INITIAL_MARKS,
+    // Built from the same geometry as the Windward-Leeward preset, laid to the profile's wind
+    marks: generateCoursePreset('WINDWARD_LEEWARD', 6.308, 99.845, 45),
   },
   {
     id: 'profile-olympic-triangle',
@@ -219,6 +219,25 @@ export function calculateTotalDistanceNm(marks: CourseMark[]): number {
 }
 
 /**
+ * Earlier builds seeded 'RLIR Windward-Leeward Standard' with no marks. Browsers that stored
+ * that copy keep showing "No marks saved in this course" for the classes linked to it, so a
+ * seeded profile that is still empty gets the default marks back. Profiles the officer saved
+ * themselves are never empty (saving requires marks) and are left alone.
+ * Returns the same array when nothing needed repairing.
+ */
+export function repairEmptySeededProfiles(profiles: CourseProfile[]): CourseProfile[] {
+  let changed = false;
+  const repaired = profiles.map((p) => {
+    if (!p || (Array.isArray(p.marks) && p.marks.length > 0)) return p;
+    const seed = DEFAULT_COURSE_PROFILES.find((d) => d.id === p.id);
+    if (!seed || seed.marks.length === 0) return p;
+    changed = true;
+    return { ...p, marks: JSON.parse(JSON.stringify(seed.marks)), totalDistanceNm: seed.totalDistanceNm };
+  });
+  return changed ? repaired : profiles;
+}
+
+/**
  * Loads all saved course profiles from localStorage.
  */
 export function getSavedCourseProfiles(): CourseProfile[] {
@@ -231,7 +250,15 @@ export function getSavedCourseProfiles(): CourseProfile[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.slice(0, MAX_COURSE_PROFILES);
+      const repaired = repairEmptySeededProfiles(parsed);
+      if (repaired !== parsed) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(repaired));
+        } catch {
+          // Still return the repaired list; it is rebuilt on every read until it can be stored
+        }
+      }
+      return repaired.slice(0, MAX_COURSE_PROFILES);
     }
   } catch (err) {
     console.error('Error loading course profiles from localStorage:', err);
