@@ -10,11 +10,11 @@ import {
   Home,
   ShieldAlert,
   Sun,
+  Settings2,
+  MoreHorizontal,
 } from 'lucide-react';
 import { RaceState, HardwareConnection, RegattaLocation, DeviceGpsState, UserAccount } from '../types/regatta';
 import { serverNow } from '../services/serverClock';
-
-export type HubTab = 'FLEET' | 'RACE' | 'RESULTS' | 'SYSTEM';
 
 interface HeaderProps {
   raceState: RaceState;
@@ -44,9 +44,11 @@ interface HeaderProps {
   onOpenSkipperCheckIn?: () => void;
   showReplayBar?: boolean;
   onToggleReplayBar?: () => void;
-  onOpenTools?: () => void;
-  isToolsOpen?: boolean;
-  onOpenHub?: (hub: HubTab) => void;
+  /** Opens Setup; only passed to people who can run the race */
+  onOpenSetup?: () => void;
+  /** Setup steps done (of 4), shown on the Setup button */
+  setupDoneCount?: number;
+  onOpenMore?: () => void;
   currentUser?: UserAccount | null;
   onOpenDashboard?: () => void;
   onOpenAuth?: (mode?: 'login' | 'register-participant' | 'register-org') => void;
@@ -67,8 +69,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenQrModal,
   onOpenResults,
   onOpenSkipperCheckIn,
-  onOpenTools,
-  onOpenHub,
+  onOpenSetup,
+  setupDoneCount = 0,
+  onOpenMore,
   currentUser,
   onOpenDashboard,
   onOpenAuth,
@@ -104,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenLandingPage && (
           <button
             onClick={onOpenLandingPage}
-            className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-raised/80 hover:bg-raised text-ink hover:text-ink text-xs font-medium border border-line transition-colors"
+            className="hidden xl:flex items-center gap-1 px-2 py-1 rounded-lg bg-raised/80 hover:bg-raised text-ink hover:text-ink text-xs font-medium border border-line transition-colors"
             title="Return to Front Landing Page"
           >
             <Home className="w-3.5 h-3.5 text-accent" />
@@ -126,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Zap className="w-2.5 h-2.5 text-success-ink shrink-0" />
           <span className="">{connectedPeerCount}</span>
-          <span className="hidden sm:inline">live</span>
+          <span className="hidden xl:inline">live</span>
         </button>
 
         {/* Room Selector */}
@@ -152,8 +155,8 @@ export const Header: React.FC<HeaderProps> = ({
             title="Spectator Mode (Read-only). Tap to enter PIN and unlock Race Officer Console."
           >
             <Lock className="w-3.5 h-3.5 xs:w-2.5 xs:h-2.5 text-warning-ink shrink-0" />
-            <span className="hidden md:inline font-bold">SPECTATOR</span>
-            <span className="hidden xs:inline md:hidden font-bold">SPEC</span>
+            <span className="hidden xl:inline font-bold">SPECTATOR</span>
+            <span className="hidden xs:inline xl:hidden font-bold">SPEC</span>
           </button>
         ) : (
           <button
@@ -164,8 +167,8 @@ export const Header: React.FC<HeaderProps> = ({
             title="Race Officer Console Active. Tap to preview Spectator view."
           >
             <ShieldCheck className="w-3.5 h-3.5 xs:w-2.5 xs:h-2.5 text-success-ink shrink-0" />
-            <span className="hidden md:inline font-bold">RC ADMIN</span>
-            <span className="hidden xs:inline md:hidden font-bold">RC</span>
+            <span className="hidden xl:inline font-bold">RC ADMIN</span>
+            <span className="hidden xs:inline xl:hidden font-bold">RC</span>
           </button>
         )}
       </div>
@@ -232,6 +235,33 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Consolidated 4 Hubs + Quick Track Boat + User Profile */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Setup and More. On phones these are in the bottom bar. */}
+        {onOpenSetup && (
+          <button
+            id="header-setup-btn"
+            onClick={onOpenSetup}
+            aria-label={`Setup, ${setupDoneCount} of 4 steps done`}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-accent/60 bg-accent/15 hover:bg-accent/25 text-accent text-xs font-bold transition-colors shrink-0"
+          >
+            <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Setup</span>
+            <span className={`px-1.5 rounded-full ${setupDoneCount === 4 ? 'bg-success-ink/20 text-success-ink' : 'bg-accent/20'}`} aria-hidden="true">
+              {setupDoneCount}/4
+            </span>
+          </button>
+        )}
+        {onOpenMore && (
+          <button
+            id="header-more-btn"
+            onClick={onOpenMore}
+            aria-label="More"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-line bg-raised/60 hover:bg-raised text-ink text-xs font-bold transition-colors shrink-0"
+          >
+            <MoreHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden xl:inline">More</span>
+          </button>
+        )}
+
         {/* Sunlight Mode: light, high-contrast theme for use outdoors */}
         <button
           id="header-sunlight-btn"
@@ -245,7 +275,7 @@ export const Header: React.FC<HeaderProps> = ({
           }`}
         >
           <Sun className="w-3.5 h-3.5" aria-hidden="true" />
-          <span className="hidden lg:inline">Sunlight</span>
+          <span className="hidden xl:inline">Sunlight</span>
         </button>
 
         {/* Glowing 1-Tap Skipper Check-In / Track Boat */}

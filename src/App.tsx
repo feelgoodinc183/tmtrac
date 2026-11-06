@@ -36,7 +36,9 @@ import { Footer } from './components/Footer';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { RcCommandConsolePanel } from './components/RcCommandConsolePanel';
 import { MobileBottomBar, MobileTab } from './components/MobileBottomBar';
-import { UnifiedHubModal, HubTab } from './components/UnifiedHubModal';
+import { SetupPanel, SetupSection, CourseChoice, getSetupStatus } from './components/SetupPanel';
+import { MoreMenu } from './components/MoreMenu';
+import { RosterImportDialog } from './components/RosterImportDialog';
 import { HeadToHeadModal } from './components/HeadToHeadModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
 import { FEATURES } from './config/features';
@@ -68,7 +70,7 @@ import { SuperAdminModal } from './components/SuperAdminModal';
 import { authService } from './services/authService';
 import { tenantService } from './services/tenantService';
 import { UserAccount, Tenant } from './types/regatta';
-import { getSavedCourseProfiles } from './services/courseProfileService';
+import { getSavedCourseProfiles, relocateCourseMarksToLocation } from './services/courseProfileService';
 import { generateRaceHighlights, recordedRaceDurationSec } from './services/highlightService';
 import { meshtasticService } from './services/meshtasticBleMqttService';
 import { deviceTrackerService, getDefaultDeviceProfile } from './services/deviceTrackerService';
@@ -301,13 +303,13 @@ export default function App() {
     setViewMode('RC_CONSOLE');
     setMobileTab('RC_CONSOLE');
   }, [isOrganizer, activeRoomCode]);
-  const [showHubModal, setShowHubModal] = useState<boolean>(false);
-  const [activeHubTab, setActiveHubTab] = useState<HubTab>('FLEET');
-
-  const handleOpenHub = (hub: HubTab = 'FLEET') => {
-    setActiveHubTab(hub);
-    setShowHubModal(true);
-  };
+  // Setup (classes, fleet, trackers, course) and the More menu replace the old Control Hub
+  const [setupOpen, setSetupOpen] = useState<{ section?: SetupSection } | null>(null);
+  const openSetup = (section?: SetupSection) => setSetupOpen({ section });
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showRosterImport, setShowRosterImport] = useState(false);
+  // Bumped when Setup is finished, so race control shows the start sequence
+  const [sequenceSignal, setSequenceSignal] = useState(0);
   const [connectedPeerCount, setConnectedPeerCount] = useState<number>(1);
 
   // Sunlight Mode: light, high-contrast theme for use outdoors. Remembered per device.
@@ -1410,11 +1412,27 @@ export default function App() {
     fitMapTo(updated);
   };
 
-  // A preset replaces the whole course, so ask first when there is one.
-  const [pendingCoursePreset, setPendingCoursePreset] = useState<CoursePresetType | null>(null);
-  const handleApplyCoursePreset = (preset: CoursePresetType) => {
-    if (marks.length > 0) setPendingCoursePreset(preset);
-    else applyCoursePreset(preset);
+  // Loading a course (template or saved) replaces the whole course, so ask first when there is one.
+  const [pendingCourseLoad, setPendingCourseLoad] = useState<{ name: string; apply: () => void } | null>(null);
+  const handleLoadCourse = (choice: CourseChoice) => {
+    let name: string;
+    let apply: () => void;
+    if ('preset' in choice) {
+      name = COURSE_PRESET_LABEL[choice.preset];
+      apply = () => applyCoursePreset(choice.preset);
+    } else {
+      const profile = getSavedCourseProfiles().find((p) => p.id === choice.profileId);
+      if (!profile) return;
+      name = profile.name;
+      // Laid out where the race is: this device's GPS, else where the map is looking
+      const at =
+        deviceGps.active && deviceGps.lat && deviceGps.lng
+          ? { lat: deviceGps.lat, lng: deviceGps.lng }
+          : getMapCenter() ?? { lat: selectedLocation?.centerLat ?? 6.308, lng: selectedLocation?.centerLng ?? 99.845 };
+      apply = () => handleApplyCourseProfile(relocateCourseMarksToLocation(profile.marks, at.lat, at.lng), profile.name, profile.id);
+    }
+    if (marks.length > 0) setPendingCourseLoad({ name, apply });
+    else apply();
   };
 
   const handleAddCourseMarkNearView = () => {
@@ -2617,6 +2635,11 @@ export default function App() {
     );
   }
 
+  // Setup and race control are for people who can run this room's race
+  const canRunRace = viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer;
+  const setupStatus = getSetupStatus(raceClasses, boats, marks, raceState);
+  const setupDoneCount = Object.values(setupStatus).filter((st) => st.done).length;
+
   return (
     <div
       className={`h-screen w-screen flex flex-col overflow-hidden select-none ${
@@ -2723,9 +2746,9 @@ export default function App() {
         onOpenResults={() => setShowResultsModal(true)}
         onOpenBoatQr={() => handleOpenBoatQr()}
         onOpenSkipperCheckIn={() => handleOpenSkipperCheckIn()}
-        onOpenTools={() => handleOpenHub('FLEET')}
-        onOpenHub={handleOpenHub}
-        isToolsOpen={showHubModal}
+        onOpenSetup={canRunRace ? () => openSetup() : undefined}
+        setupDoneCount={setupDoneCount}
+        onOpenMore={() => setShowMoreMenu(true)}
         onOpenCourseProfiles={() => {
           setCourseProfileCount(getSavedCourseProfiles().length);
           setShowCourseProfilesModal(true);
@@ -2757,15 +2780,10 @@ export default function App() {
             onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
             raceClasses={raceClasses}
-            onOpenClassManager={() => setShowClassManager(true)}
+            onOpenClassManager={() => openSetup('CLASSES')}
             onOpenResults={() => setShowResultsModal(true)}
-            onOpenCourseProfiles={() => {
-              setCourseProfileCount(getSavedCourseProfiles().length);
-              setShowCourseProfilesModal(true);
-            }}
-            courseProfileCount={courseProfileCount}
-            onApplyCoursePreset={handleApplyCoursePreset}
-            onAddCourseMark={handleAddCourseMarkNearView}
+            onEditCourse={() => openSetup('COURSE')}
+            showSequenceSignal={sequenceSignal}
           />
         )}
       </div>
@@ -2846,12 +2864,7 @@ export default function App() {
               onMoveBoatPosition={handleMoveBoatPosition}
               onUpdateMarkSettings={handleUpdateMarkSettings}
               onMoveMarkOrder={handleMoveMarkOrder}
-              onApplyCoursePreset={handleApplyCoursePreset}
-              onOpenCourseProfiles={() => {
-                setCourseProfileCount(getSavedCourseProfiles().length);
-                setShowCourseProfilesModal(true);
-              }}
-              onOpenHub={handleOpenHub}
+              onEditCourse={canRunRace ? () => openSetup('COURSE') : undefined}
               viewMode={viewMode}
             />
 
@@ -2898,12 +2911,7 @@ export default function App() {
                 onMoveBoatPosition={handleMoveBoatPosition}
                 onUpdateMarkSettings={handleUpdateMarkSettings}
                 onMoveMarkOrder={handleMoveMarkOrder}
-                onApplyCoursePreset={handleApplyCoursePreset}
-                onOpenCourseProfiles={() => {
-                  setCourseProfileCount(getSavedCourseProfiles().length);
-                  setShowCourseProfilesModal(true);
-                }}
-                onOpenHub={handleOpenHub}
+                onEditCourse={canRunRace ? () => openSetup('COURSE') : undefined}
                 viewMode={viewMode}
               />
 
@@ -3106,15 +3114,10 @@ export default function App() {
                   onRestartRace={requestRestartRace}
             onGeneralRecall={requestGeneralRecall}
                   raceClasses={raceClasses}
-                  onOpenClassManager={() => setShowClassManager(true)}
+                  onOpenClassManager={() => openSetup('CLASSES')}
                   onOpenResults={() => setShowResultsModal(true)}
-                  onOpenCourseProfiles={() => {
-                    setCourseProfileCount(getSavedCourseProfiles().length);
-                    setShowCourseProfilesModal(true);
-                  }}
-                  courseProfileCount={courseProfileCount}
-                  onApplyCoursePreset={handleApplyCoursePreset}
-                  onAddCourseMark={handleAddCourseMarkNearView}
+                  onEditCourse={() => openSetup('COURSE')}
+                  showSequenceSignal={sequenceSignal}
                 />
               </div>
             </div>
@@ -3126,9 +3129,11 @@ export default function App() {
       <MobileBottomBar
         activeTab={mobileTab}
         onSelectTab={setMobileTab}
-        showRace={viewMode === 'RC_CONSOLE' && isUserAdminOrOfficer}
+        showRace={canRunRace}
+        onOpenSetup={() => openSetup()}
+        setupDoneCount={setupDoneCount}
         onOpenResults={() => setShowResultsModal(true)}
-        onOpenTools={() => handleOpenHub('FLEET')}
+        onOpenMore={() => setShowMoreMenu(true)}
       />
 
       {/* Race Replay Scrubber for Spectator / Analysis mode - Slides open on demand */}
@@ -3155,44 +3160,69 @@ export default function App() {
 
 
 
-      {/* Unified 4-Hub Control Modal */}
-      <UnifiedHubModal
-        isOpen={showHubModal}
-        onClose={() => setShowHubModal(false)}
-        onOpenMqttInspector={() => setShowMqttInspector(true)}
-        initialHub={activeHubTab}
-        boats={boats}
-        nodes={nodes}
-        deviceGps={deviceGps}
-        onToggleDeviceGps={handleToggleDeviceGps}
-        hybridTrackerCount={fleetMembers.length + (deviceGps.active ? 1 : 0)}
-        onOpenBoatQr={() => handleOpenBoatQr()}
-        onOpenConnectDevice={() => openConnectDevice()}
-        onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
-        onSelectBoat={(id) => {
-          setSelectedBoatId(id);
-          setMobileTab('MAP');
-        }}
-        onOpenHeadToHead={() => {
-          if (boats.length >= 2) {
-            setHeadToHeadPair([boats[0].id, boats[1].id]);
-            setShowHeadToHead(true);
+      {/* Setup: classes, fleet, trackers, course. Its dialogs render after it, so they sit on top. */}
+      {setupOpen && canRunRace && (
+        <SetupPanel
+          onClose={() => setSetupOpen(null)}
+          initialSection={setupOpen.section}
+          activeRoomCode={activeRoomCode}
+          raceState={raceState}
+          raceClasses={raceClasses}
+          boats={boats}
+          nodes={nodes}
+          marks={marks}
+          deviceGps={deviceGps}
+          onToggleDeviceGps={handleToggleDeviceGps}
+          onAddClass={handleAddClass}
+          onUpdateClass={handleUpdateClass}
+          onDeleteClass={handleDeleteClass}
+          onOpenBoatEditor={(b) => (b ? handleEditBoat(b) : handleOpenAddBoat())}
+          onOpenRosterImport={() => setShowRosterImport(true)}
+          onOpenBoatQr={() => handleOpenBoatQr()}
+          onOpenConnectDevice={openConnectDevice}
+          onLoadCourse={handleLoadCourse}
+          onManageCourses={() => {
+            setCourseProfileCount(getSavedCourseProfiles().length);
+            setShowCourseProfilesModal(true);
+          }}
+          courseProfileCount={courseProfileCount}
+          onUpdateMarks={handleUpdateMarks}
+          onAddCourseMark={handleAddCourseMarkNearView}
+          onFinish={() => {
+            setSetupOpen(null);
+            setMobileTab('RC_CONSOLE');
+            setSequenceSignal((n) => n + 1);
+          }}
+        />
+      )}
+
+      {showRosterImport && (
+        <RosterImportDialog onClose={() => setShowRosterImport(false)} onImport={handleImportCompetitors} />
+      )}
+
+      {/* Everything that isn't setup or racing */}
+      {showMoreMenu && (
+        <MoreMenu
+          onClose={() => setShowMoreMenu(false)}
+          onOpenResults={() => setShowResultsModal(true)}
+          onOpenVhfJury={() => setShowVhfJuryModal(true)}
+          onOpenSpectatorQr={() => setShowSpectatorQr(true)}
+          onOpenHeadToHead={
+            boats.length >= 2
+              ? () => {
+                  setHeadToHeadPair([boats[0].id, boats[1].id]);
+                  setShowHeadToHead(true);
+                }
+              : undefined
           }
-        }}
-        raceState={raceState}
-        viewMode={viewMode}
-        onOpenVhfJuryModal={() => setShowVhfJuryModal(true)}
-        onOpenChat={FEATURES.aiTactician ? () => setShowGeminiChat(true) : undefined}
-        activeRoomCode={activeRoomCode}
-        connectedPeerCount={connectedPeerCount}
-        onOpenSpectatorQr={() => setShowSpectatorQr(true)}
-        onOpenNmeaMalaysiaModal={() => setShowNmeaMalaysiaModal(true)}
-        onOpenOfflineCache={() => setShowOfflineCache(true)}
-        onOpenAbout={() => setShowAboutModal(true)}
-        onOpenTenantDashboard={isUserAdminOrOfficer ? () => setShowTenantDashboard(true) : undefined}
-        tenantName={currentTenant?.name || currentUser?.tenantName || 'Royal Langkawi Yacht Club (RLYC)'}
-        planTier={currentTenant?.planTier || currentUser?.planTier || 'CLUB'}
-      />
+          onOpenChat={FEATURES.aiTactician ? () => setShowGeminiChat(true) : undefined}
+          onOpenMqttInspector={() => setShowMqttInspector(true)}
+          onOpenOfflineCache={() => setShowOfflineCache(true)}
+          onOpenLocations={() => setShowNmeaMalaysiaModal(true)}
+          onOpenClub={isUserAdminOrOfficer ? () => setShowTenantDashboard(true) : undefined}
+          onOpenAbout={() => setShowAboutModal(true)}
+        />
+      )}
 
       {/* The one way to connect a tracker: method → connect → which boat */}
       {showConnectDevice && (
@@ -3298,6 +3328,7 @@ export default function App() {
           isOpen={showBoatEditorModal}
           boatToEdit={boatToEdit}
           nodes={nodes}
+          boats={boats}
           deviceGps={deviceGps}
           onClose={() => {
             setShowBoatEditorModal(false);
@@ -3355,7 +3386,6 @@ export default function App() {
         onResetForNextRace={handleResetForNextRace}
         onClearSeries={handleClearSeries}
         onNewSeries={handleNewSeries}
-        onImportCompetitors={handleImportCompetitors}
         viewMode={viewMode}
       />
 
@@ -3462,17 +3492,17 @@ export default function App() {
         onClose={() => setShowCpanelDeployModal(false)}
       />
 
-      {pendingCoursePreset && (
+      {pendingCourseLoad && (
         <ConfirmDialog
-          title={`Replace ${marks.length} ${marks.length === 1 ? 'mark' : 'marks'} with ${COURSE_PRESET_LABEL[pendingCoursePreset]}?`}
-          body={`The current course${raceState.courseName ? ` (${raceState.courseName})` : ''} is removed and the fleet's course updates. This can't be undone; save it as a course profile first if you want it back.`}
+          title={`Replace ${marks.length} ${marks.length === 1 ? 'mark' : 'marks'} with ${pendingCourseLoad.name}?`}
+          body={`The current course${raceState.courseName ? ` (${raceState.courseName})` : ''} is removed and the fleet's course updates. This can't be undone. To keep it, save it first (Setup, Course: Save, rename or import courses).`}
           confirmLabel="Replace course"
           onConfirm={() => {
-            const preset = pendingCoursePreset;
-            setPendingCoursePreset(null);
-            applyCoursePreset(preset);
+            const load = pendingCourseLoad;
+            setPendingCourseLoad(null);
+            load.apply();
           }}
-          onCancel={() => setPendingCoursePreset(null)}
+          onCancel={() => setPendingCourseLoad(null)}
         />
       )}
 

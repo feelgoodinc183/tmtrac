@@ -70,7 +70,7 @@ export const Footer: React.FC<FooterProps> = ({
       </div>
 
       {/* Connection status, derived from nodes heard and the MQTT bridge. Status only: the packet
-          inspector and offline cache live in Control Hub > System. */}
+          inspector and offline cache live in the More menu. */}
       <div className="flex items-center gap-2 shrink-0 text-xs whitespace-nowrap" role="status">
         <span className={`w-2 h-2 rounded-full ${meshDot}`} aria-hidden="true" />
         <Radio className="w-3 h-3" aria-hidden="true" />

@@ -2,12 +2,15 @@ import React, { useState, useEffect, useId } from 'react';
 import { Boat, MeshtasticNode, RaceClass, RaceClassDefinition, HandicapSystem, BoatStatus, DeviceGpsState } from '../types/regatta';
 import { X, Anchor, Trash2, Save, Plus, Radio, AlertTriangle, Layers, Navigation } from 'lucide-react';
 import { formatLastHeard } from '../utils/formatters';
+import { normalizeSail } from '../utils/sailNumber';
 import { DialogFrame } from './ui/Dialog';
 
 interface BoatEditorModalProps {
   isOpen: boolean;
   boatToEdit: Boat | null; // null means "Create New Boat"
   nodes: MeshtasticNode[];
+  /** The fleet, to stop two boats sharing a sail number */
+  boats?: Boat[];
   deviceGps?: DeviceGpsState;
   onClose: () => void;
   onSaveBoat: (boatData: Partial<Boat>, isEdit: boolean, originalId?: string) => void;
@@ -32,6 +35,7 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
   isOpen,
   boatToEdit,
   nodes,
+  boats = [],
   onClose,
   onSaveBoat,
   onDeleteBoat,
@@ -51,6 +55,8 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
   const [color, setColor] = useState('#00D4FF');
   const [status, setStatus] = useState<BoatStatus>('PRE_START');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [sailError, setSailError] = useState<string | null>(null);
+  const sailErrorId = useId();
 
   useEffect(() => {
     if (boatToEdit) {
@@ -76,6 +82,7 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
       setStatus('PRE_START');
     }
     setShowDeleteConfirm(false);
+    setSailError(null);
   }, [boatToEdit, isOpen, raceClasses]);
 
   if (!isOpen) return null;
@@ -83,6 +90,13 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !sailNumber.trim()) return;
+    const sail = normalizeSail(sailNumber);
+    const clash = boats.find((b) => b.id !== boatToEdit?.id && normalizeSail(b.sailNumber || '') === sail);
+    if (clash) {
+      setSailError(`${clash.name} already has sail number ${sail}. Use a different number, or edit ${clash.name} instead.`);
+      document.getElementById(sailErrorId + '-input')?.focus();
+      return;
+    }
 
     const parsedRating = parseFloat(handicapRating);
     const validRating = !isNaN(parsedRating) && parsedRating > 0 ? parsedRating : 1.0;
@@ -90,7 +104,7 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
     onSaveBoat(
       {
         name: name.trim().toUpperCase(),
-        sailNumber: sailNumber.trim().toUpperCase(),
+        sailNumber: sail,
         class: boatClass,
         handicapSystem,
         handicapRating: validRating,
@@ -166,17 +180,30 @@ export const BoatEditorModal: React.FC<BoatEditorModalProps> = ({
           </div>
 
           <div>
-            <label className="text-xs text-ink-muted block mb-1">
+            <label htmlFor={sailErrorId + '-input'} className="text-xs text-ink-muted block mb-1">
               Sail Number *
             </label>
             <input
+              id={sailErrorId + '-input'}
               type="text"
               required
               value={sailNumber}
-              onChange={(e) => setSailNumber(e.target.value)}
+              onChange={(e) => {
+                setSailNumber(e.target.value);
+                if (sailError) setSailError(null);
+              }}
               placeholder="e.g. MAS 888"
-              className="w-full bg-canvas border border-line focus:border-accent rounded-xl px-3 py-2 text-xs font-bold text-accent outline-none transition-all"
+              aria-invalid={sailError ? true : undefined}
+              aria-describedby={sailError ? sailErrorId : undefined}
+              className={`w-full bg-canvas border focus:border-accent rounded-xl px-3 py-2 text-xs font-bold text-accent outline-none transition-all ${
+                sailError ? 'border-danger-ink' : 'border-line'
+              }`}
             />
+            {sailError && (
+              <p id={sailErrorId} role="alert" className="mt-1 text-xs text-danger-ink">
+                {sailError}
+              </p>
+            )}
           </div>
         </div>
 
