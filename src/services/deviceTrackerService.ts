@@ -1,5 +1,7 @@
 import { meshtasticService } from './meshtasticBleMqttService';
 import { canonicalNodeId } from '../utils/nodeId';
+import { isNativeApp } from './native/platform';
+import { watchDevicePosition } from './native/positionWatch';
 import { nodeStatusFromLastPing } from '../utils/formatters';
 import {
   DeviceTrackerProfile,
@@ -157,7 +159,7 @@ export type EditRejectedCallback = (rejection: { action: string; roomCode: strin
 
 class HybridDeviceTrackerService {
   private profile: DeviceTrackerProfile = getDefaultDeviceProfile();
-  private gpsWatchId: number | null = null;
+  private stopGpsWatch: (() => void) | null = null;
   private batteryLevel: number | null = null; // until the Battery API reports (not available on iOS)
 
   private currentGpsState: DeviceGpsState;
@@ -1386,7 +1388,7 @@ class HybridDeviceTrackerService {
 
   public startGpsTracking(): Promise<boolean> {
     return new Promise((resolve) => {
-      if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      if (typeof window === 'undefined' || (!isNativeApp() && !('geolocation' in navigator))) {
         this.currentGpsState.error = 'Geolocation API not supported on this device/browser.';
         this.notifyGps();
         resolve(false);
@@ -1405,7 +1407,7 @@ class HybridDeviceTrackerService {
       // Start periodic position broadcasting timer
       this.startBroadcastTimer();
 
-      this.gpsWatchId = navigator.geolocation.watchPosition(
+      this.stopGpsWatch = watchDevicePosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
@@ -1481,7 +1483,9 @@ class HybridDeviceTrackerService {
         (err) => {
           let errorMsg = 'Failed to acquire device GPS position.';
           if (err.code === err.PERMISSION_DENIED) {
-            errorMsg = 'Location permission denied. Please allow location access in your browser.';
+            errorMsg = isNativeApp()
+              ? 'Location permission denied. Allow location for TMTRAC in Android Settings > Apps > TMTRAC > Permissions.'
+              : 'Location permission denied. Please allow location access in your browser.';
           } else if (err.code === err.POSITION_UNAVAILABLE) {
             errorMsg = 'Device GPS position unavailable. Check device GPS settings.';
           } else if (err.code === err.TIMEOUT) {
@@ -1559,9 +1563,9 @@ class HybridDeviceTrackerService {
 
   // Stop watching GPS
   public stopGpsTracking() {
-    if (this.gpsWatchId !== null && typeof navigator !== 'undefined') {
-      navigator.geolocation.clearWatch(this.gpsWatchId);
-      this.gpsWatchId = null;
+    if (this.stopGpsWatch) {
+      this.stopGpsWatch();
+      this.stopGpsWatch = null;
     }
     this.stopCompassListener();
     if (this.broadcastIntervalTimer) {

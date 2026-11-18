@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -24,6 +25,18 @@
 
         </activity>
 
+        <!-- Keeps the app running while it relays a Bluetooth tracker with the screen off -->
+        <service
+            android:name=".RelayService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- The background GPS plugin's service; nothing outside the app needs to start it -->
+        <service
+            android:name="com.equimaps.capacitor_background_geolocation.BackgroundGeolocationService"
+            android:exported="false"
+            tools:replace="android:exported" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -42,5 +55,13 @@
     <!-- A skipper's phone shares its own GPS position while the app is open -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" tools:replace="android:required" />
+    <!-- Background tracking: the GPS plugin's foreground service and the tracker relay service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Bluetooth to a Meshtastic tracker (T-Echo); the plugin adds the scan/connect permissions -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 </manifest>

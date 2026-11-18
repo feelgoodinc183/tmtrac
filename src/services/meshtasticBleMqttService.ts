@@ -1,5 +1,6 @@
 import { MeshtasticNode, BackfillPoint } from '../types/regatta';
 import { canonicalNodeId, nodeNumFromId } from '../utils/nodeId';
+import { getBluetooth } from './native/nativeBluetooth';
 import { nodeStatusFromLastPing, formatBattery } from '../utils/formatters';
 import {
   BROADCAST_NUM,
@@ -569,11 +570,12 @@ export class MeshtasticBleMqttService {
    */
   public async findRememberedBleDevice(): Promise<any | null> {
     try {
-      const bt = (navigator as any).bluetooth;
+      const bt = getBluetooth();
       if (!bt || typeof bt.getDevices !== 'function') return null;
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_LAST_BLE_DEVICE) || 'null');
       if (!saved?.id) return null;
-      const devices: any[] = await bt.getDevices();
+      // Web Bluetooth ignores the ids; the Android app needs them to find the tracker
+      const devices: any[] = await bt.getDevices([saved.id]);
       return devices.find((d) => d.id === saved.id) || null;
     } catch {
       return null;
@@ -597,9 +599,9 @@ export class MeshtasticBleMqttService {
 
   /** Shows the browser's device picker and connects to the chosen Meshtastic tracker. */
   public async connectTEchoBle(): Promise<{ success: boolean; deviceName: string; nodeId: string; node?: MeshtasticNode; error?: string }> {
-    const bt = (navigator as any).bluetooth;
+    const bt = getBluetooth();
     if (!bt) {
-      return { success: false, deviceName: '', nodeId: '', error: 'Web Bluetooth is not supported in this browser. Use Chrome or Edge (on Android, Windows, macOS or ChromeOS).' };
+      return { success: false, deviceName: '', nodeId: '', error: 'This browser has no Bluetooth. Use the TMTRAC Android app, or Chrome or Edge (on Android, Windows, macOS or ChromeOS).' };
     }
 
     let device: any;

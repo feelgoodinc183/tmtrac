@@ -4,6 +4,10 @@ import L from 'leaflet';
 import App from './App.tsx';
 import { SessionEndedPrompt } from './components/SessionEndedPrompt';
 import './index.css';
+import { keepRelayAliveInBackground } from './services/native/relayKeepAlive';
+
+// Android app only: keep a Bluetooth tracker relay running with the screen off
+keepRelayAliveInBackground();
 
 // Global Leaflet LatLng protection to prevent any (NaN, NaN) uncaught exceptions
 if (typeof window !== 'undefined') {

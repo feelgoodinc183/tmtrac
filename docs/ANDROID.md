@@ -1,9 +1,48 @@
 # TMTRAC Android app
 
-The Android app (`my.tmtrac.app`) is a Capacitor shell that opens the live site, https://tmtrac.my,
-so it always matches the website and uses the same server. Phone GPS works in the app once the
-skipper allows location. If the phone has no signal on first open, a "Can't reach TMTRAC" page
-offers to try again.
+The Android app (`my.tmtrac.app`) is a Capacitor app that opens the live site, https://tmtrac.my,
+so its screens always match the website and it uses the same server. What the website cannot do
+on a phone, the app does with Android's own features:
+
+| | Chrome on Android | The app |
+|---|---|---|
+| Connect a T-Echo over Bluetooth | Web Bluetooth, while the page is open | Android Bluetooth (`@capacitor-community/bluetooth-le`) |
+| Share the phone's GPS with the screen off | Stops when the phone locks | Keeps going (`@capacitor-community/background-geolocation`) |
+| Relay a T-Echo with the screen off | Stops when the phone locks | Keeps going (`RelayService`, below) |
+
+If the phone has no signal on first open, a "Can't reach TMTRAC" page offers to try again.
+
+### How the native parts fit in
+
+- `src/services/native/platform.ts` tells whether the page runs inside the app. Plugins are
+  loaded only there, so browsers never download them.
+- `src/services/native/nativeBluetooth.ts` gives the tracker code the same Web Bluetooth calls
+  it uses in Chrome, carried out by the plugin. `meshtasticBleMqttService.ts` calls
+  `getBluetooth()` and runs the same Meshtastic handshake, reconnects and reads either way.
+  `tests/nativeBluetooth.test.ts` drives the real tracker service through it.
+- `src/services/native/positionWatch.ts` replaces `navigator.geolocation.watchPosition` in the
+  app. The plugin runs a foreground service with a "TMTRAC is sharing your position"
+  notification while sharing is on.
+- `src/services/native/relayKeepAlive.ts` starts `RelayService` (a foreground service with a
+  "TMTRAC is relaying a tracker" notification and a wake lock) from the moment a tracker
+  connects until it is disconnected on purpose or the reconnects give up.
+  `android/app/src/main/java/my/tmtrac/app/` holds the service and its plugin.
+
+### Things to know
+
+- **Website changes reach the app by deploying the site.** The app loads tmtrac.my, so the
+  JavaScript above only takes effect once the site is deployed to cPanel as usual. Native
+  changes (`android/`) need a new APK.
+- **The site must be served at exactly `https://tmtrac.my`** (or the `TMTRAC_APP_URL` the app was
+  built with). Capacitor only connects the page to Android's Bluetooth and GPS for that origin; a
+  redirect to `www.tmtrac.my` would leave the app without them.
+- **Phone makers' battery savers** (Samsung, Xiaomi, Oppo, Huawei) can still stop background
+  apps. On each skipper's phone set TMTRAC's battery use to "Unrestricted" and test with the
+  phone locked in a pocket before race day.
+- **Google Play** asks why the app uses foreground services. In Play Console, declare
+  *location* (skippers share their boat's position during a race, shown by the notification) and
+  *connected device* (relaying a Bluetooth LoRa tracker), each with a short video. The app does
+  not ask for "Allow all the time" location: it only tracks while its notification is showing.
 
 ## Getting the APK
 
@@ -61,11 +100,6 @@ TMTRAC_APP_URL=https://staging.tmtrac.my npm run android:debug
 `versionName` is the `version` in `package.json`. `versionCode` is that version times 1000 plus
 the CI run number (1.6.0, run 42 → 10600042), so every CI build can be uploaded to Play.
 
-## Not in the app yet
+## Still to do
 
-- **Bluetooth relay of a T-Echo.** The app's web view has no Web Bluetooth, so relaying a
-  Meshtastic tracker still needs Chrome on Android or a laptop. The rebuild plan
-  (`docs/REBUILD_PLAN.md`, phase 4) adds native Bluetooth through a Capacitor plugin.
-- **Tracking with the screen off.** GPS sharing stops when the app is in the background; this
-  needs a foreground service (also phase 4).
 - **App icon.** The launcher icon and splash screen are Capacitor's placeholders.
