@@ -57,6 +57,55 @@ function positionError(code: 1 | 2 | 3, message: string): DevicePositionError {
   return { code, message, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 };
 }
 
+/** While the background plugin delivers fixes, the web view's own fixes are not used */
+export const NATIVE_PREFERRED_MS = 5_000;
+/** An error from one source is shown once nothing has come in for this long */
+export const ERROR_AFTER_MS = 20_000;
+
+type Source = 'native' | 'web';
+
+/**
+ * Inside the app, positions come from two places at once:
+ * - the background plugin, which keeps working with the screen off, but needs Google Play
+ *   services and refuses to start when the phone allows only "approximate" location;
+ * - the web view's own GPS, which works on any phone and with approximate location, but only
+ *   while the app is on screen.
+ * The plugin's fixes are used whenever they are coming in; otherwise the web view's. An error is
+ * passed on only when both sources have failed, or one has and nothing has arrived for a while,
+ * so a plugin refusal does not hide a working GPS.
+ */
+export function createPositionMerger(
+  onPosition: (pos: DevicePosition) => void,
+  onError: (err: DevicePositionError) => void,
+  now: () => number = Date.now
+) {
+  const startedAt = now();
+  let lastFixAt = 0;
+  let lastNativeFixAt = 0;
+  const errors: Partial<Record<Source, DevicePositionError>> = {};
+
+  const fix = (source: Source, pos: DevicePosition) => {
+    const t = now();
+    if (source === 'web' && lastNativeFixAt && t - lastNativeFixAt < NATIVE_PREFERRED_MS) return;
+    if (source === 'native') lastNativeFixAt = t;
+    lastFixAt = t;
+    delete errors.native;
+    delete errors.web;
+    onPosition(pos);
+  };
+
+  const error = (source: Source, err: DevicePositionError) => {
+    errors[source] = err;
+    const quietFor = now() - (lastFixAt || startedAt);
+    const bothFailed = !!errors.native && !!errors.web;
+    if (!bothFailed && quietFor < ERROR_AFTER_MS) return;
+    // The web view accepts approximate location, so its answer about permission is the true one
+    onError(errors.web ?? err);
+  };
+
+  return { fix, error };
+}
+
 /** Starts watching; returns a function that stops it. */
 export function watchDevicePosition(
   onPosition: (pos: DevicePosition) => void,
@@ -71,7 +120,22 @@ export function watchDevicePosition(
   let stopped = false;
   let watcherId: string | null = null;
   let plugin: BackgroundGeolocationPlugin | null = null;
+  const merger = createPositionMerger(
+    (pos) => !stopped && onPosition(pos),
+    (err) => !stopped && onError(err)
+  );
 
+  // The web view's GPS: works on every phone while the app is on screen
+  let webWatchId: number | null = null;
+  if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    webWatchId = navigator.geolocation.watchPosition(
+      (pos) => merger.fix('web', pos),
+      (err) => merger.error('web', positionError(err.code as 1 | 2 | 3, err.message)),
+      options
+    );
+  }
+
+  // The background plugin: keeps going with the screen off (foreground service + notification)
   nativePlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation')
     .then((p) => {
       plugin = p;
@@ -86,15 +150,19 @@ export function watchDevicePosition(
         (loc, err) => {
           if (stopped) return;
           if (err) {
-            onError(
-              err.code === 'NOT_AUTHORIZED'
-                ? positionError(1, err.message || 'Location permission denied.')
-                : positionError(2, err.message || 'Device GPS position unavailable.')
+            const message = err.message || '';
+            // "Location services disabled." also comes as NOT_AUTHORIZED: that is the phone's
+            // Location switch, not the app's permission
+            merger.error(
+              'native',
+              err.code === 'NOT_AUTHORIZED' && !/disabled/i.test(message)
+                ? positionError(1, message || 'Location permission denied.')
+                : positionError(2, message || 'Device GPS position unavailable.')
             );
             return;
           }
           if (!loc) return;
-          onPosition({
+          merger.fix('native', {
             coords: {
               latitude: loc.latitude,
               longitude: loc.longitude,
@@ -113,11 +181,12 @@ export function watchDevicePosition(
       if (stopped) void plugin?.removeWatcher({ id });
     })
     .catch((err) => {
-      if (!stopped) onError(positionError(2, err?.message || 'Could not start GPS.'));
+      if (!stopped) merger.error('native', positionError(2, err?.message || 'Could not start background GPS.'));
     });
 
   return () => {
     stopped = true;
+    if (webWatchId !== null) navigator.geolocation.clearWatch(webWatchId);
     if (watcherId && plugin) void plugin.removeWatcher({ id: watcherId }).catch(() => undefined);
   };
 }

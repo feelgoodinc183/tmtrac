@@ -666,13 +666,20 @@ export const LeaderboardSidebar: React.FC<LeaderboardSidebarProps> = ({
                         {deviceGps?.active ? 'ACTIVE' : 'OFF'}
                       </span>
                     </div>
-                    <span className="text-xs text-ink-muted">
-                      {deviceGps?.active
-                        ? (typeof deviceGps.lat === 'number' && typeof deviceGps.lng === 'number'
-                          ? `${safeFixed(deviceGps.lat, 4)}°N, ${safeFixed(deviceGps.lng, 4)}°E`
-                          : 'Acquiring Signal...')
-                        : 'Phone / Tablet / Laptop Browser GPS'}
-                    </span>
+                    {deviceGps?.active && deviceGps.error && typeof deviceGps.lat !== 'number' ? (
+                      // Without this, a refused permission or GPS switched off looks like waiting forever
+                      <span className="block text-xs font-semibold text-danger-ink" role="alert">
+                        {deviceGps.error}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-ink-muted">
+                        {deviceGps?.active
+                          ? (typeof deviceGps.lat === 'number' && typeof deviceGps.lng === 'number'
+                            ? `${safeFixed(deviceGps.lat, 4)}°N, ${safeFixed(deviceGps.lng, 4)}°E`
+                            : 'Acquiring Signal...')
+                          : 'Phone / Tablet / Laptop Browser GPS'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
