@@ -12,9 +12,15 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "android:sync": "node scripts/android-sync.mjs",
+    "android:debug": "node scripts/android-sync.mjs && cd android && ./gradlew assembleDebug",
+    "android:release": "node scripts/android-sync.mjs && cd android && ./gradlew assembleRelease bundleRelease",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/leaflet": "^1.9.22",
@@ -37,6 +43,7 @@
   },
   "devDependencies": {
     "@bufbuild/protobuf": "^2.16.0",
+    "@capacitor/cli": "^8.6.2",
     "@meshtastic/protobufs": "^2.8.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^4.17.21",

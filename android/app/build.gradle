@@ -1,0 +1,90 @@
+apply plugin: 'com.android.application'
+
+import groovy.json.JsonSlurper
+
+// The app version follows package.json, so the website and the app share one number.
+// 1.6.0 with build number 42 becomes versionName "1.6.0" and versionCode 10600042. CI passes its
+// run number as TMTRAC_BUILD_NUMBER so every upload of the same version gets a higher code.
+def packageVersion = new JsonSlurper().parse(file('../../package.json')).version as String
+def versionParts = packageVersion.tokenize('.').collect { it.replaceAll(/[^0-9].*$/, '') as int }
+def buildNumber = ((System.getenv('TMTRAC_BUILD_NUMBER') ?: '0') as int) % 1000
+def appVersionCode = (versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]) * 1000 + buildNumber
+
+// Release signing comes from environment variables (CI secrets) or android/keystore.properties.
+// Without either, release builds come out unsigned and debug builds still work.
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def signingValue = { String envName, String propName ->
+    System.getenv(envName) ?: keystoreProps.getProperty(propName)
+}
+def releaseStoreFile = signingValue('TMTRAC_KEYSTORE_FILE', 'storeFile')
+def hasReleaseSigning = releaseStoreFile && file(releaseStoreFile).exists()
+
+android {
+    namespace = "my.tmtrac.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "my.tmtrac.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName packageVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword signingValue('TMTRAC_KEYSTORE_PASSWORD', 'storePassword')
+                keyAlias signingValue('TMTRAC_KEY_ALIAS', 'keyAlias')
+                keyPassword signingValue('TMTRAC_KEY_PASSWORD', 'keyPassword')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

@@ -1,0 +1,102 @@
+name: Android app
+
+# Builds the TMTRAC Android app: a debug APK to install on test phones, plus a release APK and a
+# Play Store bundle (AAB). Release files are signed only when the keystore secrets below are set.
+#
+# Repository secrets (Settings > Secrets and variables > Actions), all optional:
+#   TMTRAC_KEYSTORE_BASE64    the upload keystore (.jks), base64-encoded
+#   TMTRAC_KEYSTORE_PASSWORD  its store password
+#   TMTRAC_KEY_ALIAS          the key alias inside it
+#   TMTRAC_KEY_PASSWORD       the key password
+# Repository variable, optional:
+#   TMTRAC_APP_URL            the site the app opens (default https://tmtrac.my)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+    paths:
+      - 'android/**'
+      - 'mobile/**'
+      - 'capacitor.config.ts'
+      - 'scripts/android-sync.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'mobile/**'
+      - 'capacitor.config.ts'
+      - 'scripts/android-sync.mjs'
+      - '.github/workflows/android.yml'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TMTRAC_APP_URL: ${{ vars.TMTRAC_APP_URL || 'https://tmtrac.my' }}
+      # Each run gets a higher version code than the last, so Play accepts every upload.
+      TMTRAC_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install packages
+        run: npm ci --no-audit --no-fund
+
+      - name: Copy the app shell into the Android project
+        run: node scripts/android-sync.mjs
+
+      - name: Load the release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.TMTRAC_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tmtrac-release.jks"
+            echo "TMTRAC_KEYSTORE_FILE=$RUNNER_TEMP/tmtrac-release.jks" >> "$GITHUB_ENV"
+            echo "Release builds will be signed."
+          else
+            echo "::notice::No TMTRAC_KEYSTORE_BASE64 secret: release APK and AAB are unsigned. The debug APK installs as usual."
+          fi
+
+      - name: Build
+        working-directory: android
+        env:
+          TMTRAC_KEYSTORE_PASSWORD: ${{ secrets.TMTRAC_KEYSTORE_PASSWORD }}
+          TMTRAC_KEY_ALIAS: ${{ secrets.TMTRAC_KEY_ALIAS }}
+          TMTRAC_KEY_PASSWORD: ${{ secrets.TMTRAC_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+
+      - name: Name the files
+        run: |
+          version=$(node -p "require('./package.json').version")
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk "out/tmtrac-${version}-debug.apk"
+          for f in android/app/build/outputs/apk/release/*.apk; do
+            case "$f" in *unsigned*) suffix="release-unsigned" ;; *) suffix="release" ;; esac
+            cp "$f" "out/tmtrac-${version}-${suffix}.apk"
+          done
+          cp android/app/build/outputs/bundle/release/app-release.aab "out/tmtrac-${version}-release.aab"
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tmtrac-android
+          path: out/
+          if-no-files-found: error

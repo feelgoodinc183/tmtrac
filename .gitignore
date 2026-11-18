@@ -10,3 +10,4 @@ coverage/
 data/
 tmp/
 stderr.log
+mobile/www/app-url.js
